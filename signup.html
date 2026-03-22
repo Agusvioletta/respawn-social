@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Respawn Social — Crear Cuenta</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .auth-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .auth-header p {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .field-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+      text-align: left;
+    }
+    .field-group {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .avatar-section {
+      width: 100%;
+    }
+    .avatar-section .field-label {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .avatar-grid {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+    }
+    .avatar-opt {
+      position: relative;
+      cursor: pointer;
+    }
+    .avatar-opt img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      image-rendering: pixelated;
+      transition: all var(--transition);
+      display: block;
+    }
+    .avatar-opt:hover img {
+      border-color: var(--cyan-dim);
+      transform: scale(1.06);
+    }
+    .avatar-opt.selected img {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px var(--cyan-glow), 0 0 20px var(--cyan-glow-strong);
+    }
+    .avatar-opt .check-badge {
+      position: absolute;
+      top: -7px; right: -7px;
+      width: 22px; height: 22px;
+      background: var(--cyan);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #000;
+      font-weight: 900;
+      opacity: 0;
+      transform: scale(0);
+      transition: all var(--transition);
+      pointer-events: none;
+    }
+    .avatar-opt.selected .check-badge {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .section-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+    .register-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+      letter-spacing: 2px;
+      margin-top: 0;
+      justify-content: center;
+    }
+    #signupError {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--pink);
+      text-align: center;
+      min-height: 16px;
+      width: 100%;
+    }
+    .auth-footer {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      width: 100%;
+    }
+    .auth-footer a {
+      color: var(--purple);
+      font-weight: 600;
+    }
+    .auth-footer a:hover { color: var(--cyan); }
+    .strength-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--border-subtle);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">RESPAWN SOCIAL</div>
+
+  <div class="main-container" style="max-width: 460px;">
+    
+    <div class="auth-header">
+      <div class="subtitle" style="margin-bottom: 4px;">Crear cuenta</div>
+      <p>Unite a la comunidad gamer</p>
+    </div>
+
+    <div class="form-container" style="gap: 16px;">
+
+      <div class="field-group">
+        <label class="field-label" for="username">Usuario</label>
+        <input id="username" class="input" type="text" placeholder="tu_username_gamer" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="email">Email</label>
+        <input id="email" class="input" type="email" placeholder="gamer@respawn.gg" autocomplete="off">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="password">Contraseña</label>
+        <input id="password" class="input" type="password" placeholder="••••••••" id="password">
+        <div class="strength-bar">
+          <div class="strength-fill" id="strengthFill"></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="confirmPassword">Confirmar contraseña</label>
+        <input id="confirmPassword" class="input" type="password" placeholder="••••••••">
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="avatar-section">
+        <label class="field-label">Elegí tu avatar</label>
+        <div class="avatar-grid">
+          <div class="avatar-opt" data-avatar="avatar1.png">
+            <img src="avatar1.png" alt="Avatar 1">
+            <span class="check-badge">✓</span>
+          </div>
+          <div class="avatar-opt" data-avatar="avatar2.png">
+            <img src="avatar2.png" alt="Avatar 2">
+            <span class="check-badge">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <p id="signupError"></p>
+
+      <button id="registerBtn" class="btn register-btn">CREAR CUENTA</button>
+
+      <div class="auth-footer">
+        ¿Ya tenés cuenta? <a href="index.html">Iniciar sesión</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="signup.js"></script>
+</body>
+</html>

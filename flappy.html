@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Respawn — Flappy</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .navbar { position:sticky;top:0;z-index:100;background:rgba(7,7,15,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-subtle);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px; }
+    .navbar-brand { font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--cyan);letter-spacing:2px;text-decoration:none; }
+    .btn-back { padding:6px 14px;background:transparent;border:1px solid var(--border-default);color:var(--text-secondary);border-radius:var(--radius-md);font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;text-decoration:none;transition:all 0.2s; }
+    .btn-back:hover { border-color:var(--pink);color:var(--pink); }
+    .game-wrapper { max-width:400px;margin:32px auto 60px;padding:0 16px;display:flex;flex-direction:column;align-items:center;gap:16px; }
+    .game-title { font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--pink);letter-spacing:3px;text-shadow:0 0 20px var(--pink); }
+    .game-hud { width:360px;display:flex;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 16px; }
+    .hud-item { display:flex;flex-direction:column;align-items:center;gap:2px; }
+    .hud-label { font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:2px; }
+    .hud-value { font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--pink); }
+    .canvas-wrap { position:relative; }
+    #flappy-board { border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:0 0 32px rgba(255,79,123,0.2);display:block; }
+    .game-overlay { position:absolute;inset:0;background:rgba(7,7,15,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border-radius:var(--radius-md); }
+    .game-controls { font-family:var(--font-mono);font-size:12px;color:var(--text-muted);text-align:center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="feed.html" class="navbar-brand">RESPAWN</a>
+    <a href="gamemap.html" class="btn-back">← Mapa</a>
+  </nav>
+  <div class="game-wrapper">
+    <div class="game-title">🐦 FLAPPY</div>
+    <div class="game-hud">
+      <div class="hud-item"><span class="hud-label">Score</span><span class="hud-value" id="score">0</span></div>
+      <div class="hud-item"><span class="hud-label">Mejor</span><span class="hud-value" id="best">0</span></div>
+      <div class="hud-item"><span class="hud-label">Meta</span><span class="hud-value" style="color:var(--cyan)">15</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="flappy-board" width="360" height="480"></canvas>
+      <div class="game-overlay" id="overlay">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--pink);letter-spacing:2px;">FLAPPY</div>
+        <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);">Presioná Espacio o tocá para volar</div>
+      </div>
+    </div>
+    <div class="game-controls">Espacio / Click para saltar &nbsp;·&nbsp; Pasá 15 tuberías para avanzar</div>
+  </div>
+  <script src="flappy.js"></script>
+</body>
+</html>

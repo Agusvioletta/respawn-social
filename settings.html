@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Respawn — Configuración</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Navbar ── */
+    .navbar { position:sticky;top:0;z-index:100;background:rgba(7,7,15,0.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border-subtle);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px; }
+    .nav-left { display:flex;align-items:center;gap:32px; }
+    .nav-right { display:flex;align-items:center;gap:12px; }
+    .navbar-brand { font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--cyan);letter-spacing:3px;text-decoration:none;text-shadow:0 0 16px rgba(0,255,247,0.6); }
+    .nav-links { display:flex;gap:4px; }
+    .nav-link { font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text-muted);text-decoration:none;padding:6px 14px;border-radius:var(--radius-md);border:1px solid transparent;transition:all 0.2s; }
+    .nav-link:hover { color:var(--text-primary);border-color:var(--border-default); }
+    .nav-link.active { color:var(--cyan);border-color:rgba(0,255,247,0.3);background:rgba(0,255,247,0.06); }
+    .nav-icon-btn { width:36px;height:36px;border-radius:50%;background:var(--bg-card);border:1px solid var(--border-default);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;text-decoration:none;color:inherit;transition:border-color 0.2s; }
+    .nav-icon-btn:hover { border-color:var(--cyan); }
+
+    /* ── Layout ── */
+    .settings-page { max-width: 960px; margin: 0 auto 80px; padding: 32px 16px; display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+
+    /* ── Sidebar nav ── */
+    .settings-nav { position: sticky; top: 76px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+    .settings-nav-header { padding: 20px; border-bottom: 1px solid var(--border-subtle); }
+    .settings-nav-avatar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .settings-nav-avatar { width: 48px; height: 48px; border-radius: 10px; border: 2px solid var(--cyan-dim); image-rendering: pixelated; display: block; box-shadow: 0 0 12px var(--cyan-glow); }
+    .settings-nav-username { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px; display: block; }
+    .settings-nav-level { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+    .settings-nav-xp { height: 3px; background: var(--bg-surface); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .settings-nav-xp-fill { height: 100%; background: linear-gradient(90deg, var(--purple-dim), var(--cyan)); border-radius: 2px; transition: width 1s ease; }
+
+    .settings-nav-section { padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+    .settings-nav-section:last-child { border-bottom: none; }
+    .settings-nav-section-label { font-family: var(--font-display); font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; padding: 6px 16px 4px; display: block; }
+    .settings-nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; transition: all 0.15s; border-left: 2px solid transparent; font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+    .settings-nav-item:hover { background: var(--bg-surface); color: var(--text-primary); }
+    .settings-nav-item.active { background: rgba(0,255,247,0.06); border-left-color: var(--cyan); color: var(--cyan); }
+    .settings-nav-item .nav-item-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .settings-nav-item .nav-item-badge { margin-left: auto; background: var(--pink); color: #fff; font-family: var(--font-display); font-size: 9px; font-weight: 900; border-radius: 20px; padding: 2px 7px; }
+    .settings-nav-danger { color: var(--pink) !important; }
+    .settings-nav-danger:hover { background: rgba(255,79,123,0.08) !important; }
+
+    /* ── Main content ── */
+    .settings-content { display: flex; flex-direction: column; gap: 16px; }
+
+    .settings-section { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; display: none; }
+    .settings-section.active { display: block; }
+
+    .settings-section-hd { padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 12px; }
+    .settings-section-icon { font-size: 20px; }
+    .settings-section-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: 1px; }
+    .settings-section-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .settings-section-body { padding: 24px; display: flex; flex-direction: column; gap: 0; }
+
+    /* ── Setting rows ── */
+    .setting-group { margin-bottom: 28px; }
+    .setting-group:last-child { margin-bottom: 0; }
+    .setting-group-title { font-family: var(--font-display); font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+
+    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); }
+    .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .setting-row-left { flex: 1; min-width: 0; }
+    .setting-row-label { font-family: var(--font-body); font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+    .setting-row-desc  { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .setting-row-desc a { color: var(--cyan); text-decoration: none; }
+
+    /* Toggle switch */
+    .toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track { position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 12px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .toggle-track::after { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .toggle-wrap input:checked + .toggle-track { background: rgba(0,255,247,0.15); border-color: var(--cyan-dim); }
+    .toggle-wrap input:checked + .toggle-track::after { transform: translateX(20px); background: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+
+    /* Select */
+    .setting-select { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; padding: 8px 12px; outline: none; cursor: pointer; transition: border-color 0.2s; min-width: 160px; }
+    .setting-select:focus { border-color: var(--cyan); }
+
+    /* Input */
+    .setting-input { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; padding: 8px 12px; outline: none; transition: border-color 0.2s; width: 220px; }
+    .setting-input:focus { border-color: var(--cyan); }
+
+    /* Button variants */
+    .btn-setting { padding: 8px 18px; font-size: 11px; margin: 0; letter-spacing: 1px; white-space: nowrap; }
+    .btn-setting-ghost { padding: 8px 18px; font-size: 11px; margin: 0; letter-spacing: 1px; background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary); border-radius: var(--radius-md); font-family: var(--font-display); font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-setting-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-setting-danger { padding: 8px 18px; font-size: 11px; margin: 0; letter-spacing: 1px; background: transparent; border: 1px solid rgba(255,79,123,0.4); color: var(--pink); border-radius: var(--radius-md); font-family: var(--font-display); font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-setting-danger:hover { background: var(--pink-glow); border-color: var(--pink); }
+
+    /* Color chips */
+    .color-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .color-chip { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; position: relative; }
+    .color-chip.active { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.2); }
+    .color-chip::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: rgba(0,0,0,0.8); opacity: 0; }
+    .color-chip.active::after { opacity: 1; }
+
+    /* Theme preview */
+    .theme-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .theme-card { border: 2px solid var(--border-default); border-radius: var(--radius-md); padding: 12px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+    .theme-card:hover { border-color: var(--cyan); }
+    .theme-card.active { border-color: var(--cyan); background: rgba(0,255,247,0.06); }
+    .theme-card.active::after { content: '✓'; position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; background: var(--cyan); color: #000; border-radius: 50%; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+    .theme-preview { height: 40px; border-radius: 6px; margin-bottom: 8px; }
+    .theme-name { font-family: var(--font-display); font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px; text-transform: uppercase; }
+
+    /* Achievement grid (logros page) */
+    .ach-full-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px; }
+    .ach-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 16px 12px; text-align: center; position: relative; overflow: hidden; transition: all 0.2s; }
+    .ach-card.unlocked { border-color: rgba(192,132,252,0.4); background: linear-gradient(135deg, rgba(192,132,252,0.08), transparent); }
+    .ach-card.unlocked::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--purple-dim), var(--cyan)); }
+    .ach-card.locked { opacity: 0.3; filter: grayscale(1); }
+    .ach-card-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+    .ach-card-name { font-family: var(--font-display); font-size: 10px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+    .ach-card-desc { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); display: block; line-height: 1.4; }
+    .ach-card-xp { display: inline-block; margin-top: 8px; font-family: var(--font-display); font-size: 9px; font-weight: 700; color: var(--purple); background: rgba(192,132,252,0.15); border: 1px solid rgba(192,132,252,0.3); border-radius: 20px; padding: 2px 8px; }
+
+    /* Stats table */
+    .stats-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+    .stats-table tr td { padding: 10px 12px; background: var(--bg-surface); font-family: var(--font-mono); font-size: 13px; }
+    .stats-table tr td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); color: var(--text-muted); }
+    .stats-table tr td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--cyan); font-weight: 700; text-align: right; }
+
+    /* Session cards */
+    .session-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+    .session-card:last-child { margin-bottom: 0; }
+    .session-icon { font-size: 24px; flex-shrink: 0; }
+    .session-info { flex: 1; }
+    .session-device { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.5px; }
+    .session-detail { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .session-badge { font-family: var(--font-display); font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.5px; }
+    .session-badge.current { background: rgba(0,255,247,0.12); color: var(--cyan); border: 1px solid rgba(0,255,247,0.3); }
+    .session-badge.old { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+    /* Danger zone */
+    .danger-zone { background: rgba(255,79,123,0.04); border: 1px solid rgba(255,79,123,0.2); border-radius: var(--radius-lg); padding: 20px 24px; margin-top: 8px; }
+    .danger-zone-title { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--pink); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg-card); border: 1px solid var(--cyan); border-radius: var(--radius-md); padding: 12px 20px; font-family: var(--font-mono); font-size: 13px; color: var(--cyan); z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.6); transform: translateY(80px); opacity: 0; transition: all 0.3s ease; pointer-events: none; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    @media(max-width:768px) { .settings-page{grid-template-columns:1fr;} .settings-nav{position:static;} }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="feed.html" class="navbar-brand">RESPAWN</a>
+      <div class="nav-links">
+        <a href="feed.html"    class="nav-link">Feed</a>
+        <a href="profile.html" class="nav-link">Perfil</a>
+        <a href="gamemap.html" class="nav-link">Arcade</a>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a href="profile.html" class="nav-icon-btn" id="navAvatarBtn"></a>
+    </div>
+  </nav>
+
+  <div id="toast">✓ Cambios guardados</div>
+
+  <div class="settings-page">
+
+    <!-- Sidebar nav -->
+    <nav class="settings-nav">
+      <div class="settings-nav-header">
+        <div class="settings-nav-avatar-row">
+          <img id="navAvatar" src="" alt="" class="settings-nav-avatar">
+          <div>
+            <span class="settings-nav-username" id="navUsername">—</span>
+            <span class="settings-nav-level"    id="navLevel">LVL 1 · Novato</span>
+          </div>
+        </div>
+        <div class="settings-nav-xp"><div class="settings-nav-xp-fill" id="navXpFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="settings-nav-section">
+        <span class="settings-nav-section-label">Cuenta</span>
+        <div class="settings-nav-item active" onclick="showSection('perfil')">      <span class="nav-item-icon">👤</span> Mi Perfil</div>
+        <div class="settings-nav-item"        onclick="showSection('cuenta')">      <span class="nav-item-icon">⚙️</span> Cuenta</div>
+        <div class="settings-nav-item"        onclick="showSection('seguridad')">   <span class="nav-item-icon">🔐</span> Seguridad</div>
+        <div class="settings-nav-item"        onclick="showSection('privacidad')">  <span class="nav-item-icon">🛡️</span> Privacidad</div>
+      </div>
+
+      <div class="settings-nav-section">
+        <span class="settings-nav-section-label">Experiencia</span>
+        <div class="settings-nav-item" onclick="showSection('notificaciones')"><span class="nav-item-icon">🔔</span> Notificaciones <span class="nav-item-badge" id="notifBadge" style="display:none;">!</span></div>
+        <div class="settings-nav-item" onclick="showSection('apariencia')">    <span class="nav-item-icon">🎨</span> Apariencia</div>
+        <div class="settings-nav-item" onclick="showSection('accesibilidad')"> <span class="nav-item-icon">♿</span> Accesibilidad</div>
+        <div class="settings-nav-item" onclick="showSection('idioma')">        <span class="nav-item-icon">🌐</span> Idioma y región</div>
+      </div>
+
+      <div class="settings-nav-section">
+        <span class="settings-nav-section-label">Gaming</span>
+        <div class="settings-nav-item" onclick="showSection('logros')">  <span class="nav-item-icon">🏆</span> Logros</div>
+        <div class="settings-nav-item" onclick="showSection('estadisticas')"><span class="nav-item-icon">📊</span> Estadísticas</div>
+        <div class="settings-nav-item" onclick="showSection('arcade')">  <span class="nav-item-icon">🕹️</span> Arcade</div>
+      </div>
+
+      <div class="settings-nav-section">
+        <span class="settings-nav-section-label">Soporte</span>
+        <div class="settings-nav-item" onclick="showSection('ayuda')">  <span class="nav-item-icon">❓</span> Ayuda y FAQ</div>
+        <div class="settings-nav-item" onclick="showSection('acerca')"> <span class="nav-item-icon">ℹ️</span> Acerca de</div>
+        <div class="settings-nav-item settings-nav-danger" onclick="confirmLogout()"><span class="nav-item-icon">🚪</span> Cerrar sesión</div>
+      </div>
+    </nav>
+
+    <!-- Sections -->
+    <div class="settings-content" id="settingsContent">
+
+      <!-- ── PERFIL ── -->
+      <div class="settings-section active" id="section-perfil">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">👤</span>
+          <div><div class="settings-section-title">MI PERFIL</div><div class="settings-section-sub">Tu identidad en Respawn Social</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Información pública</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Username</div><div class="setting-row-desc">Tu @ único. Visible para todos.</div></div>
+              <input class="setting-input" id="sUsername" placeholder="username" readonly style="color:var(--text-muted);">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Bio</div><div class="setting-row-desc">Contale a la comunidad quién sos. Máx 80 chars.</div></div>
+              <input class="setting-input" id="sBio" placeholder="Sin bio todavía..." maxlength="80">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Juego 1</div><div class="setting-row-desc">Tu juego principal.</div></div>
+              <input class="setting-input" id="sGame1" placeholder="ej: Valorant" maxlength="24">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Juego 2</div><div class="setting-row-desc">Tu segundo juego favorito.</div></div>
+              <input class="setting-input" id="sGame2" placeholder="ej: Minecraft" maxlength="24">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Juego 3</div><div class="setting-row-desc">Tu tercer juego favorito.</div></div>
+              <input class="setting-input" id="sGame3" placeholder="ej: League of Legends" maxlength="24">
+            </div>
+          </div>
+          <button class="btn btn-setting" onclick="saveProfile()">GUARDAR CAMBIOS</button>
+        </div>
+      </div>
+
+      <!-- ── CUENTA ── -->
+      <div class="settings-section" id="section-cuenta">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">⚙️</span>
+          <div><div class="settings-section-title">CUENTA</div><div class="settings-section-sub">Datos de tu cuenta en Respawn</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Información de cuenta</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Email</div><div class="setting-row-desc">Usás este email para iniciar sesión.</div></div>
+              <input class="setting-input" id="sEmail" placeholder="email@ejemplo.com">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Miembro desde</div><div class="setting-row-desc">Fecha de registro en Respawn.</div></div>
+              <span style="font-family:var(--font-mono);font-size:13px;color:var(--text-muted);" id="sMemberSince">—</span>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Cambiar contraseña</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Contraseña actual</div></div>
+              <input class="setting-input" type="password" id="sOldPass" placeholder="••••••••">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Nueva contraseña</div><div class="setting-row-desc">Mínimo 6 caracteres.</div></div>
+              <input class="setting-input" type="password" id="sNewPass" placeholder="••••••••">
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Confirmar contraseña</div></div>
+              <input class="setting-input" type="password" id="sConfirmPass" placeholder="••••••••">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-setting" onclick="saveAccount()">GUARDAR EMAIL</button>
+            <button class="btn btn-setting" onclick="changePassword()" style="background:var(--purple);color:#fff;">CAMBIAR CONTRASEÑA</button>
+          </div>
+          <div class="danger-zone" style="margin-top:24px;">
+            <div class="danger-zone-title">⚠ Zona peligrosa</div>
+            <div class="setting-row" style="padding-top:0;">
+              <div class="setting-row-left"><div class="setting-row-label">Eliminar cuenta</div><div class="setting-row-desc">Esta acción es permanente e irreversible. Se borrarán todos tus posts, seguidores y progreso.</div></div>
+              <button class="btn-setting-danger" onclick="deleteAccount()">ELIMINAR CUENTA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SEGURIDAD ── -->
+      <div class="settings-section" id="section-seguridad">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🔐</span>
+          <div><div class="settings-section-title">SEGURIDAD</div><div class="settings-section-sub">Protegé tu cuenta</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Autenticación</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Verificación en dos pasos</div><div class="setting-row-desc">Agrega una capa extra de seguridad a tu cuenta.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="t2fa"><div class="toggle-track"></div></label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Alertas de inicio de sesión</div><div class="setting-row-desc">Notificarte cuando se inicia sesión desde un dispositivo nuevo.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tLoginAlert" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Sesiones activas</div>
+            <div class="session-card">
+              <span class="session-icon">💻</span>
+              <div class="session-info">
+                <div class="session-device">Este dispositivo</div>
+                <div class="session-detail">Windows · Chrome · La Plata, Argentina</div>
+              </div>
+              <span class="session-badge current">ACTUAL</span>
+            </div>
+            <div class="session-card">
+              <span class="session-icon">📱</span>
+              <div class="session-info">
+                <div class="session-device">iPhone · Safari</div>
+                <div class="session-detail">Hace 2 días · Buenos Aires, Argentina</div>
+              </div>
+              <button class="btn-setting-danger" onclick="showToast('Sesión cerrada.')">Cerrar</button>
+            </div>
+          </div>
+          <button class="btn-setting-danger" onclick="showToast('Todas las otras sesiones fueron cerradas.')">Cerrar todas las otras sesiones</button>
+        </div>
+      </div>
+
+      <!-- ── PRIVACIDAD ── -->
+      <div class="settings-section" id="section-privacidad">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🛡️</span>
+          <div><div class="settings-section-title">PRIVACIDAD</div><div class="settings-section-sub">Controlá quién ve qué</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Visibilidad del perfil</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Perfil público</div><div class="setting-row-desc">Cualquier persona puede ver tu perfil y posts.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tPublicProfile" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Mostrar email</div><div class="setting-row-desc">Tu email visible en el perfil público.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tShowEmail"><div class="toggle-track"></div></label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Mostrar actividad</div><div class="setting-row-desc">Otros usuarios pueden ver cuándo estás online.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tShowActivity" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Interacciones</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">¿Quién puede seguirte?</div><div class="setting-row-desc">Controlá quién puede seguir tu cuenta.</div></div>
+              <select class="setting-select" id="sWhoCanFollow">
+                <option value="all">Todos</option>
+                <option value="followers">Solo seguidores</option>
+                <option value="none">Nadie</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">¿Quién puede comentar?</div><div class="setting-row-desc">En tus publicaciones.</div></div>
+              <select class="setting-select" id="sWhoCanComment">
+                <option value="all">Todos</option>
+                <option value="following">Solo los que sigo</option>
+                <option value="none">Nadie</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Mensajes directos</div><div class="setting-row-desc">¿Quién puede enviarte mensajes?</div></div>
+              <select class="setting-select" id="sWhoDM">
+                <option value="all">Todos</option>
+                <option value="following">Solo los que sigo</option>
+                <option value="none">Nadie</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Datos y privacidad</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Permitir recomendaciones</div><div class="setting-row-desc">Usar tu actividad para sugerirte contenido relevante.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tRecommend" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Historial de búsqueda</div><div class="setting-row-desc">Guardar historial para mejores sugerencias.</div></div>
+              <label class="toggle-wrap"><input type="checkbox" id="tSearchHistory" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+          <button class="btn btn-setting" onclick="savePrivacy()">GUARDAR PRIVACIDAD</button>
+        </div>
+      </div>
+
+      <!-- ── NOTIFICACIONES ── -->
+      <div class="settings-section" id="section-notificaciones">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🔔</span>
+          <div><div class="settings-section-title">NOTIFICACIONES</div><div class="settings-section-sub">Qué querés que te avise Respawn</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Social</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Nuevo seguidor</div><div class="setting-row-desc">Cuando alguien empieza a seguirte.</div></div><label class="toggle-wrap"><input type="checkbox" id="nFollow" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Like en tu post</div><div class="setting-row-desc">Cuando le dan ♥ a lo que publicás.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLike" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Comentarios</div><div class="setting-row-desc">Cuando alguien comenta tus posts.</div></div><label class="toggle-wrap"><input type="checkbox" id="nComment" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Menciones</div><div class="setting-row-desc">Cuando te mencionan con @.</div></div><label class="toggle-wrap"><input type="checkbox" id="nMention" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Gaming</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Logros desbloqueados</div><div class="setting-row-desc">Cuando conseguís un nuevo logro.</div></div><label class="toggle-wrap"><input type="checkbox" id="nAch" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Invitaciones a grupos (LFG)</div><div class="setting-row-desc">Cuando te invitan a jugar.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLFG" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Nuevo nivel desbloqueado</div><div class="setting-row-desc">Cuando subís de nivel en el arcade.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLevel" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Sistema</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Actualizaciones de Respawn</div><div class="setting-row-desc">Nuevas funciones y novedades.</div></div><label class="toggle-wrap"><input type="checkbox" id="nUpdates"><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Sonidos</div><div class="setting-row-desc">Reproducir sonido en notificaciones.</div></div><label class="toggle-wrap"><input type="checkbox" id="nSounds"><div class="toggle-track"></div></label></div>
+          </div>
+          <button class="btn btn-setting" onclick="showToast('Preferencias de notificaciones guardadas.')">GUARDAR</button>
+        </div>
+      </div>
+
+      <!-- ── APARIENCIA ── -->
+      <div class="settings-section" id="section-apariencia">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🎨</span>
+          <div><div class="settings-section-title">APARIENCIA</div><div class="settings-section-sub">Personalizá tu experiencia visual</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Tema</div>
+            <div class="theme-grid">
+              <div class="theme-card active" onclick="selectTheme(this,'neon')">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#0a0a18,#161628);border:1px solid rgba(0,255,247,0.3);"></div>
+                <div class="theme-name">Neón Oscuro</div>
+              </div>
+              <div class="theme-card" onclick="selectTheme(this,'midnight')">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#0d0d0d,#1a1a2e);border:1px solid rgba(192,132,252,0.3);"></div>
+                <div class="theme-name">Midnight</div>
+              </div>
+              <div class="theme-card" onclick="selectTheme(this,'matrix')">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#001100,#003300);border:1px solid rgba(0,255,0,0.3);"></div>
+                <div class="theme-name">Matrix</div>
+              </div>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Color de acento</div>
+            <div class="color-chips" id="accentChips">
+              <div class="color-chip active" style="background:#00FFF7;" onclick="selectAccent(this,'#00FFF7')"></div>
+              <div class="color-chip" style="background:#C084FC;" onclick="selectAccent(this,'#C084FC')"></div>
+              <div class="color-chip" style="background:#FF4F7B;" onclick="selectAccent(this,'#FF4F7B')"></div>
+              <div class="color-chip" style="background:#FFB800;" onclick="selectAccent(this,'#FFB800')"></div>
+              <div class="color-chip" style="background:#00FF88;" onclick="selectAccent(this,'#00FF88')"></div>
+              <div class="color-chip" style="background:#FF6B35;" onclick="selectAccent(this,'#FF6B35')"></div>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Tipografía</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Tamaño de texto</div><div class="setting-row-desc">Afecta el texto de los posts y comentarios.</div></div>
+              <select class="setting-select" id="sFontSize"><option value="sm">Pequeño</option><option value="md" selected>Mediano</option><option value="lg">Grande</option></select>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Fuente de posts</div><div class="setting-row-desc">Tipografía para el contenido del feed.</div></div>
+              <select class="setting-select" id="sFont"><option value="rajdhani">Rajdhani (default)</option><option value="mono">Share Tech Mono</option><option value="orbitron">Orbitron</option></select>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Efectos</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Efecto scanline</div><div class="setting-row-desc">Línea animada sutil en el fondo de la app.</div></div><label class="toggle-wrap"><input type="checkbox" id="tScanline" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Animaciones</div><div class="setting-row-desc">Transiciones y efectos en la interfaz.</div></div><label class="toggle-wrap"><input type="checkbox" id="tAnimations" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Glow en neones</div><div class="setting-row-desc">Efecto de brillo en colores neón.</div></div><label class="toggle-wrap"><input type="checkbox" id="tGlow" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <button class="btn btn-setting" onclick="showToast('Tema aplicado correctamente.')">APLICAR TEMA</button>
+        </div>
+      </div>
+
+      <!-- ── ACCESIBILIDAD ── -->
+      <div class="settings-section" id="section-accesibilidad">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">♿</span>
+          <div><div class="settings-section-title">ACCESIBILIDAD</div><div class="settings-section-sub">Hacé Respawn más cómodo para vos</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Visión</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Modo alto contraste</div><div class="setting-row-desc">Aumenta el contraste para mejor legibilidad.</div></div><label class="toggle-wrap"><input type="checkbox" id="tHighContrast"><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Reducir transparencias</div><div class="setting-row-desc">Elimina efectos de blur y transparencia.</div></div><label class="toggle-wrap"><input type="checkbox" id="tReduceTransp"><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Modo daltónico</div><div class="setting-row-desc">Ajusta colores para daltonismo.</div></div>
+              <select class="setting-select" id="sColorBlind"><option value="none">Ninguno</option><option value="protanopia">Protanopía</option><option value="deuteranopia">Deuteranopía</option><option value="tritanopia">Tritanopía</option></select>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Movimiento y animación</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Reducir movimiento</div><div class="setting-row-desc">Menos animaciones para evitar molestias visuales.</div></div><label class="toggle-wrap"><input type="checkbox" id="tReduceMotion"><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Pausa automática en juegos</div><div class="setting-row-desc">Pausa el arcade al cambiar de pestaña.</div></div><label class="toggle-wrap"><input type="checkbox" id="tAutoPause" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Navegación</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Atajos de teclado</div><div class="setting-row-desc">Habilitar shortcuts para navegar la app.</div></div><label class="toggle-wrap"><input type="checkbox" id="tKeyboard" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Foco visible</div><div class="setting-row-desc">Resaltar elementos al navegar con teclado.</div></div><label class="toggle-wrap"><input type="checkbox" id="tFocus" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <button class="btn btn-setting" onclick="showToast('Configuración de accesibilidad guardada.')">GUARDAR</button>
+        </div>
+      </div>
+
+      <!-- ── IDIOMA ── -->
+      <div class="settings-section" id="section-idioma">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🌐</span>
+          <div><div class="settings-section-title">IDIOMA Y REGIÓN</div><div class="settings-section-sub">Configurá tu región y formato</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Idioma</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Idioma de la interfaz</div><div class="setting-row-desc">El idioma de menús y botones.</div></div>
+              <select class="setting-select" id="sLang"><option value="es" selected>Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option></select>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Idioma del contenido</div><div class="setting-row-desc">Posts en qué idiomas ver en el feed.</div></div>
+              <select class="setting-select" id="sContentLang"><option value="all">Todos los idiomas</option><option value="es" selected>Solo español</option></select>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Región</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Zona horaria</div><div class="setting-row-desc">Para mostrar fechas correctamente.</div></div>
+              <select class="setting-select" id="sTimezone"><option value="America/Argentina/Buenos_Aires" selected>Buenos Aires (UTC-3)</option><option value="America/Santiago">Santiago (UTC-3)</option><option value="America/Bogota">Bogotá (UTC-5)</option><option value="Europe/Madrid">Madrid (UTC+1)</option></select>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Formato de fecha</div></div>
+              <select class="setting-select" id="sDateFormat"><option value="dmy" selected>DD/MM/AAAA</option><option value="mdy">MM/DD/AAAA</option><option value="ymd">AAAA/MM/DD</option></select>
+            </div>
+          </div>
+          <button class="btn btn-setting" onclick="showToast('Configuración regional guardada.')">GUARDAR</button>
+        </div>
+      </div>
+
+      <!-- ── LOGROS ── -->
+      <div class="settings-section" id="section-logros">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🏆</span>
+          <div><div class="settings-section-title">LOGROS</div><div class="settings-section-sub" id="achSubtitle">0 / 9 desbloqueados</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="ach-full-grid" id="achFullGrid"></div>
+        </div>
+      </div>
+
+      <!-- ── ESTADÍSTICAS ── -->
+      <div class="settings-section" id="section-estadisticas">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">📊</span>
+          <div><div class="settings-section-title">ESTADÍSTICAS</div><div class="settings-section-sub">Tu actividad en Respawn</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Actividad social</div>
+            <table class="stats-table" id="statsTable"></table>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Arcade</div>
+            <table class="stats-table" id="arcadeStatsTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ARCADE ── -->
+      <div class="settings-section" id="section-arcade">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">🕹️</span>
+          <div><div class="settings-section-title">ARCADE</div><div class="settings-section-sub">Configuración de los mini juegos</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Controles</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Esquema de controles</div><div class="setting-row-desc">Cómo preferís mover en los juegos.</div></div><select class="setting-select" id="sControls"><option value="arrows" selected>Flechas (↑↓←→)</option><option value="wasd">WASD</option><option value="both">Ambos</option></select></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Sensibilidad del mapa</div><div class="setting-row-desc">Velocidad de movimiento en el mapa de aventura.</div></div><select class="setting-select" id="sMapSpeed"><option value="slow">Lenta</option><option value="normal" selected>Normal</option><option value="fast">Rápida</option></select></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Audio</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Efectos de sonido</div><div class="setting-row-desc">Sonidos de los juegos del arcade.</div></div><label class="toggle-wrap"><input type="checkbox" id="tGameSFX" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Música de fondo</div><div class="setting-row-desc">Música ambiental en los juegos.</div></div><label class="toggle-wrap"><input type="checkbox" id="tGameMusic"><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Progreso</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Nivel actual</div><div class="setting-row-desc" id="arcadeLevelDesc">Nivel desbloqueado en el mapa.</div></div>
+              <span style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--cyan);" id="arcadeLevel">—</span>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Reiniciar progreso del arcade</div><div class="setting-row-desc">Volvé al nivel 1. El progreso de XP se mantiene.</div></div>
+              <button class="btn-setting-danger" onclick="resetArcade()">REINICIAR</button>
+            </div>
+          </div>
+          <button class="btn btn-setting" onclick="showToast('Configuración del arcade guardada.')">GUARDAR</button>
+        </div>
+      </div>
+
+      <!-- ── AYUDA ── -->
+      <div class="settings-section" id="section-ayuda">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">❓</span>
+          <div><div class="settings-section-title">AYUDA Y FAQ</div><div class="settings-section-sub">Preguntas frecuentes sobre Respawn</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div class="setting-group">
+            <div class="setting-group-title">Preguntas frecuentes</div>
+            <div id="faqList"></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Contacto</div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Reportar un bug</div><div class="setting-row-desc">Encontraste algo roto. Contanos.</div></div>
+              <button class="btn-setting-ghost" onclick="showToast('Gracias por tu reporte. Lo revisamos pronto.')">REPORTAR</button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-row-left"><div class="setting-row-label">Sugerir una función</div><div class="setting-row-desc">¿Qué le falta a Respawn?</div></div>
+              <button class="btn-setting-ghost" onclick="showToast('¡Gracias por la sugerencia!')">SUGERIR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ACERCA DE ── -->
+      <div class="settings-section" id="section-acerca">
+        <div class="settings-section-hd">
+          <span class="settings-section-icon">ℹ️</span>
+          <div><div class="settings-section-title">ACERCA DE RESPAWN</div><div class="settings-section-sub">La red social para gamers</div></div>
+        </div>
+        <div class="settings-section-body">
+          <div style="text-align:center;padding:20px 0 32px;">
+            <div style="font-family:var(--font-display);font-size:36px;font-weight:900;color:var(--cyan);letter-spacing:4px;text-shadow:0 0 24px var(--cyan);margin-bottom:8px;">RESPAWN</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-bottom:4px;">Versión 2.0.0 — Build 2026</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">La red social para gamers que viven el juego.</div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Tecnología</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Frontend</div></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">HTML · CSS · JavaScript Vanilla</span></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Storage</div></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">localStorage (→ Firebase próximamente)</span></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Fuentes</div></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">Orbitron · Share Tech Mono · Rajdhani</span></div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-group-title">Legal</div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Términos de servicio</div></div><button class="btn-setting-ghost" onclick="showToast('Próximamente.')">VER</button></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Política de privacidad</div></div><button class="btn-setting-ghost" onclick="showToast('Próximamente.')">VER</button></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /settings-content -->
+  </div><!-- /settings-page -->
+
+  <script src="settings.js"></script>
+</body>
+</html>
+SETTINGSEOF

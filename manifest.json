@@ -1,0 +1,33 @@
+{
+  "name": "Respawn Social",
+  "short_name": "Respawn",
+  "description": "La red social para gamers. Posts, minijuegos, torneos y más.",
+  "start_url": "/feed.html",
+  "display": "standalone",
+  "background_color": "#07070F",
+  "theme_color": "#00FFF7",
+  "orientation": "portrait-primary",
+  "categories": ["social", "games", "entertainment"],
+  "icons": [
+    {
+      "src": "avatar1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "avatar1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Feed",    "url": "/feed.html",        "description": "Ver el feed de la comunidad" },
+    { "name": "Arcade",  "url": "/gamemap.html",      "description": "Jugar en el arcade" },
+    { "name": "Torneos", "url": "/tournaments.html",  "description": "Ver torneos activos" },
+    { "name": "Mensajes","url": "/messages.html",     "description": "Ver mensajes directos" }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

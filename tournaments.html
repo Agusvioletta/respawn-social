@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Respawn — Torneos</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .tournaments-page { max-width:1100px;margin:0 auto 80px;padding:24px 16px;display:flex;flex-direction:column;gap:20px; }
+
+    /* ── Hero ── */
+    .tournaments-hero {
+      background: var(--bg-card); border:1px solid var(--border-default);
+      border-radius:var(--radius-xl); padding:40px 32px;
+      display:flex; align-items:center; justify-content:space-between;
+      position:relative; overflow:hidden; gap:24px; flex-wrap:wrap;
+    }
+    .tournaments-hero::before { content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,79,123,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,79,123,0.04) 1px,transparent 1px);background-size:32px 32px;mask-image:radial-gradient(ellipse 80% 100% at 0% 50%,black,transparent); }
+    .tournaments-hero::after  { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 50% 100% at 0% 50%,rgba(255,79,123,0.06),transparent 60%); }
+    .hero-text { position:relative;z-index:1; }
+    .hero-eyebrow { font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--pink);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px; }
+    .hero-title { font-family:var(--font-display);font-size:32px;font-weight:900;color:var(--text-primary);letter-spacing:2px;margin-bottom:8px;line-height:1.1; }
+    .hero-title span { color:var(--pink); }
+    .hero-sub { font-family:var(--font-mono);font-size:13px;color:var(--text-muted);max-width:420px;line-height:1.6; }
+    .hero-actions { display:flex;gap:10px;margin-top:20px;flex-wrap:wrap; }
+    .hero-stats { display:flex;gap:24px;position:relative;z-index:1;flex-wrap:wrap; }
+    .hero-stat { text-align:center; }
+    .hero-stat-num  { font-family:var(--font-display);font-size:28px;font-weight:900;color:var(--pink);display:block; }
+    .hero-stat-label { font-family:var(--font-body);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px; }
+
+    /* ── Tabs ── */
+    .tabs { display:flex;gap:4px;background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:6px; }
+    .tab { flex:1;padding:10px;text-align:center;font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-md);transition:all 0.2s;border:1px solid transparent; }
+    .tab:hover { color:var(--text-primary);background:var(--bg-elevated); }
+    .tab.active { background:rgba(255,79,123,0.1);border-color:rgba(255,79,123,0.3);color:var(--pink); }
+
+    /* ── Grid ── */
+    .tournaments-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px; }
+
+    /* ── Tournament card ── */
+    .t-card {
+      background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);overflow:hidden;
+      transition:border-color 0.2s,box-shadow 0.2s;cursor:pointer;
+    }
+    .t-card:hover { border-color:rgba(255,79,123,0.3);box-shadow:0 4px 24px rgba(255,79,123,0.1); }
+    .t-card-header { padding:20px 20px 14px;position:relative; }
+    .t-card-status { display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:9px;font-weight:700;letter-spacing:1px;border-radius:20px;padding:3px 10px;margin-bottom:10px; }
+    .t-card-status.live     { background:rgba(255,79,123,0.15);color:var(--pink);border:1px solid rgba(255,79,123,0.3); }
+    .t-card-status.upcoming { background:rgba(0,255,247,0.1);color:var(--cyan);border:1px solid rgba(0,255,247,0.3); }
+    .t-card-status.finished { background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border-subtle); }
+    .t-card-status.live::before { content:'';width:6px;height:6px;border-radius:50%;background:var(--pink);animation:blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+    .t-card-game { font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--text-primary);letter-spacing:1px;margin-bottom:4px; }
+    .t-card-name { font-family:var(--font-mono);font-size:12px;color:var(--text-muted); }
+    .t-card-prize { text-align:right;flex-shrink:0;max-width:150px; }
+    .t-card-prize-num  { font-family:var(--font-display);font-size:12px;font-weight:900;color:var(--cyan);display:block;word-break:break-word;line-height:1.4; }
+    .t-card-prize-label { font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:2px;display:block; }
+
+    .t-card-body { padding:0 20px 20px;border-top:1px solid var(--border-subtle);padding-top:14px; }
+    .t-card-meta { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px; }
+    .t-card-meta-item { display:flex;flex-direction:column;gap:2px; }
+    .t-card-meta-label { font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase; }
+    .t-card-meta-value { font-family:var(--font-mono);font-size:13px;color:var(--text-primary); }
+
+    .t-card-players { margin-bottom:14px; }
+    .t-card-players-label { font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px; }
+    .t-card-players-bar { height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;margin-bottom:4px; }
+    .t-card-players-fill { height:100%;border-radius:2px;background:linear-gradient(90deg,var(--pink-dim),var(--pink));transition:width 0.6s ease; }
+    .t-card-players-count { font-family:var(--font-mono);font-size:11px;color:var(--text-muted); }
+
+    .t-card-avatars { display:flex;gap:4px;margin-bottom:14px; }
+    .t-card-avatar { width:26px;height:26px;border-radius:6px;border:2px solid var(--bg-card);image-rendering:pixelated;margin-left:-6px;background:var(--bg-elevated); }
+    .t-card-avatar:first-child { margin-left:0; }
+    .t-card-more { width:26px;height:26px;border-radius:6px;border:2px solid var(--bg-card);background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);margin-left:-6px; }
+
+    .btn-join-tournament  { width:100%;padding:10px;background:var(--pink);color:#fff;border:none;border-radius:var(--radius-md);font-family:var(--font-display);font-size:11px;font-weight:900;letter-spacing:1px;cursor:pointer;transition:all 0.2s; }
+    .btn-join-tournament:hover { box-shadow:0 0 16px rgba(255,79,123,0.4);transform:translateY(-1px); }
+    .btn-join-tournament:disabled { background:var(--bg-elevated);color:var(--text-muted);cursor:not-allowed;transform:none;box-shadow:none; }
+    .btn-watch { width:100%;padding:10px;background:transparent;color:var(--cyan);border:1px solid var(--cyan);border-radius:var(--radius-md);font-family:var(--font-display);font-size:11px;font-weight:900;letter-spacing:1px;cursor:pointer;transition:all 0.2s; }
+    .btn-watch:hover { background:rgba(0,255,247,0.08); }
+
+    /* ── My tournaments ── */
+    .my-t-card { background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:20px;display:flex;align-items:center;gap:16px; }
+    .my-t-icon { font-size:32px;flex-shrink:0; }
+    .my-t-info { flex:1; }
+    .my-t-name  { font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text-primary);letter-spacing:0.5px;margin-bottom:4px; }
+    .my-t-meta  { font-family:var(--font-mono);font-size:12px;color:var(--text-muted); }
+    .my-t-result { font-family:var(--font-display);font-size:20px;font-weight:900;text-align:right; }
+    .my-t-result.win  { color:var(--cyan); }
+    .my-t-result.loss { color:var(--pink); }
+    .my-t-result.pending { color:var(--purple); }
+
+    /* ── Create tournament form ── */
+    .create-form { background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:24px; }
+    .create-form h3 { font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text-primary);letter-spacing:1px;margin-bottom:20px; }
+    .form-row { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px; }
+    .form-field label { display:block;font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px; }
+    .form-field input, .form-field select, .form-field textarea { width:100%;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color 0.2s; }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color:var(--pink); }
+    .form-field textarea { resize:none;height:80px; }
+    .btn-create-t { padding:12px 28px;background:var(--pink);color:#fff;border:none;border-radius:var(--radius-md);font-family:var(--font-display);font-size:12px;font-weight:900;letter-spacing:1px;cursor:pointer;transition:all 0.2s; }
+    .btn-create-t:hover { box-shadow:0 0 16px rgba(255,79,123,0.4);transform:translateY(-1px); }
+
+    /* Tab panels */
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    @media(max-width:900px) { .tournaments-grid{grid-template-columns:1fr;} .form-row{grid-template-columns:1fr;} .hero-stats{gap:16px;} }
+  </style>
+</head>
+<body>
+  <nav id="globalNav"></nav>
+
+  <div class="tournaments-page">
+
+    <!-- Hero -->
+    <div class="tournaments-hero">
+      <div class="hero-text">
+        <div class="hero-eyebrow">🏆 Competencias oficiales</div>
+        <div class="hero-title">Torneos <span>Respawn</span></div>
+        <div class="hero-sub">Competí contra la comunidad, ganate premios virtuales y demostrá quién es el mejor gamer de la plataforma.</div>
+        <div class="hero-actions">
+          <button class="btn" style="margin:0;background:var(--pink);color:#fff;" onclick="switchTab('crear')">+ CREAR TORNEO</button>
+          <button class="btn" style="margin:0;background:transparent;border:1px solid var(--border-default);color:var(--text-secondary);" onclick="switchTab('mis-torneos')">MIS TORNEOS</button>
+        </div>
+      </div>
+      <div class="hero-stats" id="heroStats"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" id="tab-activos"     onclick="switchTab('activos')">🔴 En vivo</div>
+      <div class="tab"        id="tab-proximos"    onclick="switchTab('proximos')">⏳ Próximos</div>
+      <div class="tab"        id="tab-finalizados" onclick="switchTab('finalizados')">✅ Finalizados</div>
+      <div class="tab"        id="tab-mis-torneos" onclick="switchTab('mis-torneos')">👾 Mis torneos</div>
+      <div class="tab"        id="tab-crear"       onclick="switchTab('crear')">➕ Crear</div>
+    </div>
+
+    <!-- Tab: Activos -->
+    <div class="tab-panel active" id="panel-activos">
+      <div class="tournaments-grid" id="activeGrid"></div>
+    </div>
+
+    <!-- Tab: Próximos -->
+    <div class="tab-panel" id="panel-proximos">
+      <div class="tournaments-grid" id="upcomingGrid"></div>
+    </div>
+
+    <!-- Tab: Finalizados -->
+    <div class="tab-panel" id="panel-finalizados">
+      <div class="tournaments-grid" id="finishedGrid"></div>
+    </div>
+
+    <!-- Tab: Mis torneos -->
+    <div class="tab-panel" id="panel-mis-torneos">
+      <div style="display:flex;flex-direction:column;gap:12px;" id="myTournamentsGrid"></div>
+    </div>
+
+    <!-- Tab: Crear -->
+    <div class="tab-panel" id="panel-crear">
+      <div class="create-form">
+        <h3>✏ CREAR NUEVO TORNEO</h3>
+        <div class="form-row">
+          <div class="form-field"><label>Nombre del torneo</label><input id="tName" placeholder="ej: Respawn Cup #1" maxlength="40"></div>
+          <div class="form-field"><label>Juego</label>
+            <select id="tGame">
+              <option value="">— Seleccioná —</option>
+              <option>Valorant</option><option>Minecraft</option><option>League of Legends</option>
+              <option>Fortnite</option><option>Apex</option><option>CS2</option>
+              <option>Overwatch</option><option>Rocket League</option><option>Respawn Arcade</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>Formato</label>
+            <select id="tFormat">
+              <option value="1v1">1v1</option><option value="2v2">2v2</option>
+              <option value="5v5">5v5</option><option value="battle-royale">Battle Royale</option>
+              <option value="free-for-all">Free for All</option>
+            </select>
+          </div>
+          <div class="form-field"><label>Máx. participantes</label>
+            <select id="tMaxPlayers">
+              <option value="8">8</option><option value="16" selected>16</option>
+              <option value="32">32</option><option value="64">64</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>Fecha de inicio</label><input type="date" id="tDate"></div>
+          <div class="form-field"><label>Premio</label><input id="tPrize" placeholder="ej: 1000 XP + Badge exclusivo" maxlength="40"></div>
+        </div>
+        <div class="form-field" style="margin-bottom:20px;"><label>Descripción</label><textarea id="tDesc" placeholder="Describí las reglas y requisitos del torneo..."></textarea></div>
+        <button class="btn-create-t" onclick="createTournament()">PUBLICAR TORNEO</button>
+        <span id="tError" style="font-family:var(--font-mono);font-size:12px;color:var(--pink);margin-left:14px;"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="navbar.js"></script>
+  <script src="tournaments.js"></script>
+</body>
+</html>
