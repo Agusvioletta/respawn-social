@@ -50,31 +50,37 @@ async function handleRegister() {
   btn.textContent = 'CREANDO...'; btn.disabled = true;
 
   try {
-    // Verificar que el username no esté tomado
-    const existing = await sbGetProfile(username);
+    // Verificar username disponible
+    const { data: existing } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
     if (existing) {
       errorEl.textContent = '// Ese username ya existe.';
       btn.textContent = 'CREAR CUENTA'; btn.disabled = false;
       return;
     }
 
-    await sbSignUp(email, password, username, selectedAvatar);
+    // Crear usuario en auth
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
 
-    errorEl.style.color = 'var(--cyan)';
-    errorEl.textContent = '✓ Cuenta creada. Revisá tu email para confirmar.';
-    btn.textContent     = 'EMAIL ENVIADO ✓';
+    // Crear perfil
+    const { error: pe } = await sb.from('profiles')
+      .insert({ id: data.user.id, username, avatar: selectedAvatar, bio: '', games: [], max_level: 1 });
+    if (pe) throw pe;
 
-    // Si "Confirm email" está desactivado en Supabase, redirige solo
-    setTimeout(async () => {
-      const session = await sbGetSession();
-      if (session) {
-        const profile = await sbGetCurrentUser();
-        if (profile) cacheCurrentUser(profile, email);
-        window.location.href = 'feed.html';
-      }
-    }, 2000);
+    // Login automático
+    const { data: loginData, error: loginError } = await sb.auth.signInWithPassword({ email, password });
+    if (loginError) throw loginError;
+
+    localStorage.setItem('currentUser', JSON.stringify({
+      id: data.user.id, username, avatar: selectedAvatar,
+      email, bio: '', games: [], max_level: 1,
+      maxLevel: 1, following: [], followers: []
+    }));
+
+    window.location.href = 'feed.html';
 
   } catch (err) {
+    console.error('Signup error:', err);
     errorEl.style.color = 'var(--pink)';
     errorEl.textContent = `// ${err.message || 'No se pudo crear la cuenta.'}`;
     btn.textContent = 'CREAR CUENTA'; btn.disabled = false;
