@@ -99,8 +99,22 @@
   if (avBtn) avBtn.innerHTML = `<img src="${currentUser.avatar}" width="34" height="34" style="border-radius:50%;image-rendering:pixelated;border:2px solid var(--cyan-dim);display:block;" onerror="this.style.display='none'">`;
 
   // Logout
-  document.getElementById('gnLogoutBtn').addEventListener('click', () => {
-    if (confirm('¿Cerrar sesión?')) { localStorage.removeItem('currentUser'); window.location.href = 'index.html'; }
+  document.getElementById('gnLogoutBtn').addEventListener('click', async () => {
+    if (confirm('¿Cerrar sesión?')) {
+      localStorage.removeItem('currentUser');
+      // Cerrar sesión en Supabase también
+      try {
+        const lib = window.supabase || window.supabaseJs;
+        if (lib) {
+          const client = lib.createClient(
+            'https://ajegcbzvviukuewqhqqb.supabase.co',
+            'sb_publishable_Nqo7KTTik0nnWidf04yuGw_hDOP28Eq'
+          );
+          await client.auth.signOut();
+        }
+      } catch(e) { console.log('signOut error:', e); }
+      window.location.href = 'index.html';
+    }
   });
 
   // Theme toggle
