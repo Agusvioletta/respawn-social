@@ -311,24 +311,18 @@
           </div>
           <div class="setting-group">
             <div class="setting-group-title">Sesiones activas</div>
-            <div class="session-card">
-              <span class="session-icon">💻</span>
-              <div class="session-info">
-                <div class="session-device">Este dispositivo</div>
-                <div class="session-detail">Windows · Chrome · La Plata, Argentina</div>
+            <div id="sessionsContainer">
+              <div class="session-card">
+                <span class="session-icon">💻</span>
+                <div class="session-info">
+                  <div class="session-device" id="sessionDevice">Este dispositivo</div>
+                  <div class="session-detail" id="sessionDetail">Sesión activa ahora</div>
+                </div>
+                <span class="session-badge current">ACTUAL</span>
               </div>
-              <span class="session-badge current">ACTUAL</span>
-            </div>
-            <div class="session-card">
-              <span class="session-icon">📱</span>
-              <div class="session-info">
-                <div class="session-device">iPhone · Safari</div>
-                <div class="session-detail">Hace 2 días · Buenos Aires, Argentina</div>
-              </div>
-              <button class="btn-setting-danger" onclick="showToast('Sesión cerrada.')">Cerrar</button>
             </div>
           </div>
-          <button class="btn-setting-danger" onclick="showToast('Todas las otras sesiones fueron cerradas.')">Cerrar todas las otras sesiones</button>
+          <button class="btn-setting-danger" onclick="confirmLogout()">Cerrar sesión en este dispositivo</button>
         </div>
       </div>
 

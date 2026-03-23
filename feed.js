@@ -79,54 +79,119 @@ el("postBtn").addEventListener("click", async () => {
   btn.textContent = "PUBLICAR"; btn.disabled = false;
 });
 
-// ── LIKES ──────────────────────────────────────────
+// ── LIKES — optimistic update ──────────────────────
 window.handlePostLike = async function(postId) {
-  try {
-    await sbToggleLike(postId, currentUser.id);
-    await renderPosts();
-  } catch(e) { console.error(e); }
+  // 1. Actualizar UI inmediatamente sin esperar Supabase
+  const post = allPosts.find(p => p.id === postId);
+  if (!post) return;
+  post.likes = post.likes || [];
+  const idx = post.likes.findIndex(l => l.user_id === currentUser.id);
+  if (idx === -1) {
+    post.likes.push({ user_id: currentUser.id });
+  } else {
+    post.likes.splice(idx, 1);
+  }
+  // Re-renderizar solo ese post
+  updatePostDOM(postId);
+  // 2. Sincronizar con Supabase en background
+  try { await sbToggleLike(postId, currentUser.id); }
+  catch(e) { console.error(e); await renderPosts(); } // revertir si falla
 };
 
-// ── COMENTARIOS ────────────────────────────────────
+// ── COMENTARIOS — optimistic update ────────────────
 window.handleComment = async function(postId) {
   const input   = document.getElementById(`commentInput-${postId}`);
   const content = input ? input.value.trim() : "";
   if (!content) return;
+  // 1. Actualizar UI inmediatamente
+  const post = allPosts.find(p => p.id === postId);
+  if (!post) return;
+  if (input) input.value = "";
+  const tempComment = {
+    id: Date.now(), user_id: currentUser.id,
+    username: currentUser.username, avatar: currentUser.avatar,
+    content, created_at: new Date().toISOString()
+  };
+  post.comments = [...(post.comments||[]), tempComment];
+  updatePostDOM(postId);
+  // 2. Sincronizar con Supabase en background
   try {
-    await sbAddComment(postId, currentUser.id, currentUser.username, currentUser.avatar, content);
-    if (input) input.value = "";
-    await renderPosts();
-  } catch(e) { console.error(e); }
+    const real = await sbAddComment(postId, currentUser.id, currentUser.username, currentUser.avatar, content);
+    // Reemplazar comment temporal con el real
+    const i = post.comments.findIndex(c => c.id === tempComment.id);
+    if (i !== -1 && real) post.comments[i] = real;
+    updatePostDOM(postId);
+  } catch(e) { console.error(e); await renderPosts(); }
 };
 
 // ── BORRAR POST ────────────────────────────────────
 window.deletePost = async function(postId) {
   if (!confirm("¿Borrar esta publicación?")) return;
-  try {
-    await sbDeletePost(postId, currentUser.id);
-    await renderPosts();
-  } catch(e) { console.error(e); }
+  // Optimistic: sacar del DOM inmediatamente
+  allPosts = allPosts.filter(p => p.id !== postId);
+  const postEl = document.querySelector(`[data-post-id="${postId}"]`);
+  if (postEl) postEl.remove();
+  try { await sbDeletePost(postId, currentUser.id); }
+  catch(e) { console.error(e); await renderPosts(); }
 };
 
 // ── BORRAR COMENTARIO ──────────────────────────────
 window.deleteComment = async function(commentId, postId) {
   if (!confirm("¿Borrar este comentario?")) return;
-  try {
-    await sbDeleteComment(commentId, currentUser.id);
-    await renderPosts();
-  } catch(e) { console.error(e); }
+  const post = allPosts.find(p => p.id === postId);
+  if (post) post.comments = (post.comments||[]).filter(c => c.id !== commentId);
+  updatePostDOM(postId);
+  try { await sbDeleteComment(commentId, currentUser.id); }
+  catch(e) { console.error(e); await renderPosts(); }
 };
 
-// ── FOLLOW ─────────────────────────────────────────
+// ── FOLLOW — optimistic update ─────────────────────
 window.toggleFollow = async function(targetUsername) {
   if (targetUsername === currentUser.username) return;
   const target = allProfiles.find(u => u.username === targetUsername);
   if (!target) return;
   try {
     await sbToggleFollow(currentUser.id, target.id);
-    await renderAll();
+    // Solo re-renderizar sidebar, no los posts
+    await renderSidebar();
+    // Actualizar botones follow en posts sin re-renderizar todo
+    const followingRows = await sbGetFollowing(currentUser.id);
+    const followingIds  = followingRows.map(u => u.id);
+    document.querySelectorAll('[data-follow-target]').forEach(btn => {
+      const tid = btn.getAttribute('data-follow-target');
+      if (followingIds.includes(tid)) {
+        btn.textContent = 'Siguiendo'; btn.className = 'btn-unfollow-sm';
+        btn.onclick = () => toggleFollow(targetUsername);
+      } else {
+        btn.textContent = 'Seguir'; btn.className = 'btn btn-follow-sm';
+        btn.onclick = () => toggleFollow(targetUsername);
+      }
+    });
   } catch(e) { console.error(e); }
 };
+
+// ── UPDATE SOLO UN POST EN EL DOM ──────────────────
+function updatePostDOM(postId) {
+  const post    = allPosts.find(p => p.id === postId);
+  if (!post) return;
+  const oldEl   = document.querySelector(`[data-post-id="${postId}"]`);
+  if (!oldEl) return;
+  // Guardar el valor del input de comentario antes de reemplazar
+  const inputEl  = document.getElementById(`commentInput-${postId}`);
+  const inputVal = inputEl ? inputEl.value : "";
+  // Obtener followingIds del caché
+  const followingIds = allProfiles
+    .filter(u => (currentUser._following||[]).includes(u.id))
+    .map(u => u.id);
+  const newHTML = buildPostHTML(post, followingIds);
+  const tmp     = document.createElement('div');
+  tmp.innerHTML = newHTML;
+  const newEl   = tmp.firstElementChild;
+  oldEl.replaceWith(newEl);
+  // Restaurar input
+  const newInput = document.getElementById(`commentInput-${postId}`);
+  if (newInput && inputVal) newInput.value = inputVal;
+}
 
 // ── BUILD POST HTML ────────────────────────────────
 function buildPostHTML(post, followingIds) {
@@ -180,7 +245,7 @@ function buildPostHTML(post, followingIds) {
 
   const date = new Date(post.created_at).toLocaleString("es-AR");
 
-  return `<div class="post">
+  return `<div class="post" data-post-id="${post.id}">
     <div class="post-header">
       <div class="post-author">
         <img src="${post.avatar||'avatar1.png'}" alt="" class="post-av">

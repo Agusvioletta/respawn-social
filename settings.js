@@ -159,7 +159,24 @@ async function init() {
   if (el("arcadeLevel"))    el("arcadeLevel").textContent    = `Nivel ${maxLevel}`;
   if (el("arcadeLevelDesc")) el("arcadeLevelDesc").textContent = maxLevel>=9?"¡Completaste todos!":"Completá el siguiente juego para avanzar.";
 
-  // FAQ
+  // ── Sesión actual real ──
+  const sessionDevice = el("sessionDevice");
+  const sessionDetail = el("sessionDetail");
+  if (sessionDevice && sessionDetail) {
+    const ua = navigator.userAgent;
+    const isMobile  = /Android|iPhone|iPad|iPod/i.test(ua);
+    const isTablet  = /iPad|Android(?!.*Mobile)/i.test(ua);
+    const browser   = /Chrome/i.test(ua) ? "Chrome" : /Firefox/i.test(ua) ? "Firefox" : /Safari/i.test(ua) ? "Safari" : /Edge/i.test(ua) ? "Edge" : "Navegador";
+    const os        = /Windows/i.test(ua) ? "Windows" : /Mac/i.test(ua) ? "macOS" : /Linux/i.test(ua) ? "Linux" : /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iOS" : "SO desconocido";
+    const device    = isMobile ? (isTablet ? "Tablet" : "Celular") : "Computadora";
+    const icon      = isMobile ? (isTablet ? "📱" : "📱") : "💻";
+    sessionDevice.textContent = `${device} · ${browser}`;
+    sessionDetail.textContent = `${os} · Sesión iniciada: ${new Date(currentUser.created_at ? Date.now() : Date.now()).toLocaleString("es-AR")}`;
+    const iconEl = sessionDevice.closest('.session-card')?.querySelector('.session-icon');
+    if (iconEl) iconEl.textContent = icon;
+  }
+
+  // ── FAQ ──
   if (el("faqList")) {
     el("faqList").innerHTML = FAQ.map((f,i) => `
       <div style="border-bottom:1px solid var(--border-subtle);">
