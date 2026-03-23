@@ -6,14 +6,29 @@ const SUPABASE_URL  = 'https://ajegcbzvviukuewqhqqb.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_Nqo7KTTik0nnWidf04yuGw_hDOP28Eq';
 
 // Inicializar cliente
-// El CDN UMD expone window.supabase = { createClient, ... }
-// Guardamos el cliente en _sb para no pisar window.supabase
-const _supabaseLib = window.supabase;
-if (!_supabaseLib || !_supabaseLib.createClient) {
-  document.body.innerHTML = '<div style="color:#FF4F7B;font-family:monospace;padding:40px;font-size:16px;">Error: Supabase no cargó. Verificá tu conexión y recargá.</div>';
-  throw new Error('Supabase CDN no disponible');
+// unpkg expone window.supabase = { createClient, ... }
+// Intentamos distintas formas según cómo el CDN lo exponga
+let _sbCreateClient;
+if (window.supabase && typeof window.supabase.createClient === 'function') {
+  _sbCreateClient = window.supabase.createClient;
+} else if (window.supabaseJs && typeof window.supabaseJs.createClient === 'function') {
+  _sbCreateClient = window.supabaseJs.createClient;
+} else {
+  // Último recurso: buscar en todas las propiedades de window
+  for (const key of Object.keys(window)) {
+    if (window[key] && typeof window[key].createClient === 'function') {
+      _sbCreateClient = window[key].createClient;
+      break;
+    }
+  }
 }
-const sb = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+if (!_sbCreateClient) {
+  document.body.innerHTML = '<div style="color:#FF4F7B;font-family:monospace;padding:40px;font-size:16px;">Error cargando Supabase. Recargá la página.</div>';
+  throw new Error('Supabase createClient no encontrado');
+}
+
+const sb = _sbCreateClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─────────────────────────────────────────
 // AUTH
