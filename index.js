@@ -1,33 +1,32 @@
-// index.js — Respawn Social v2
+// index.js — Login
 
-function handleLogin() {
-  var email    = document.getElementById('email').value.trim();
-  var password = document.getElementById('password').value.trim();
-  var errorEl  = document.getElementById('loginError');
-
+async function handleLogin() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const errorEl  = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
   errorEl.textContent = '';
-
-  if (!email || !password) {
-    errorEl.textContent = '// Completá todos los campos.';
-    return;
-  }
-
-  var users = JSON.parse(localStorage.getItem('users')) || [];
-  var user  = users.find(function(u) {
-    return u.email === email && u.password === password;
-  });
-
-  if (!user) {
+  if (!email || !password) { errorEl.textContent = '// Completá todos los campos.'; return; }
+  btn.textContent = 'ENTRANDO...'; btn.disabled = true;
+  try {
+    await sbLogin(email, password);
+    const profile = await sbGetCurrentUser();
+    if (profile) cacheCurrentUser(profile, email);
+    window.location.href = 'feed.html';
+  } catch (err) {
     errorEl.textContent = '// Email o contraseña incorrectos.';
-    return;
+    btn.textContent = 'INICIAR SESIÓN'; btn.disabled = false;
   }
-
-  localStorage.setItem('currentUser', JSON.stringify(user));
-  window.location.href = 'feed.html';
 }
 
-document.getElementById('loginBtn').addEventListener('click', handleLogin);
+(async function checkSession() {
+  const session = await sbGetSession();
+  if (session) {
+    const profile = await sbGetCurrentUser();
+    if (profile) cacheCurrentUser(profile, '');
+    window.location.href = 'feed.html';
+  }
+})();
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') handleLogin();
-});
+document.getElementById('loginBtn').addEventListener('click', handleLogin);
+document.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });

@@ -1,106 +1,85 @@
-// signup.js — Respawn Social v2
+// signup.js — Registro
 
 var selectedAvatar = null;
 
-// --- Seleccion de avatar ---
-document.querySelectorAll('.avatar-opt').forEach(function(opt) {
+document.querySelectorAll('.avatar-opt').forEach(opt => {
   opt.addEventListener('click', function() {
-    document.querySelectorAll('.avatar-opt').forEach(function(o) {
-      o.classList.remove('selected');
-    });
+    document.querySelectorAll('.avatar-opt').forEach(o => o.classList.remove('selected'));
     this.classList.add('selected');
     selectedAvatar = this.getAttribute('data-avatar');
-    var err = document.getElementById('signupError');
-    if (err.textContent.includes('avatar')) err.textContent = '';
+    const err = document.getElementById('signupError');
+    if (err && err.textContent.includes('avatar')) err.textContent = '';
   });
 });
 
-// --- Barra de fortaleza de contrasena ---
-var pwdInput = document.getElementById('password');
+const pwdInput = document.getElementById('password');
 if (pwdInput) {
   pwdInput.addEventListener('input', function() {
-    var val = this.value;
-    var fill = document.getElementById('strengthFill');
+    const fill = document.getElementById('strengthFill');
     if (!fill) return;
-    var strength = 0;
-    if (val.length >= 6)  strength++;
-    if (val.length >= 10) strength++;
-    if (/[A-Z]/.test(val)) strength++;
-    if (/[0-9]/.test(val)) strength++;
-    if (/[^A-Za-z0-9]/.test(val)) strength++;
-    var pct = (strength / 5) * 100;
-    var color = strength <= 1 ? '#FF4F7B' : strength <= 3 ? '#F59E0B' : '#00FFF7';
-    fill.style.width = pct + '%';
-    fill.style.background = color;
+    const val = this.value;
+    let s = 0;
+    if (val.length >= 6)          s++;
+    if (val.length >= 10)         s++;
+    if (/[A-Z]/.test(val))        s++;
+    if (/[0-9]/.test(val))        s++;
+    if (/[^A-Za-z0-9]/.test(val)) s++;
+    fill.style.width      = (s / 5 * 100) + '%';
+    fill.style.background = s <= 1 ? '#FF4F7B' : s <= 3 ? '#F59E0B' : '#00FFF7';
   });
 }
 
-// --- Registro ---
-function handleRegister() {
-  var username        = document.getElementById('username').value.trim();
-  var email           = document.getElementById('email').value.trim();
-  var password        = document.getElementById('password').value.trim();
-  var confirmPassword = document.getElementById('confirmPassword').value.trim();
-  var errorEl         = document.getElementById('signupError');
+async function handleRegister() {
+  const username        = document.getElementById('username').value.trim();
+  const email           = document.getElementById('email').value.trim();
+  const password        = document.getElementById('password').value.trim();
+  const confirmPassword = document.getElementById('confirmPassword').value.trim();
+  const errorEl         = document.getElementById('signupError');
+  const btn             = document.getElementById('registerBtn');
+  errorEl.textContent   = '';
+  errorEl.style.color   = 'var(--pink)';
 
-  errorEl.textContent = '';
+  if (!username || !email || !password || !confirmPassword) { errorEl.textContent = '// Completá todos los campos.'; return; }
+  if (!selectedAvatar)         { errorEl.textContent = '// Elegí un avatar.'; return; }
+  if (password.length < 6)     { errorEl.textContent = '// Contraseña mínimo 6 caracteres.'; return; }
+  if (password !== confirmPassword) { errorEl.textContent = '// Las contraseñas no coinciden.'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errorEl.textContent = '// Email inválido.'; return; }
+  if (username.length < 3)     { errorEl.textContent = '// Username mínimo 3 caracteres.'; return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) { errorEl.textContent = '// Solo letras, números y _'; return; }
 
-  if (!username || !email || !password || !confirmPassword) {
-    errorEl.textContent = '// Completá todos los campos.';
-    return;
-  }
-  if (!selectedAvatar) {
-    errorEl.textContent = '// Elegí un avatar para continuar.';
-    return;
-  }
-  if (password.length < 6) {
-    errorEl.textContent = '// La contraseña debe tener al menos 6 caracteres.';
-    return;
-  }
-  if (password !== confirmPassword) {
-    errorEl.textContent = '// Las contraseñas no coinciden.';
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errorEl.textContent = '// Email inválido.';
-    return;
-  }
-  if (username.length < 3) {
-    errorEl.textContent = '// El usuario debe tener al menos 3 caracteres.';
-    return;
-  }
+  btn.textContent = 'CREANDO...'; btn.disabled = true;
 
-  var users = JSON.parse(localStorage.getItem('users')) || [];
+  try {
+    // Verificar que el username no esté tomado
+    const existing = await sbGetProfile(username);
+    if (existing) {
+      errorEl.textContent = '// Ese username ya existe.';
+      btn.textContent = 'CREAR CUENTA'; btn.disabled = false;
+      return;
+    }
 
-  if (users.find(function(u) { return u.email === email; })) {
-    errorEl.textContent = '// Este email ya está registrado.';
-    return;
+    await sbSignUp(email, password, username, selectedAvatar);
+
+    errorEl.style.color = 'var(--cyan)';
+    errorEl.textContent = '✓ Cuenta creada. Revisá tu email para confirmar.';
+    btn.textContent     = 'EMAIL ENVIADO ✓';
+
+    // Si "Confirm email" está desactivado en Supabase, redirige solo
+    setTimeout(async () => {
+      const session = await sbGetSession();
+      if (session) {
+        const profile = await sbGetCurrentUser();
+        if (profile) cacheCurrentUser(profile, email);
+        window.location.href = 'feed.html';
+      }
+    }, 2000);
+
+  } catch (err) {
+    errorEl.style.color = 'var(--pink)';
+    errorEl.textContent = `// ${err.message || 'No se pudo crear la cuenta.'}`;
+    btn.textContent = 'CREAR CUENTA'; btn.disabled = false;
   }
-  if (users.find(function(u) { return u.username === username; })) {
-    errorEl.textContent = '// Ese username ya está en uso.';
-    return;
-  }
-
-  var newUser = {
-    username:  username,
-    email:     email,
-    password:  password,
-    avatar:    selectedAvatar,
-    following: [],
-    followers: [],
-    createdAt: new Date().toISOString()
-  };
-
-  users.push(newUser);
-  localStorage.setItem('users', JSON.stringify(users));
-  localStorage.setItem('currentUser', JSON.stringify(newUser));
-  localStorage.setItem('maxLevel', '1');
-
-  window.location.href = 'feed.html';
 }
 
 document.getElementById('registerBtn').addEventListener('click', handleRegister);
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') handleRegister();
-});
+document.addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
