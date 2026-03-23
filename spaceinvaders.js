@@ -318,12 +318,22 @@ function gameWin() {
 
 function saveMaxLevel(n) {
   localStorage.setItem("maxLevel", String(n));
-  const au  = JSON.parse(localStorage.getItem("users")) || [];
-  const me  = JSON.parse(localStorage.getItem("currentUser"));
-  if (!me) return;
-  const idx = au.findIndex(u => u.username === me.username);
-  if (idx !== -1) { au[idx].maxLevel = n; localStorage.setItem("users", JSON.stringify(au)); }
-  me.maxLevel = n; localStorage.setItem("currentUser", JSON.stringify(me));
+  // Sync con Supabase
+  try {
+    const me = JSON.parse(localStorage.getItem("currentUser"));
+    if (me && me.id && typeof sb !== 'undefined') {
+      sb.from('profiles')
+        .select('max_level').eq('id', me.id).single()
+        .then(({ data }) => {
+          if (!data || data.max_level < n) {
+            sb.from('profiles').update({ max_level: n }).eq('id', me.id).then(() => {
+              me.max_level = n; me.maxLevel = n;
+              localStorage.setItem("currentUser", JSON.stringify(me));
+            });
+          }
+        });
+    }
+  } catch(e) { console.log('Supabase sync error:', e); }
 }
 
 function showOverlay(title, sub, goMap) {

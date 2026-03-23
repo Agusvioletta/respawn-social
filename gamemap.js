@@ -8,7 +8,21 @@ const HEIGHT = canvas.height;
 const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 if (!currentUser) window.location.href = "index.html";
 
-let maxLevel = parseInt(localStorage.getItem("maxLevel")) || 1;
+// Cargar maxLevel desde Supabase y sincronizar con localStorage
+let maxLevel = parseInt(localStorage.getItem("maxLevel")) || currentUser.max_level || 1;
+
+// Sync asíncrono — actualizar desde Supabase en background
+(async function syncMaxLevel() {
+  try {
+    if (typeof sb !== 'undefined' && currentUser.id) {
+      const { data } = await sb.from('profiles').select('max_level').eq('id', currentUser.id).single();
+      if (data && data.max_level > maxLevel) {
+        maxLevel = data.max_level;
+        localStorage.setItem("maxLevel", String(maxLevel));
+      }
+    }
+  } catch(e) { console.log('maxLevel sync error:', e); }
+})();
 
 const TILE  = 24;
 const SPEED = 3;

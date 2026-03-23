@@ -161,7 +161,7 @@ function gameOver(won) {
 
   if (won && maxLevel === 3) {
     localStorage.setItem("maxLevel", "4");
-    saveMaxLevelToUser(4);
+    saveMaxLevel(4);
     showOverlay('¡GANASTE!', '🏆 ¡Completaste todos los niveles! Enter para volver', true);
   } else if (won) {
     showOverlay('¡GANASTE!', `Puntaje: ${score} · Enter para volver al mapa`, true);
@@ -170,15 +170,7 @@ function gameOver(won) {
   }
 }
 
-function saveMaxLevelToUser(level) {
-  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-  const me = JSON.parse(localStorage.getItem("currentUser"));
-  if (!me) return;
-  const idx = allUsers.findIndex(u => u.username === me.username);
-  if (idx !== -1) { allUsers[idx].maxLevel = level; localStorage.setItem("users", JSON.stringify(allUsers)); }
-  me.maxLevel = level;
-  localStorage.setItem("currentUser", JSON.stringify(me));
-}
+
 
 function showOverlay(title, sub, goMap) {
   overlay.style.display = 'flex';

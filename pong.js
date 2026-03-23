@@ -133,7 +133,7 @@ function gameOver(won) {
 
   if (won && maxLevel === 2) {
     localStorage.setItem("maxLevel", "3");
-    saveMaxLevelToUser(3);
+    saveMaxLevel(3);
     showOverlay('¡GANASTE!', '🧱 Breakout desbloqueado · Enter para volver al mapa', true);
   } else if (won) {
     showOverlay('¡GANASTE!', `${player.score} — ${cpu.score} · Enter para volver al mapa`, true);
@@ -142,15 +142,7 @@ function gameOver(won) {
   }
 }
 
-function saveMaxLevelToUser(level) {
-  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-  const me = JSON.parse(localStorage.getItem("currentUser"));
-  if (!me) return;
-  const idx = allUsers.findIndex(u => u.username === me.username);
-  if (idx !== -1) { allUsers[idx].maxLevel = level; localStorage.setItem("users", JSON.stringify(allUsers)); }
-  me.maxLevel = level;
-  localStorage.setItem("currentUser", JSON.stringify(me));
-}
+
 
 function showOverlay(title, sub, goMap) {
   overlay.style.display = 'flex';

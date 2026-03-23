@@ -145,7 +145,7 @@ function gameOver(won) {
     // Desbloquear nivel 2 solo si corresponde
     if (maxLevel === 1) {
       localStorage.setItem("maxLevel", "2");
-      saveMaxLevelToUser(2);
+      saveMaxLevel(2);
       showOverlay('¡NIVEL SUPERADO!', '🏓 Pong desbloqueado · Enter para volver al mapa', true);
     } else {
       showOverlay('¡BIEN JUGADO!', `Puntaje: ${score} · Enter para volver al mapa`, true);
@@ -217,15 +217,7 @@ function gameLoop() { update(); draw(); }
 // ─────────────────────────────────────────
 // SYNC — Guarda maxLevel en el objeto user
 // ─────────────────────────────────────────
-function saveMaxLevelToUser(level) {
-  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-  const me = JSON.parse(localStorage.getItem("currentUser"));
-  if (!me) return;
-  const idx = allUsers.findIndex(u => u.username === me.username);
-  if (idx !== -1) { allUsers[idx].maxLevel = level; localStorage.setItem("users", JSON.stringify(allUsers)); }
-  me.maxLevel = level;
-  localStorage.setItem("currentUser", JSON.stringify(me));
-}
+
 
 // ─────────────────────────────────────────
 // INICIO
