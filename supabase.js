@@ -6,12 +6,14 @@ const SUPABASE_URL  = 'https://ajegcbzvviukuewqhqqb.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_Nqo7KTTik0nnWidf04yuGw_hDOP28Eq';
 
 // Inicializar cliente
-// El CDN UMD de supabase-js expone window.supabase con { createClient }
-if (!window.supabase || !window.supabase.createClient) {
-  alert('Error: no se pudo cargar Supabase. Verificá tu conexión a internet y recargá la página.');
+// El CDN UMD expone window.supabase = { createClient, ... }
+// Guardamos el cliente en _sb para no pisar window.supabase
+const _supabaseLib = window.supabase;
+if (!_supabaseLib || !_supabaseLib.createClient) {
+  document.body.innerHTML = '<div style="color:#FF4F7B;font-family:monospace;padding:40px;font-size:16px;">Error: Supabase no cargó. Verificá tu conexión y recargá.</div>';
   throw new Error('Supabase CDN no disponible');
 }
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─────────────────────────────────────────
 // AUTH
