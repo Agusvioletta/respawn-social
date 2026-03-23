@@ -5,7 +5,12 @@
 const SUPABASE_URL  = 'https://ajegcbzvviukuewqhqqb.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_Nqo7KTTik0nnWidf04yuGw_hDOP28Eq';
 
-// Inicializar cliente (supabase-js cargado desde CDN)
+// Inicializar cliente
+// El CDN UMD de supabase-js expone window.supabase con { createClient }
+if (!window.supabase || !window.supabase.createClient) {
+  alert('Error: no se pudo cargar Supabase. Verificá tu conexión a internet y recargá la página.');
+  throw new Error('Supabase CDN no disponible');
+}
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─────────────────────────────────────────
