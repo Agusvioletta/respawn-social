@@ -51,12 +51,42 @@ function calcStreak(posts) {
 }
 
 // ── Estado global ──
-let currentUser = null;
+let currentUser   = null;
+let viewingUser   = null;  // el perfil que se está viendo (puede ser otro)
+let isOwnProfile  = true;
 
 // ── Init ──
 async function init() {
   currentUser = await sbRequireAuth();
   if (!currentUser) return;
+
+  // Detectar si se está viendo el perfil de otra persona
+  const params       = new URLSearchParams(window.location.search);
+  const targetUsername = params.get("user");
+
+  if (targetUsername && targetUsername !== currentUser.username) {
+    // Modo vista — perfil ajeno
+    isOwnProfile = false;
+    viewingUser  = await sbGetProfile(targetUsername);
+    if (!viewingUser) {
+      document.body.innerHTML = `<div style="text-align:center;padding:80px;font-family:var(--font-mono);color:var(--text-muted);">Usuario no encontrado.</div>`;
+      return;
+    }
+    // Ocultar botones de edición
+    const editBtn = document.querySelector('.btn-edit-profile');
+    if (editBtn) editBtn.style.display = 'none';
+    const editModal = el('editModal');
+    if (editModal) editModal.style.display = 'none';
+    const nowPlayingCard = el('nowPlayingCard');
+    if (nowPlayingCard) nowPlayingCard.style.display = 'none';
+    const historyCard = el('historyCard');
+    if (historyCard) historyCard.style.display = 'none';
+  } else {
+    // Modo propio
+    isOwnProfile = true;
+    viewingUser  = currentUser;
+  }
+
   await renderProfile();
 }
 
@@ -84,37 +114,37 @@ el("editModal").addEventListener("click", e => { if(e.target===el("editModal")) 
 
 // ── RENDER PRINCIPAL ──
 async function renderProfile() {
+  const target = viewingUser; // el usuario cuyo perfil vemos
+
   // Cargar datos frescos de Supabase
   const [profile, followingRows, followersRows, posts, tournamentsData] = await Promise.all([
-    sbGetProfile(currentUser.username),
-    sbGetFollowing(currentUser.id),
-    sbGetFollowers(currentUser.id),
+    sbGetProfile(target.username),
+    sbGetFollowing(target.id),
+    sbGetFollowers(target.id),
     sbGetPosts(),
     sbGetTournaments(),
   ]);
 
   if (!profile) return;
 
-  // Sync maxLevel — tomar el mayor entre Supabase y localStorage
+  // Sync maxLevel solo si es perfil propio
   const localMaxLevel = parseInt(localStorage.getItem("maxLevel")) || 1;
-  const maxLevel = Math.max(profile.max_level || 1, localMaxLevel);
-  if (maxLevel > (profile.max_level || 1)) {
+  const maxLevel = isOwnProfile
+    ? Math.max(profile.max_level || 1, localMaxLevel)
+    : (profile.max_level || 1);
+
+  if (isOwnProfile && maxLevel > (profile.max_level || 1)) {
     await sbUpdateMaxLevel(currentUser.id, maxLevel);
   }
 
-  const userPosts      = posts.filter(p => p.user_id === currentUser.id);
+  const userPosts      = posts.filter(p => p.user_id === target.id);
   const followingCount = followingRows.length;
   const followersCount = followersRows.length;
   const likesReceived  = userPosts.reduce((s,p) => s + (p.likes||[]).length, 0);
   const commentsCount  = userPosts.reduce((s,p) => s + (p.comments||[]).length, 0);
-  const tournamentsJoined  = tournamentsData.filter(t => (t.tournament_players||[]).some(p=>p.user_id===currentUser.id)).length;
-  const tournamentsCreated = tournamentsData.filter(t => t.creator_id === currentUser.id).length;
-
-  // Mensajes enviados (aproximado desde localStorage por ahora)
-  const dmsSent = Object.keys(localStorage).filter(k => k.startsWith('dm_')).reduce((s,k) => {
-    const msgs = JSON.parse(localStorage.getItem(k)) || [];
-    return s + msgs.filter(m => m.from_id === currentUser.id).length;
-  }, 0);
+  const tournamentsJoined  = tournamentsData.filter(t => (t.tournament_players||[]).some(p=>p.user_id===target.id)).length;
+  const tournamentsCreated = tournamentsData.filter(t => t.creator_id === target.id).length;
+  const dmsSent = 0; // solo aplica para perfil propio
 
   const totalXP = calcXP({ postCount:userPosts.length, followingCount, followersCount, likesReceived, commentsCount, maxLevel });
   const lvl     = xpLevel(totalXP);
@@ -135,15 +165,28 @@ async function renderProfile() {
   const avatarEl = el("profileAvatar");
   if (avatarEl) { avatarEl.src = ""; avatarEl.src = profile.avatar; }
   if (el("profileDisplayName")) el("profileDisplayName").textContent = profile.username;
-  if (el("profileHandle"))      el("profileHandle").textContent      = `@${profile.username}`;
-  if (el("profileEmail"))       el("profileEmail").textContent       = `· ${currentUser.email || ""}`;
-  if (el("profileBio"))         el("profileBio").textContent         = profile.bio || "Sin bio todavía. ¡Editá tu perfil!";
+  if (el("profileHandle"))      el("profileHandle").textContent = `@${profile.username}`;
+  // Email solo visible en perfil propio
+  if (el("profileEmail"))       el("profileEmail").textContent  = isOwnProfile ? `· ${currentUser.email || ""}` : "";
+  if (el("profileBio"))         el("profileBio").textContent    = profile.bio || (isOwnProfile ? "Sin bio todavía. ¡Editá tu perfil!" : "Sin bio.");
 
   const games = profile.games || [];
   if (el("profileGames")) {
     el("profileGames").innerHTML = games.length
       ? games.map(g => { const icon=GAME_ICONS[g.toLowerCase()]||GAME_ICONS.default; return `<span class="game-tag">${icon} ${g}</span>`; }).join("")
-      : `<span class="game-tag" style="cursor:pointer;opacity:0.5;" onclick="openEdit()">+ Agregar juegos</span>`;
+      : isOwnProfile ? `<span class="game-tag" style="cursor:pointer;opacity:0.5;" onclick="openEdit()">+ Agregar juegos</span>` : "";
+  }
+
+  // Botón seguir/dejar de seguir en perfil ajeno
+  const actionsEl = el("profileActions") || document.querySelector(".profile-actions");
+  if (actionsEl && !isOwnProfile) {
+    const myFollowing   = await sbGetFollowing(currentUser.id);
+    const alreadyFollow = myFollowing.some(u => u.id === target.id);
+    actionsEl.innerHTML = alreadyFollow
+      ? `<button class="btn-edit-profile" style="border-color:var(--purple);color:var(--purple);" onclick="profileToggleFollow()">✓ Siguiendo</button>
+         <button class="btn-edit-profile" onclick="window.location.href='messages.html'" style="margin-left:8px;">💬 Mensaje</button>`
+      : `<button class="btn btn-edit-profile" style="background:var(--cyan);color:#000;border-color:var(--cyan);" onclick="profileToggleFollow()">+ Seguir</button>
+         <button class="btn-edit-profile" onclick="window.location.href='messages.html'" style="margin-left:8px;">💬 Mensaje</button>`;
   }
 
   // ── Stats ──
@@ -247,7 +290,15 @@ function renderFriends(followers, following) {
   }).join("");
 }
 
-// ── FOLLOW ──
+// ── FOLLOW desde perfil ajeno ──
+window.profileToggleFollow = async function() {
+  try {
+    await sbToggleFollow(currentUser.id, viewingUser.id);
+    await renderProfile(); // re-renderizar para actualizar botón
+  } catch(e) { console.error(e); }
+};
+
+// ── FOLLOW desde lista de seguidores ──
 window.toggleFollow = async function(targetId, targetUsername) {
   if (targetId === currentUser.id) return;
   try {

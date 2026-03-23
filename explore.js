@@ -135,7 +135,7 @@ function buildUserCard(u) {
         <div class="user-card-online"></div>
       </div>
       <div class="user-card-info">
-        <div class="user-card-name">@${esc(u.username)}</div>
+        <div class="user-card-name" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(u.username)}'">@${esc(u.username)}</div>
         <div class="user-card-bio">${esc(u.bio||"Jugando en Respawn")}</div>
         ${gameTagsHTML ? `<div class="user-card-games">${gameTagsHTML}</div>` : ""}
       </div>

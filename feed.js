@@ -259,7 +259,7 @@ function buildPostHTML(post, followingIds) {
       <div class="post-author">
         <img src="${post.avatar||'avatar1.png'}" alt="" class="post-av">
         <div class="post-author-info">
-          <span class="post-author-name">@${esc(post.username)}${gameTag}</span>
+          <span class="post-author-name" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(post.username)}'">@${esc(post.username)}${gameTag}</span>
           <span class="post-date">${date}</span>
         </div>
       </div>

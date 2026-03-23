@@ -91,7 +91,7 @@ async function openConv(userId) {
     <div class="chat-header">
       <img src="${user.avatar||'avatar1.png'}" class="chat-header-av" alt="">
       <div class="chat-header-info">
-        <div class="chat-header-name">@${esc(user.username)}</div>
+        <div class="chat-header-name" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(user.username)}'">@${esc(user.username)}</div>
         <div class="chat-header-status">● Online</div>
       </div>
       <div class="chat-header-actions">
