@@ -99,7 +99,10 @@ async function init() {
   if (el("sGame3"))    el("sGame3").value    = (currentUser.games||[])[2] || "";
 
   // Cuenta
-  if (el("sEmail")) el("sEmail").value = currentUser.email || "";
+  // Cuenta - obtener email directamente de Supabase auth
+  const { data: { user: authUser } } = await sb.auth.getUser();
+  const realEmail = authUser?.email || currentUser.email || "";
+  if (el("sEmail")) el("sEmail").value = realEmail;
   if (el("sMemberSince") && currentUser.created_at) {
     el("sMemberSince").textContent = new Date(currentUser.created_at).toLocaleDateString("es-AR",{year:"numeric",month:"long",day:"numeric"});
   }
@@ -187,6 +190,7 @@ async function init() {
         <div id="faqAnswer${i}" style="display:none;padding:0 0 14px;font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);line-height:1.6;">${f.a}</div>
       </div>`).join("");
   }
+  initAppearancePrefs();
 }
 
 // ─────────────────────────────────────────
@@ -293,11 +297,14 @@ async function deleteAccount() {
 }
 
 // ─────────────────────────────────────────
-// APARIENCIA
+// APARIENCIA — funcional
 // ─────────────────────────────────────────
 function selectTheme(card, theme) {
   document.querySelectorAll(".theme-card").forEach(c => c.classList.remove("active"));
   card.classList.add("active");
+  document.body.classList.remove("light-mode");
+  if (theme === "light" || theme === "midnight") document.body.classList.add("light-mode");
+  localStorage.setItem("theme", theme);
   showToast(`✓ Tema "${card.querySelector(".theme-name").textContent}" aplicado.`);
 }
 
@@ -305,7 +312,49 @@ function selectAccent(chip, color) {
   document.querySelectorAll(".color-chip").forEach(c => c.classList.remove("active"));
   chip.classList.add("active");
   document.documentElement.style.setProperty("--cyan", color);
-  showToast("✓ Color aplicado.");
+  document.documentElement.style.setProperty("--cyan-dim", color);
+  localStorage.setItem("accentColor", color);
+  showToast("✓ Color de acento aplicado.");
+}
+
+function initAppearancePrefs() {
+  const theme    = localStorage.getItem("theme");
+  const accent   = localStorage.getItem("accentColor");
+  const fontSize = localStorage.getItem("fontSize") || "md";
+  const scanline = localStorage.getItem("scanline") !== "false";
+  const anims    = localStorage.getItem("animations") !== "false";
+  const glow     = localStorage.getItem("glow") !== "false";
+
+  // Marcar tema activo
+  document.querySelectorAll(".theme-card").forEach(c => {
+    const t = c.getAttribute("onclick")?.match(/'([^']+)'\)$/)?.[1];
+    if (t === theme) { c.classList.add("active"); }
+  });
+
+  // Marcar color activo
+  if (accent) {
+    document.querySelectorAll(".color-chip").forEach(c => {
+      if (c.getAttribute("onclick")?.includes(accent)) c.classList.add("active");
+    });
+  }
+
+  // Setear toggles y selects
+  const setCheck = (id, val) => { const el2 = el(id); if (el2) el2.checked = val; };
+  const setVal   = (id, val) => { const el2 = el(id); if (el2) el2.value   = val; };
+  setCheck("tScanline", scanline); setCheck("tAnimations", anims); setCheck("tGlow", glow);
+  setVal("sFontSize", fontSize);
+
+  // Listeners
+  const on = (id, fn) => { const e = el(id); if (e) e.addEventListener("change", fn); };
+  on("tScanline",   e => { localStorage.setItem("scanline",    e.target.checked); showToast(e.target.checked?"✓ Scanline activado.":"✓ Scanline desactivado."); });
+  on("tAnimations", e => { localStorage.setItem("animations",  e.target.checked); document.body.classList.toggle("reduce-motion",!e.target.checked); showToast(e.target.checked?"✓ Animaciones activadas.":"✓ Animaciones desactivadas."); });
+  on("tGlow",       e => { localStorage.setItem("glow",        e.target.checked); showToast(e.target.checked?"✓ Glow activado.":"✓ Glow desactivado."); });
+  on("sFontSize",   e => {
+    localStorage.setItem("fontSize", e.target.value);
+    const sizes = { sm:"13px", md:"15px", lg:"17px" };
+    document.documentElement.style.setProperty("--font-size-body", sizes[e.target.value]||"15px");
+    showToast("✓ Tamaño actualizado.");
+  });
 }
 
 // ─────────────────────────────────────────

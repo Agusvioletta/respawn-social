@@ -3,9 +3,10 @@
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 // ── Estado global ──────────────────────────────────
-let currentUser = null;
-let allProfiles = [];   // caché de perfiles para el sidebar
-let allPosts    = [];   // caché de posts para renderizar
+let currentUser  = null;
+let allProfiles  = [];
+let allPosts     = [];
+let cachedFollowingIds = [];
 
 const LEVEL_NAMES = ["Novato","Aprendiz","Jugador","Veterano","Elite","Leyenda","Máster","Campeón"];
 const GAME_ICONS  = {"valorant":"🔫","minecraft":"⛏","league of legends":"⚔","fortnite":"🏗","apex":"🎯","cs2":"💣","overwatch":"🎮","rocket league":"🚗","among us":"🔪","terraria":"⚒","default":"🕹"};
@@ -150,24 +151,36 @@ window.toggleFollow = async function(targetUsername) {
   if (targetUsername === currentUser.username) return;
   const target = allProfiles.find(u => u.username === targetUsername);
   if (!target) return;
+
+  // Actualizar caché de followingIds optimistamente
+  const wasFollowing = cachedFollowingIds.includes(target.id);
+  if (wasFollowing) {
+    cachedFollowingIds = cachedFollowingIds.filter(id => id !== target.id);
+  } else {
+    cachedFollowingIds = [...cachedFollowingIds, target.id];
+  }
+
+  // Actualizar TODOS los botones de ese usuario en el DOM inmediatamente
+  document.querySelectorAll(`[data-follow-username="${targetUsername}"]`).forEach(btn => {
+    if (!wasFollowing) {
+      btn.textContent = 'Siguiendo';
+      btn.className   = 'btn-unfollow-sm';
+    } else {
+      btn.textContent = 'Seguir';
+      btn.className   = 'btn btn-follow-sm';
+    }
+  });
+
   try {
     await sbToggleFollow(currentUser.id, target.id);
-    // Solo re-renderizar sidebar, no los posts
     await renderSidebar();
-    // Actualizar botones follow en posts sin re-renderizar todo
-    const followingRows = await sbGetFollowing(currentUser.id);
-    const followingIds  = followingRows.map(u => u.id);
-    document.querySelectorAll('[data-follow-target]').forEach(btn => {
-      const tid = btn.getAttribute('data-follow-target');
-      if (followingIds.includes(tid)) {
-        btn.textContent = 'Siguiendo'; btn.className = 'btn-unfollow-sm';
-        btn.onclick = () => toggleFollow(targetUsername);
-      } else {
-        btn.textContent = 'Seguir'; btn.className = 'btn btn-follow-sm';
-        btn.onclick = () => toggleFollow(targetUsername);
-      }
-    });
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    // Revertir si falla
+    if (wasFollowing) cachedFollowingIds = [...cachedFollowingIds, target.id];
+    else cachedFollowingIds = cachedFollowingIds.filter(id => id !== target.id);
+    console.error(e);
+    await renderPosts();
+  }
 };
 
 // ── UPDATE SOLO UN POST EN EL DOM ──────────────────
@@ -179,11 +192,7 @@ function updatePostDOM(postId) {
   // Guardar el valor del input de comentario antes de reemplazar
   const inputEl  = document.getElementById(`commentInput-${postId}`);
   const inputVal = inputEl ? inputEl.value : "";
-  // Obtener followingIds del caché
-  const followingIds = allProfiles
-    .filter(u => (currentUser._following||[]).includes(u.id))
-    .map(u => u.id);
-  const newHTML = buildPostHTML(post, followingIds);
+  const newHTML = buildPostHTML(post, cachedFollowingIds);
   const tmp     = document.createElement('div');
   tmp.innerHTML = newHTML;
   const newEl   = tmp.firstElementChild;
@@ -226,8 +235,8 @@ function buildPostHTML(post, followingIds) {
   let headerAction = isOwn
     ? `<button class="delete-post-btn" onclick="deletePost(${post.id})">Borrar</button>`
     : isFollowing
-      ? `<button class="btn-unfollow-sm" onclick="toggleFollow('${post.username}')">Siguiendo</button>`
-      : `<button class="btn btn-follow-sm" onclick="toggleFollow('${post.username}')">Seguir</button>`;
+      ? `<button class="btn-unfollow-sm" data-follow-username="${post.username}" onclick="toggleFollow('${post.username}')">Siguiendo</button>`
+      : `<button class="btn btn-follow-sm" data-follow-username="${post.username}" onclick="toggleFollow('${post.username}')">Seguir</button>`;
 
   // Comentarios
   const commentsHTML = comments.map(c => {
@@ -278,15 +287,14 @@ async function renderPosts() {
 
   allPosts = await sbGetPosts();
 
-  // IDs de usuarios que sigo
-  const followingRows = await sbGetFollowing(currentUser.id);
-  const followingIds  = followingRows.map(u => u.id);
+  const followingRows    = await sbGetFollowing(currentUser.id);
+  cachedFollowingIds     = followingRows.map(u => u.id);
 
   if (!allPosts.length) {
     container.innerHTML = `<div class="empty-feed"><span class="empty-feed-icon">🎮</span><h3>Sin posts todavía</h3><p>Sé el primero en publicar algo.</p></div>`;
     return;
   }
-  container.innerHTML = allPosts.map(p => buildPostHTML(p, followingIds)).join("");
+  container.innerHTML = allPosts.map(p => buildPostHTML(p, cachedFollowingIds)).join("");
 }
 
 // ── RENDER SIDEBAR ─────────────────────────────────

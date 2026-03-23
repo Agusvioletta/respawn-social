@@ -117,9 +117,26 @@
     }
   });
 
-  // Theme toggle
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'light') { document.body.classList.add('light-mode'); const tb = document.getElementById('gnThemeToggle'); if(tb) tb.textContent='☀️'; }
+  // Aplicar preferencias de apariencia guardadas
+  const savedTheme  = localStorage.getItem('theme');
+  const savedAccent = localStorage.getItem('accentColor');
+  const savedSize   = localStorage.getItem('fontSize');
+  const savedAnims  = localStorage.getItem('animations');
+
+  if (savedTheme === 'light' || savedTheme === 'midnight') {
+    document.body.classList.add('light-mode');
+    const tb = document.getElementById('gnThemeToggle');
+    if (tb) tb.textContent = '☀️';
+  }
+  if (savedAccent) {
+    document.documentElement.style.setProperty('--cyan', savedAccent);
+    document.documentElement.style.setProperty('--cyan-dim', savedAccent);
+  }
+  if (savedSize) {
+    const sizes = { sm:'13px', md:'15px', lg:'17px' };
+    document.documentElement.style.setProperty('--font-size-body', sizes[savedSize] || '15px');
+  }
+  if (savedAnims === 'false') document.body.classList.add('reduce-motion');
 
   window.gnToggleTheme = function() {
     const isLight = document.body.classList.toggle('light-mode');
