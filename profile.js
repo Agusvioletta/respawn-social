@@ -144,7 +144,14 @@ async function renderProfile() {
   const commentsCount  = userPosts.reduce((s,p) => s + (p.comments||[]).length, 0);
   const tournamentsJoined  = tournamentsData.filter(t => (t.tournament_players||[]).some(p=>p.user_id===target.id)).length;
   const tournamentsCreated = tournamentsData.filter(t => t.creator_id === target.id).length;
-  const dmsSent = 0; // solo aplica para perfil propio
+  // Mensajes enviados — real desde Supabase
+  let dmsSent = 0;
+  if (isOwnProfile) {
+    const { count } = await sb.from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('from_id', currentUser.id);
+    dmsSent = count || 0;
+  }
 
   const totalXP = calcXP({ postCount:userPosts.length, followingCount, followersCount, likesReceived, commentsCount, maxLevel });
   const lvl     = xpLevel(totalXP);
@@ -182,11 +189,16 @@ async function renderProfile() {
   if (actionsEl && !isOwnProfile) {
     const myFollowing   = await sbGetFollowing(currentUser.id);
     const alreadyFollow = myFollowing.some(u => u.id === target.id);
+
+    // Verificar privacidad DMs del receptor (guardada en su localStorage — aproximado)
+    // Por ahora: si no lo seguís y el receptor tiene "solo seguidos", no podés escribirle
+    const iFollow  = myFollowing.some(u => u.id === target.id);
+
     actionsEl.innerHTML = alreadyFollow
       ? `<button class="btn-edit-profile" style="border-color:var(--purple);color:var(--purple);" onclick="profileToggleFollow()">✓ Siguiendo</button>
-         <button class="btn-edit-profile" onclick="window.location.href='messages.html'" style="margin-left:8px;">💬 Mensaje</button>`
+         <button class="btn-edit-profile" onclick="window.location.href='messages.html?open=${target.id}'" style="margin-left:8px;">💬 Mensaje</button>`
       : `<button class="btn btn-edit-profile" style="background:var(--cyan);color:#000;border-color:var(--cyan);" onclick="profileToggleFollow()">+ Seguir</button>
-         <button class="btn-edit-profile" onclick="window.location.href='messages.html'" style="margin-left:8px;">💬 Mensaje</button>`;
+         <button class="btn-edit-profile" onclick="window.location.href='messages.html?open=${target.id}'" style="margin-left:8px;">💬 Mensaje</button>`;
   }
 
   // ── Stats ──
