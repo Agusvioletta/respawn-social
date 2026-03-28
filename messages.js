@@ -158,12 +158,46 @@ async function openConv(userId) {
     });
   }
 
-  // Realtime
+  // Realtime — suscripción Supabase
   if (realtimeCh) sbUnsubscribe(realtimeCh);
   realtimeCh = sbSubscribeMessages(currentUser.id, userId, async () => {
     await renderMessages(userId);
     await renderConvList(el("convSearchInput")?.value || "");
   });
+
+  // Polling cada 3 segundos como fallback garantizado
+  if (window._msgPollInterval) clearInterval(window._msgPollInterval);
+  let lastMsgCount = 0;
+  window._msgPollInterval = setInterval(async () => {
+    // Solo pollear si el chat sigue abierto con este usuario
+    if (activeConvId !== userId) { clearInterval(window._msgPollInterval); return; }
+    const msgs = await sbGetMessages(currentUser.id, userId);
+    if (msgs.length !== lastMsgCount) {
+      lastMsgCount = msgs.length;
+      const box = el("chatMessages");
+      if (!box) return;
+      const user2 = allProfiles.find(u => u.id === userId);
+      let grouped = [];
+      msgs.forEach((m, i) => {
+        const prev = msgs[i-1];
+        const diffMs = prev ? new Date(m.created_at) - new Date(prev.created_at) : Infinity;
+        if (prev && prev.from_id === m.from_id && diffMs < 60000) grouped[grouped.length-1].msgs.push(m);
+        else grouped.push({ from_id: m.from_id, msgs: [m] });
+      });
+      box.innerHTML = `<div class="msg-system">Inicio de la conversación</div>` +
+        grouped.map(g => {
+          const mine = g.from_id === currentUser.id;
+          const avSrc = mine ? (currentUser.avatar||'avatar1.png') : (user2?.avatar||'avatar1.png');
+          const bubblesHTML = g.msgs.map(m => `<div class="msg-bubble ${mine?"mine":"theirs"}">${esc(m.content)}</div>`).join("");
+          const lastTs = new Date(g.msgs[g.msgs.length-1].created_at).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+          return `<div class="msg-group ${mine?"mine":""}">
+            <img src="${avSrc}" class="msg-av" alt="">
+            <div class="msg-bubbles">${bubblesHTML}<div class="msg-meta">${lastTs}${mine?' <span style="color:var(--cyan);font-size:10px;">✓</span>':''}</div></div>
+          </div>`;
+        }).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+  }, 3000);
 
   document.addEventListener("click", e => {
     const picker = el("emojiPicker");

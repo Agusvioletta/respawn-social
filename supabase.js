@@ -227,21 +227,33 @@ async function sbSendMessage(fromId, toId, content) {
   const { data, error } = await sb.from('messages')
     .insert({ from_id: fromId, to_id: toId, content }).select().single();
   if (error) throw error;
+  // Broadcast al canal para que el receptor lo reciba en tiempo real
+  const key = [fromId, toId].sort().join('_');
+  try {
+    await sb.channel(`dm_${key}_broadcast`).send({
+      type: 'broadcast', event: 'new_message', payload: data
+    });
+  } catch(e) {} // ignorar si el canal no existe
   return data;
 }
 
 function sbSubscribeMessages(userId, otherUserId, callback) {
   const key = [userId, otherUserId].sort().join('_');
-  return sb.channel(`dm_${key}`)
+  // Usar broadcast channel — no requiere replication habilitada
+  const channel = sb.channel(`dm_${key}_${Date.now()}`)
+    .on('broadcast', { event: 'new_message' }, payload => {
+      if (payload.payload?.to_id === userId) callback(payload.payload);
+    })
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'messages',
       filter: `to_id=eq.${userId}`
     }, payload => callback(payload.new))
     .subscribe();
+  return channel;
 }
 
 function sbUnsubscribe(channel) {
-  sb.removeChannel(channel);
+  if (channel) sb.removeChannel(channel);
 }
 
 // ─────────────────────────────────────────
