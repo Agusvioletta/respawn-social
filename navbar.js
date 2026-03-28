@@ -153,76 +153,175 @@
     if (pill && txt) { txt.textContent = nowPlaying.game; pill.style.display = 'flex'; }
   }
 
-  // Notificaciones — sistema con IDs estables y persistencia real
-  function gnBuildNotifs() {
-    const allPosts = JSON.parse(localStorage.getItem('posts')) || [];
-    const allUsers = JSON.parse(localStorage.getItem('users')) || [];
-    const me       = allUsers.find(u => u.username === currentUser.username) || currentUser;
-    const notifs   = [];
-
-    allPosts.filter(p => p.user === currentUser.username).forEach(post => {
-      (post.likes||[]).forEach(l => {
-        if (l !== currentUser.username)
-          notifs.push({ type:'like', from:l, text:`le dio ♥ a tu post`, id:`like_${post.id}_${l}`, ts: post.id });
-      });
-      (post.comments||[]).forEach(c => {
-        if (c.user !== currentUser.username)
-          notifs.push({ type:'comment', from:c.user, text:`comentó en tu post`, id:`cmt_${c.id}`, ts: c.id });
-      });
-    });
-    // Followers — ID estable: siempre el mismo por seguidor, se marca visto una vez
-    (me.followers||[]).forEach(f =>
-      notifs.push({ type:'follow', from:f, text:'empezó a seguirte', id:`follow_${f}`, ts: 0 })
-    );
-
-    return notifs.sort((a,b) => b.ts - a.ts).slice(0, 20);
+  // ─── NOTIFICACIONES — Supabase ───────────────────────────────
+  // Sonido de notificación (Web Audio API — sin archivos externos)
+  function gnPlaySound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
   }
 
+  // Obtener prefs de notificaciones
+  function gnGetPrefs() {
+    return JSON.parse(localStorage.getItem('notifPrefs') || '{}');
+  }
+
+  // IDs ya vistos (persistidos en localStorage)
   function gnGetSeenIds() {
     try { return new Set(JSON.parse(localStorage.getItem('notifs_seen_' + currentUser.username) || '[]')); }
     catch { return new Set(); }
   }
-
-  function gnMarkAllSeen() {
-    const all  = gnBuildNotifs();
-    const seen = gnGetSeenIds();
-    all.forEach(n => seen.add(n.id));
-    localStorage.setItem('notifs_seen_' + currentUser.username, JSON.stringify([...seen]));
+  function gnSaveSeenIds(set) {
+    localStorage.setItem('notifs_seen_' + currentUser.username, JSON.stringify([...set]));
   }
 
-  // Mostrar dot solo si hay notifs con IDs no vistos
-  const _allNotifs = gnBuildNotifs();
-  const _seenIds   = gnGetSeenIds();
-  const _hasNew    = _allNotifs.some(n => !_seenIds.has(n.id));
-  const dot = document.getElementById('gnNotifDot');
-  if (dot) dot.style.display = _hasNew ? 'block' : 'none';
+  // IDs eliminados (limpiar bandeja)
+  function gnGetClearedIds() {
+    try { return new Set(JSON.parse(localStorage.getItem('notifs_cleared_' + currentUser.username) || '[]')); }
+    catch { return new Set(); }
+  }
+  function gnSaveClearedIds(set) {
+    localStorage.setItem('notifs_cleared_' + currentUser.username, JSON.stringify([...set]));
+  }
 
-  window.gnToggleNotifs = function() {
+  // Construir notificaciones desde Supabase
+  async function gnFetchNotifs() {
+    const prefs   = gnGetPrefs();
+    const cleared = gnGetClearedIds();
+    const notifs  = [];
+
+    try {
+      // Likes en mis posts
+      if (prefs.like !== false) {
+        const { data: myPosts } = await sb.from('posts')
+          .select('id, content, likes(user_id, profiles(username))')
+          .eq('user_id', currentUser.id);
+        myPosts?.forEach(post => {
+          post.likes?.forEach(l => {
+            if (l.user_id !== currentUser.id) {
+              const id = `like_${post.id}_${l.user_id}`;
+              if (!cleared.has(id)) notifs.push({
+                type:'like', from: l.profiles?.username || '?',
+                text: `le dio ♥ a tu post: "${post.content.slice(0,24)}..."`,
+                id, ts: post.id
+              });
+            }
+          });
+        });
+      }
+
+      // Comentarios en mis posts
+      if (prefs.comment !== false) {
+        const { data: myCmts } = await sb.from('comments')
+          .select('id, user_id, username, content, created_at, posts!inner(user_id)')
+          .eq('posts.user_id', currentUser.id)
+          .neq('user_id', currentUser.id);
+        myCmts?.forEach(c => {
+          const id = `cmt_${c.id}`;
+          if (!cleared.has(id)) notifs.push({
+            type:'comment', from: c.username,
+            text: `comentó: "${c.content.slice(0,28)}"`,
+            id, ts: new Date(c.created_at).getTime()
+          });
+        });
+      }
+
+      // Nuevos seguidores
+      if (prefs.follow !== false) {
+        const { data: followers } = await sb.from('follows')
+          .select('follower_id, created_at, profiles!follows_follower_id_fkey(username)')
+          .eq('following_id', currentUser.id);
+        followers?.forEach(f => {
+          const id = `follow_${f.follower_id}`;
+          if (!cleared.has(id)) notifs.push({
+            type:'follow', from: f.profiles?.username || '?',
+            text: 'empezó a seguirte',
+            id, ts: new Date(f.created_at).getTime()
+          });
+        });
+      }
+
+      // Mensajes recibidos
+      if (prefs.message !== false) {
+        const { data: msgs } = await sb.from('messages')
+          .select('id, from_id, content, created_at, profiles!messages_from_id_fkey(username)')
+          .eq('to_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        msgs?.forEach(m => {
+          const id = `msg_${m.id}`;
+          if (!cleared.has(id)) notifs.push({
+            type:'message', from: m.profiles?.username || '?',
+            text: `te envió un mensaje: "${m.content.slice(0,28)}"`,
+            id, ts: new Date(m.created_at).getTime()
+          });
+        });
+      }
+
+    } catch(e) { console.log('gnFetchNotifs error:', e); }
+
+    return notifs.sort((a,b) => b.ts - a.ts).slice(0, 30);
+  }
+
+  // Verificar si hay nuevas y actualizar el dot
+  async function gnCheckNew() {
+    const notifs = await gnFetchNotifs();
+    const seen   = gnGetSeenIds();
+    const hasNew = notifs.some(n => !seen.has(n.id));
+    const dot    = document.getElementById('gnNotifDot');
+    if (dot) dot.style.display = hasNew ? 'block' : 'none';
+    // Sonido si hay nuevas
+    if (hasNew) {
+      const prefs = gnGetPrefs();
+      if (prefs.sound) gnPlaySound();
+    }
+    return notifs;
+  }
+
+  // Chequear al cargar
+  gnCheckNew();
+
+  // Chequear cada 30 segundos en background
+  setInterval(gnCheckNew, 30000);
+
+  window.gnToggleNotifs = async function() {
     const panel = document.getElementById('gnNotifPanel');
     const open  = panel.style.display !== 'none';
     panel.style.display = open ? 'none' : 'block';
     if (!open) {
-      const notifs = gnBuildNotifs();
-      const seen   = gnGetSeenIds();
+      const list = document.getElementById('gnNotifList');
+      list.innerHTML = `<div style="padding:24px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">Cargando...</div>`;
 
-      // Marcar todas como vistas inmediatamente al abrir
-      gnMarkAllSeen();
-      const dotEl = document.getElementById('gnNotifDot');
-      if (dotEl) dotEl.style.display = 'none';
+      const notifs  = await gnFetchNotifs();
+      const seen    = gnGetSeenIds();
+      const cleared = gnGetClearedIds();
 
-      const list   = document.getElementById('gnNotifList');
-      const colors = { like:'var(--pink)', comment:'var(--purple)', follow:'var(--cyan)' };
-      const icons  = { like:'♥', comment:'💬', follow:'👤' };
+      // Marcar todas como vistas
+      notifs.forEach(n => seen.add(n.id));
+      gnSaveSeenIds(seen);
+      const dot = document.getElementById('gnNotifDot');
+      if (dot) dot.style.display = 'none';
+
+      const colors = { like:'var(--pink)', comment:'var(--purple)', follow:'var(--cyan)', message:'var(--green, #4ade80)' };
+      const icons  = { like:'♥', comment:'💬', follow:'👤', message:'✉' };
 
       list.innerHTML = notifs.length
         ? notifs.map(n => {
             const isNew = !seen.has(n.id);
-            return `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-subtle);cursor:default;${isNew?'background:rgba(0,255,247,0.04);':''}" onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'">
-              <span style="color:${colors[n.type]};font-size:14px;margin-top:2px;">${icons[n.type]}</span>
-              <div style="flex:1;">
-                <span style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${colors[n.type]};">@${n.from}</span>
+            return `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-subtle);${isNew?'background:rgba(0,255,247,0.04);':''}" onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='${isNew?'rgba(0,255,247,0.04)':'transparent'}'">
+              <span style="color:${colors[n.type]||'var(--cyan)'};font-size:14px;margin-top:2px;flex-shrink:0;">${icons[n.type]||'🔔'}</span>
+              <div style="flex:1;min-width:0;">
+                <span style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${colors[n.type]||'var(--cyan)'};">@${n.from}</span>
                 <span style="font-family:var(--font-body);font-size:13px;color:var(--text-secondary);margin-left:5px;">${n.text}</span>
-                ${isNew ? '<span style="font-family:var(--font-display);font-size:8px;color:var(--cyan);margin-left:6px;border:1px solid var(--cyan);border-radius:4px;padding:1px 5px;">NUEVO</span>' : ''}
               </div>
             </div>`;
           }).join('')
@@ -230,8 +329,18 @@
     }
   };
 
-  window.gnClearNotifs = function() {
-    gnMarkAllSeen();
+  window.gnClearNotifs = async function() {
+    // Guardar todos los IDs actuales como "eliminados" — no van a volver a aparecer
+    const notifs  = await gnFetchNotifs();
+    const cleared = gnGetClearedIds();
+    notifs.forEach(n => cleared.add(n.id));
+    gnSaveClearedIds(cleared);
+
+    // También marcarlos como vistos
+    const seen = gnGetSeenIds();
+    notifs.forEach(n => seen.add(n.id));
+    gnSaveSeenIds(seen);
+
     const list = document.getElementById('gnNotifList');
     if (list) list.innerHTML = `<div style="padding:32px 16px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);">🔔 Sin notificaciones</div>`;
     const d = document.getElementById('gnNotifDot');

@@ -402,20 +402,19 @@
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Nuevo seguidor</div><div class="setting-row-desc">Cuando alguien empieza a seguirte.</div></div><label class="toggle-wrap"><input type="checkbox" id="nFollow" checked><div class="toggle-track"></div></label></div>
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Like en tu post</div><div class="setting-row-desc">Cuando le dan ♥ a lo que publicás.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLike" checked><div class="toggle-track"></div></label></div>
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Comentarios</div><div class="setting-row-desc">Cuando alguien comenta tus posts.</div></div><label class="toggle-wrap"><input type="checkbox" id="nComment" checked><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Mensajes directos</div><div class="setting-row-desc">Cuando recibís un DM nuevo.</div></div><label class="toggle-wrap"><input type="checkbox" id="nMessage" checked><div class="toggle-track"></div></label></div>
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Menciones</div><div class="setting-row-desc">Cuando te mencionan con @.</div></div><label class="toggle-wrap"><input type="checkbox" id="nMention" checked><div class="toggle-track"></div></label></div>
           </div>
           <div class="setting-group">
             <div class="setting-group-title">Gaming</div>
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Logros desbloqueados</div><div class="setting-row-desc">Cuando conseguís un nuevo logro.</div></div><label class="toggle-wrap"><input type="checkbox" id="nAch" checked><div class="toggle-track"></div></label></div>
-            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Invitaciones a grupos (LFG)</div><div class="setting-row-desc">Cuando te invitan a jugar.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLFG" checked><div class="toggle-track"></div></label></div>
             <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Nuevo nivel desbloqueado</div><div class="setting-row-desc">Cuando subís de nivel en el arcade.</div></div><label class="toggle-wrap"><input type="checkbox" id="nLevel" checked><div class="toggle-track"></div></label></div>
           </div>
           <div class="setting-group">
             <div class="setting-group-title">Sistema</div>
-            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Actualizaciones de Respawn</div><div class="setting-row-desc">Nuevas funciones y novedades.</div></div><label class="toggle-wrap"><input type="checkbox" id="nUpdates"><div class="toggle-track"></div></label></div>
-            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Sonidos</div><div class="setting-row-desc">Reproducir sonido en notificaciones.</div></div><label class="toggle-wrap"><input type="checkbox" id="nSounds"><div class="toggle-track"></div></label></div>
+            <div class="setting-row"><div class="setting-row-left"><div class="setting-row-label">Sonido en notificaciones</div><div class="setting-row-desc">Reproducir un tono cuando llegue una notificación.</div></div><label class="toggle-wrap"><input type="checkbox" id="nSounds"><div class="toggle-track"></div></label></div>
           </div>
-          <button class="btn btn-setting" onclick="showToast('Preferencias de notificaciones guardadas.')">GUARDAR</button>
+          <button class="btn btn-setting" onclick="saveNotifPrefs()">GUARDAR PREFERENCIAS</button>
         </div>
       </div>
 

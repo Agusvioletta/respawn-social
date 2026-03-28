@@ -190,6 +190,7 @@ async function init() {
         <div id="faqAnswer${i}" style="display:none;padding:0 0 14px;font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);line-height:1.6;">${f.a}</div>
       </div>`).join("");
   }
+  loadNotifPrefs();
   initAppearancePrefs();
 }
 
@@ -358,7 +359,35 @@ function initAppearancePrefs() {
 }
 
 // ─────────────────────────────────────────
-// FAQ
+// NOTIFICACIONES — guardar/cargar prefs
+// ─────────────────────────────────────────
+function saveNotifPrefs() {
+  const prefs = {
+    follow:  el("nFollow")?.checked  ?? true,
+    like:    el("nLike")?.checked    ?? true,
+    comment: el("nComment")?.checked ?? true,
+    message: el("nMessage")?.checked ?? true,
+    mention: el("nMention")?.checked ?? true,
+    ach:     el("nAch")?.checked     ?? true,
+    level:   el("nLevel")?.checked   ?? true,
+    sound:   el("nSounds")?.checked  ?? false,
+  };
+  localStorage.setItem("notifPrefs", JSON.stringify(prefs));
+  showToast("✓ Preferencias de notificaciones guardadas.");
+}
+
+function loadNotifPrefs() {
+  const prefs = JSON.parse(localStorage.getItem("notifPrefs") || "{}");
+  const set = (id, val, def) => { const e = el(id); if (e) e.checked = val ?? def; };
+  set("nFollow",  prefs.follow,  true);
+  set("nLike",    prefs.like,    true);
+  set("nComment", prefs.comment, true);
+  set("nMessage", prefs.message, true);
+  set("nMention", prefs.mention, true);
+  set("nAch",     prefs.ach,     true);
+  set("nLevel",   prefs.level,   true);
+  set("nSounds",  prefs.sound,   false);
+}
 // ─────────────────────────────────────────
 function toggleFaq(i) {
   const answer = el("faqAnswer"+i);
