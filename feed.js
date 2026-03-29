@@ -64,19 +64,46 @@ async function init() {
     .subscribe();
 }
 
+// ── IMAGEN ─────────────────────────────────────────
+let selectedImageFile = null;
+
+window.previewImage = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    el("imagePreviewImg").src = e.target.result;
+    el("imagePreview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeImage = function() {
+  selectedImageFile = null;
+  el("imagePreview").style.display = "none";
+  el("imagePreviewImg").src = "";
+  el("imageInput").value = "";
+};
+
 // ── CREAR POST ─────────────────────────────────────
 el("postBtn").addEventListener("click", async () => {
   const content = el("postContent").value.trim();
-  if (!content) return;
+  if (!content && !selectedImageFile) return;
   const btn = el("postBtn");
   btn.textContent = "..."; btn.disabled = true;
   try {
-    await sbCreatePost(currentUser.id, currentUser.username, currentUser.avatar, content);
+    let imageUrl = null;
+    if (selectedImageFile) {
+      imageUrl = await sbUploadImage(selectedImageFile, currentUser.id);
+    }
+    await sbCreatePost(currentUser.id, currentUser.username, currentUser.avatar, content, imageUrl);
     el("postContent").value = "";
     el("charCounter").textContent = "0 / 280";
     el("charCounter").className   = "char-counter";
+    window.removeImage();
     await renderPosts();
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error(e); alert("Error al publicar: " + e.message); }
   btn.textContent = "PUBLICAR"; btn.disabled = false;
 });
 
@@ -204,7 +231,6 @@ function updatePostDOM(postId) {
 
 // ── BUILD POST HTML ────────────────────────────────
 function buildPostHTML(post, followingIds) {
-  // Adaptar estructura de Supabase al formato que usaba el código viejo
   const likes      = post.likes    || [];
   const comments   = post.comments || [];
   const likeIds    = likes.map(l => l.user_id);
@@ -215,7 +241,7 @@ function buildPostHTML(post, followingIds) {
   const isFollowing = followingIds.includes(post.user_id);
 
   // Game tag
-  const contentLow = post.content.toLowerCase();
+  const contentLow = (post.content||"").toLowerCase();
   let gameTag = "";
   for (const [game, icon] of Object.entries(GAME_ICONS)) {
     if (game !== "default" && contentLow.includes(game)) {
@@ -223,62 +249,47 @@ function buildPostHTML(post, followingIds) {
       break;
     }
   }
-  if (!gameTag) {
-    const author = allProfiles.find(u => u.id === post.user_id);
-    if (author && (author.games||[]).length) {
-      const g = author.games[0];
-      gameTag = `<span class="post-game-tag">${GAME_ICONS[g.toLowerCase()]||"🎮"} ${g}</span>`;
-    }
-  }
 
-  // Acción header
+  // Header action
   let headerAction = isOwn
-    ? `<button class="delete-post-btn" onclick="deletePost(${post.id})">Borrar</button>`
+    ? `<button class="delete-post-btn" onclick="event.stopPropagation();deletePost(${post.id})">Borrar</button>`
     : isFollowing
-      ? `<button class="btn-unfollow-sm" data-follow-username="${post.username}" onclick="toggleFollow('${post.username}')">Siguiendo</button>`
-      : `<button class="btn btn-follow-sm" data-follow-username="${post.username}" onclick="toggleFollow('${post.username}')">Seguir</button>`;
-
-  // Comentarios
-  const commentsHTML = comments.map(c => {
-    const isAuthComment = c.user_id === currentUser.id;
-    return `<div class="comment">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:14px;line-height:1.5;">
-          <span style="font-family:var(--font-display);font-size:11px;color:var(--purple);letter-spacing:0.5px;">@${esc(c.username)}</span>
-          <span style="color:var(--text-primary);margin-left:6px;">${esc(c.content)}</span>
-        </div>
-        ${isAuthComment ? `<button class="delete-comment-btn" onclick="deleteComment(${c.id}, ${post.id})">✕</button>` : ""}
-      </div>
-    </div>`;
-  }).join("");
+      ? `<button class="btn-unfollow-sm" data-follow-username="${esc(post.username)}" onclick="event.stopPropagation();toggleFollow('${esc(post.username)}')">Siguiendo</button>`
+      : `<button class="btn btn-follow-sm" data-follow-username="${esc(post.username)}" onclick="event.stopPropagation();toggleFollow('${esc(post.username)}')">Seguir</button>`;
 
   const date = new Date(post.created_at).toLocaleString("es-AR");
 
-  return `<div class="post" data-post-id="${post.id}">
+  // Imagen si existe
+  const imageHTML = post.image_url
+    ? `<img src="${post.image_url}" class="post-image" alt="imagen" onclick="event.stopPropagation();window.open('${post.image_url}','_blank')">`
+    : "";
+
+  return `<div class="post" data-post-id="${post.id}" onclick="openPost(${post.id})" style="cursor:pointer;">
     <div class="post-header">
       <div class="post-author">
-        <img src="${post.avatar||'avatar1.png'}" alt="" class="post-av">
+        <img src="${post.avatar||'avatar1.png'}" alt="" class="post-av" onclick="event.stopPropagation();window.location.href='profile.html?user=${esc(post.username)}'">
         <div class="post-author-info">
-          <span class="post-author-name" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(post.username)}'">@${esc(post.username)}${gameTag}</span>
+          <span class="post-author-name" onclick="event.stopPropagation();window.location.href='profile.html?user=${esc(post.username)}'">@${esc(post.username)}${gameTag}</span>
           <span class="post-date">${date}</span>
         </div>
       </div>
       ${headerAction}
     </div>
-    <p>${formatContent(post.content)}</p>
+    ${post.content ? `<p class="post-content-text">${formatContent(post.content)}</p>` : ""}
+    ${imageHTML}
     <div class="post-footer">
       <div class="post-actions">
-        <button class="like-btn ${isLiked?"voted":""}" onclick="handlePostLike(${post.id})">♥ ${likeCount}</button>
+        <button class="like-btn ${isLiked?"voted":""}" onclick="event.stopPropagation();handlePostLike(${post.id})">♥ ${likeCount}</button>
+        <button class="view-thread-btn" onclick="event.stopPropagation();openPost(${post.id})">💬 ${cmtCount} comentario${cmtCount!==1?"s":""}</button>
       </div>
-      <span>${cmtCount} comentario${cmtCount!==1?"s":""}</span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Click para ver →</span>
     </div>
-    <div class="comment-form">
-      <input type="text" id="commentInput-${post.id}" data-post-id="${post.id}" class="comment-input" placeholder="Comentar...">
-      <button class="comment-btn" onclick="handleComment(${post.id})">›</button>
-    </div>
-    ${commentsHTML ? `<div class="comments-section"><div class="comments-list">${commentsHTML}</div></div>` : ""}
   </div>`;
 }
+
+window.openPost = function(postId) {
+  window.location.href = `post.html?id=${postId}`;
+};
 
 // ── RENDER POSTS ───────────────────────────────────
 async function renderPosts() {

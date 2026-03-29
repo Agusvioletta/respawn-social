@@ -117,6 +117,20 @@ async function sbUpdateMaxLevel(userId, level) {
 }
 
 // ─────────────────────────────────────────
+// STORAGE — subir imágenes
+// ─────────────────────────────────────────
+async function sbUploadImage(file, userId) {
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const name = `${userId}_${Date.now()}.${ext}`;
+  const { data, error } = await sb.storage
+    .from('post-images')
+    .upload(name, file, { cacheControl: '3600', upsert: false });
+  if (error) throw error;
+  const { data: urlData } = sb.storage.from('post-images').getPublicUrl(name);
+  return urlData.publicUrl;
+}
+
+// ─────────────────────────────────────────
 // POSTS
 // ─────────────────────────────────────────
 
@@ -129,9 +143,9 @@ async function sbGetPosts() {
   return data || [];
 }
 
-async function sbCreatePost(userId, username, avatar, content) {
+async function sbCreatePost(userId, username, avatar, content, imageUrl = null) {
   const { data, error } = await sb.from('posts')
-    .insert({ user_id: userId, username, avatar, content }).select().single();
+    .insert({ user_id: userId, username, avatar, content, image_url: imageUrl }).select().single();
   if (error) throw error;
   return data;
 }
@@ -161,9 +175,9 @@ async function sbToggleLike(postId, userId) {
 // COMENTARIOS
 // ─────────────────────────────────────────
 
-async function sbAddComment(postId, userId, username, avatar, content) {
+async function sbAddComment(postId, userId, username, avatar, content, parentId = null, imageUrl = null) {
   const { data, error } = await sb.from('comments')
-    .insert({ post_id: postId, user_id: userId, username, avatar, content })
+    .insert({ post_id: postId, user_id: userId, username, avatar, content, parent_id: parentId, image_url: imageUrl })
     .select().single();
   if (error) throw error;
   return data;
