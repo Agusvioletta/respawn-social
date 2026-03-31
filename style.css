@@ -1060,3 +1060,139 @@ body.light-mode .logo { text-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,180,2
   .xp-milestones { grid-template-columns: repeat(4, 1fr); }
   .hero-title { font-size: 24px; }
 }
+
+/* ============================================
+   MOBILE RESPONSIVE — v3
+   ============================================ */
+
+/* ── Navbar mobile ── */
+@media (max-width: 600px) {
+  /* Navbar */
+  .navbar, #globalNav nav, [id="globalNav"] nav {
+    padding: 0 12px !important;
+    height: 52px !important;
+  }
+  .gn-nav-links { display: none !important; }
+  .navbar-brand { font-size: 14px !important; letter-spacing: 2px !important; }
+
+  /* Feed layout */
+  .feed-layout-wrapper { padding: 12px 8px !important; gap: 12px !important; }
+  #sidebar { display: none !important; }
+  #mainContent { padding: 0 !important; }
+  .post-composer { border-radius: 12px !important; padding: 12px !important; }
+  .post { border-radius: 12px !important; padding: 14px !important; }
+  .post-main-content { font-size: 15px !important; }
+
+  /* Profile */
+  .profile-banner { height: 100px !important; }
+  .profile-stats { gap: 12px !important; }
+  .stat-val { font-size: 20px !important; }
+  .profile-page { padding: 8px !important; }
+  .two-cols { grid-template-columns: 1fr !important; }
+
+  /* Settings */
+  .settings-layout { flex-direction: column !important; }
+  .settings-nav { width: 100% !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; padding: 8px !important; }
+  .settings-nav-item { padding: 8px 10px !important; font-size: 10px !important; }
+  .nav-item-icon { font-size: 14px !important; }
+
+  /* Messages */
+  .messages-layout { flex-direction: column !important; }
+  .conv-sidebar { width: 100% !important; max-height: 200px !important; }
+
+  /* Tournaments */
+  .tournaments-grid { grid-template-columns: 1fr !important; }
+  .hero-title { font-size: 22px !important; }
+  .hero-sub { font-size: 12px !important; }
+
+  /* Post view */
+  .post-view-wrap { padding: 12px 8px !important; }
+  .post-main { padding: 14px !important; }
+  .post-main-content { font-size: 15px !important; }
+}
+
+/* ── Juegos arcade — canvas responsive ── */
+.game-wrapper { touch-action: none; }
+.canvas-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+canvas {
+  max-width: 100%;
+  height: auto !important;
+  display: block;
+}
+
+/* ── Controles táctiles (joystick + botones) ── */
+.touch-controls {
+  display: none; /* Solo visible en móvil */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 160px;
+  background: rgba(7,7,15,0.85);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 200;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .touch-controls { display: flex; align-items: center; justify-content: space-between; }
+  /* Dar espacio al canvas para no quedar tapado */
+  .game-wrapper { padding-bottom: 180px !important; }
+}
+
+/* ── Joystick izquierdo (D-pad) ── */
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 4px;
+}
+.dpad-btn {
+  width: 52px; height: 52px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+.dpad-btn:active { background: rgba(0,255,247,0.2); border-color: var(--cyan); }
+.dpad-empty { width: 52px; height: 52px; }
+
+/* ── Botones de acción derechos ── */
+.action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+.action-btn {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.action-btn:active { transform: scale(0.93); }
+.action-btn-a {
+  background: var(--cyan);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(0,255,247,0.3);
+}
+.action-btn-b {
+  background: var(--pink);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255,79,123,0.3);
+  width: 52px; height: 52px;
+}

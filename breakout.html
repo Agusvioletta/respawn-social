@@ -23,7 +23,12 @@
     #breakout-board { border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: 0 0 32px var(--purple-glow), 0 0 0 1px var(--border-subtle); display: block; }
     .game-overlay { position: absolute; inset: 0; background: rgba(7,7,15,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; border-radius: var(--radius-md); }
     .game-controls { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: center; }
-  </style>
+    @media (max-width: 600px) {
+    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
+    canvas { width: 100% !important; height: auto !important; border-radius: 8px; }
+    .game-hud { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  }
+</style>
 </head>
 <body>
   <nav class="navbar">
@@ -59,5 +64,6 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js?v=3"></script>
   <script src="breakout.js"></script>
+  <script src="touch-controls.js"></script>
 </body>
 </html>

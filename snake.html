@@ -48,7 +48,12 @@
     .overlay-sub { font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); }
 
     .canvas-wrap { position: relative; }
-  </style>
+    @media (max-width: 600px) {
+    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
+    canvas { width: 100% !important; height: auto !important; border-radius: 8px; }
+    .game-hud { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  }
+</style>
 </head>
 <body>
   <nav class="navbar">
@@ -90,5 +95,6 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js?v=3"></script>
   <script src="snake.js"></script>
+  <script src="touch-controls.js"></script>
 </body>
 </html>

@@ -74,7 +74,11 @@
       border-radius: 4px; padding: 2px 6px;
       font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
     }
-  </style>
+    @media (max-width: 600px) {
+    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
+    #game-map { width: 100% !important; height: auto !important; }
+  }
+</style>
 </head>
 <body>
 
@@ -103,5 +107,6 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js?v=3"></script>
   <script src="gamemap.js"></script>
+  <script src="touch-controls.js"></script>
 </body>
 </html>
