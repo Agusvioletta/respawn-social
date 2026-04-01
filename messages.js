@@ -125,7 +125,12 @@ async function openConv(userId) {
   const canSend = myPrivPrefs.whoDM === "none" ? false : true;
 
   const panel = el("chatPanel");
+  // En móvil: mostrar chat y ocultar lista
+  const messagesPage = document.querySelector('.messages-page');
+  if (messagesPage) messagesPage.classList.add('chat-open');
+
   panel.innerHTML = `
+    <button class="mobile-back-btn" onclick="mobileBackToList()">← Volver</button>
     <div class="chat-header">
       <img src="${user.avatar||'avatar1.png'}" class="chat-header-av" alt="" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(user.username)}'">
       <div class="chat-header-info" style="cursor:pointer;" onclick="window.location.href='profile.html?user=${esc(user.username)}'">
@@ -333,5 +338,13 @@ function startNewConv(userId) {
 }
 
 function filterConvs(val) { renderConvList(val); }
+
+function mobileBackToList() {
+  const messagesPage = document.querySelector('.messages-page');
+  if (messagesPage) messagesPage.classList.remove('chat-open');
+  activeConvId = null;
+  if (realtimeCh) { sbUnsubscribe(realtimeCh); realtimeCh = null; }
+  if (window._msgPollInterval) { clearInterval(window._msgPollInterval); window._msgPollInterval = null; }
+}
 
 init();

@@ -75,9 +75,11 @@
       font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
     }
     @media (max-width: 600px) {
-    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
-    #game-map { width: 100% !important; height: auto !important; }
-  }
+      .map-wrapper { margin: 12px auto; padding: 0 8px 170px; }
+      #game-map { width: 100% !important; height: auto !important; }
+      .map-title { font-size: 11px; }
+      #map-instructions { font-size: 11px; padding: 8px 12px; }
+    }
 </style>
 </head>
 <body>
@@ -87,7 +89,7 @@
     <a href="feed.html" class="btn-back">← Volver al feed</a>
   </nav>
 
-  <div class="map-wrapper">
+  <div class="map-wrapper game-wrapper">
     <div class="map-title">🗺 Mapa de Aventura</div>
 
     <canvas id="game-map" width="920" height="380"></canvas>
