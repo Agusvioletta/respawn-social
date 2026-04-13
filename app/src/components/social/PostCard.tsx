@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { detectGameTag } from '@/lib/utils/xp'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 interface PostCardProps {
@@ -104,16 +105,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Link href={`/profile/${post.username}`} onClick={(e) => e.stopPropagation()}>
-            <div style={{
-              width: '38px', height: '38px',
-              borderRadius: '50%',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', cursor: 'pointer', flexShrink: 0,
-            }}>
-              {post.avatar === 'avatar1.png' ? '🧑‍💻' : '👾'}
-            </div>
+            <UserAvatar avatar={post.avatar} username={post.username} size={38} />
           </Link>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
