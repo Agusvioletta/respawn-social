@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 
 const NAV_ITEMS = [
   { href: '/feed',        icon: '🏠', label: 'Feed' },
@@ -107,18 +108,7 @@ export function Navbar() {
                 borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
               }}>
-                <div style={{
-                  width: '36px', height: '36px',
-                  borderRadius: '50%',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--cyan-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                }}>
-                  {user.avatar === 'avatar1.png' ? '🧑‍💻' : '👾'}
-                </div>
+                <UserAvatar avatar={user.avatar} username={user.username} size={36} />
                 <div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>
                     {user.username}

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 const MAX_CHARS = 280
@@ -104,15 +105,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
     }}>
       <div style={{ display: 'flex', gap: '12px' }}>
         {/* Avatar */}
-        <div style={{
-          width: '38px', height: '38px', flexShrink: 0,
-          borderRadius: '50%', background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '18px',
-        }}>
-          {user.avatar === 'avatar1.png' ? '🧑‍💻' : '👾'}
-        </div>
+        <UserAvatar avatar={user.avatar} username={user.username} size={38} />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {/* Textarea */}
