@@ -91,6 +91,7 @@ export default function TournamentsPage() {
 
   async function handleCreate() {
     setFormError('')
+    if (!user) { setFormError('Tu sesión no está cargada. Recargá la página.'); return }
     if (!form.name.trim()) { setFormError('Ingresá un nombre.'); return }
     if (!form.game) { setFormError('Seleccioná un juego.'); return }
     if (!form.date) { setFormError('Seleccioná una fecha.'); return }
