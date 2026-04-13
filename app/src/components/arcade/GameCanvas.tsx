@@ -6,6 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import type { GameDef } from '@/lib/games/types'
 
+// Puntos mínimos para desbloquear el siguiente nivel en cada juego
+const WIN_THRESHOLDS: Record<string, number> = {
+  snake: 100, pong: 100, breakout: 200, asteroids: 500,
+  flappy: 100, tetris: 300, dino: 200, spaceinvaders: 300,
+}
+
 export type GameState = 'idle' | 'playing' | 'gameover'
 
 export interface GameEngine {
@@ -22,6 +28,7 @@ interface GameCanvasProps {
 
 export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanvasProps) {
   const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
   const supabase = createClient()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -57,34 +64,40 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
     if (!user) return
 
     setSaving(true)
+
+    // 1. Guardar score (independiente del level unlock)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from('game_scores')
         .insert({ user_id: user.id, game_id: game.id, score: s })
+      if (bestScore === null || s > bestScore) setBestScore(s)
+    } catch (e) {
+      console.error('Error guardando score:', e)
+    }
 
-      if (bestScore === null || s > bestScore) {
-        setBestScore(s)
-      }
-
-      // Unlock next level if score threshold met (100+ points = next level)
-      if (s >= 100 && user.max_level < 8) {
-        const currentLevel = user.max_level
-        const gameMinLevel = game.minLevel
-        if (gameMinLevel >= currentLevel) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from('profiles')
-            .update({ max_level: currentLevel + 1 })
-            .eq('id', user.id)
+    // 2. Desbloquear siguiente nivel si corresponde (try independiente)
+    try {
+      const threshold = WIN_THRESHOLDS[game.id] ?? 100
+      const shouldUnlock = s >= threshold && game.minLevel <= user.max_level && user.max_level < 8
+      if (shouldUnlock) {
+        const newLevel = user.max_level + 1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any)
+          .from('profiles')
+          .update({ max_level: newLevel })
+          .eq('id', user.id)
+        if (!error) {
+          // Actualizar el store para que se refleje sin recargar
+          setUser({ ...user, max_level: newLevel })
         }
       }
     } catch (e) {
-      console.error('Error saving score:', e)
-    } finally {
-      setSaving(false)
+      console.error('Error desbloqueando nivel:', e)
     }
-  }, [user, game.id, game.minLevel, bestScore, supabase])
+
+    setSaving(false)
+  }, [user, game.id, game.minLevel, bestScore, supabase, setUser])
 
   function startGame() {
     if (!canvasRef.current) return
