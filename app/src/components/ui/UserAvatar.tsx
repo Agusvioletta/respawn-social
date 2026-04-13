@@ -7,9 +7,12 @@ interface UserAvatarProps {
 }
 
 export function UserAvatar({ avatar, username, size = 38 }: UserAvatarProps) {
-  const src = avatar === 'avatar1.png' || avatar === 'avatar2.png'
-    ? `/${avatar}`
-    : avatar || '/avatar1.png'
+  // Soporta: URL completa (storage), '/avatar1.png', 'avatar1.png', null
+  const src = !avatar
+    ? '/avatar1.png'
+    : avatar.startsWith('http') || avatar.startsWith('/')
+      ? avatar
+      : `/${avatar}`
 
   return (
     <Image

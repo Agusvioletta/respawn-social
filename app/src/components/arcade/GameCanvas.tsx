@@ -79,7 +79,7 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
     // 2. Desbloquear siguiente nivel si corresponde (try independiente)
     try {
       const threshold = WIN_THRESHOLDS[game.id] ?? 100
-      const shouldUnlock = s >= threshold && game.minLevel <= user.max_level && user.max_level < 8
+      const shouldUnlock = s >= threshold && game.minLevel === user.max_level && user.max_level < 8
       if (shouldUnlock) {
         const newLevel = user.max_level + 1
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

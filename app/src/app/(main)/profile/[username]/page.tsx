@@ -101,14 +101,12 @@ export default function ProfilePage() {
     setFollowLoading(true)
     if (isFollowing) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', profile.id)
-      setIsFollowing(false)
-      setStats((s) => ({ ...s, followers: s.followers - 1 }))
+      const { error } = await (supabase as any).from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', profile.id)
+      if (!error) { setIsFollowing(false); setStats((s) => ({ ...s, followers: s.followers - 1 })) }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('follows').insert({ follower_id: currentUser.id, following_id: profile.id })
-      setIsFollowing(true)
-      setStats((s) => ({ ...s, followers: s.followers + 1 }))
+      const { error } = await (supabase as any).from('follows').insert({ follower_id: currentUser.id, following_id: profile.id })
+      if (!error) { setIsFollowing(true); setStats((s) => ({ ...s, followers: s.followers + 1 })) }
     }
     setFollowLoading(false)
   }

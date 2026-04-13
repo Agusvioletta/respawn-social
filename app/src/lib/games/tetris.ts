@@ -87,7 +87,7 @@ export const tetrisEngine: GameEngine = {
     }
 
     function draw() {
-      ctx.fillStyle = '#0A0A18'; ctx.fillRect(0, 0, canvas.width, H)
+      ctx.fillStyle = '#0A0A18'; ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 0.5
       for (let c = 0; c < COLS; c++) { ctx.beginPath(); ctx.moveTo(c * BLOCK, 0); ctx.lineTo(c * BLOCK, H); ctx.stroke() }
       for (let r = 0; r < ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * BLOCK); ctx.lineTo(canvas.width, r * BLOCK); ctx.stroke() }
