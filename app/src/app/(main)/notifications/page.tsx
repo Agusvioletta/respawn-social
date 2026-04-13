@@ -66,22 +66,24 @@ export default function NotificationsPage() {
 
     for (const like of (likes ?? [])) {
       if (!userPostIds.has(like.post_id)) continue
+      if (!like.profiles?.username) continue // perfil eliminado
       notifs.push({
         id: `like-${like.id}`,
         type: 'like',
-        actor_username: like.profiles?.username ?? '?',
+        actor_username: like.profiles.username,
         actor_avatar: like.profiles?.avatar ?? null,
         post_id: like.post_id,
-        created_at: new Date().toISOString(), // likes no tienen created_at
+        created_at: like.posts?.created_at ?? '2000-01-01T00:00:00Z', // likes sin fecha → al final
       })
     }
 
     for (const comment of (comments ?? [])) {
       if (!userPostIds.has(comment.post_id)) continue
+      if (!comment.profiles?.username) continue // perfil eliminado
       notifs.push({
         id: `comment-${comment.id}`,
         type: 'comment',
-        actor_username: comment.profiles?.username ?? '?',
+        actor_username: comment.profiles.username,
         actor_avatar: comment.profiles?.avatar ?? null,
         post_id: comment.post_id,
         content: comment.content?.slice(0, 60),
@@ -90,10 +92,11 @@ export default function NotificationsPage() {
     }
 
     for (const follow of (follows ?? [])) {
+      if (!follow.profiles?.username) continue // perfil eliminado
       notifs.push({
         id: `follow-${follow.follower_id}`,
         type: 'follow',
-        actor_username: follow.profiles?.username ?? '?',
+        actor_username: follow.profiles.username,
         actor_avatar: follow.profiles?.avatar ?? null,
         created_at: follow.created_at,
       })

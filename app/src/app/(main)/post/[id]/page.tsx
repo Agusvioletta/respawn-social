@@ -48,6 +48,7 @@ export default function PostPage() {
   const [submitting, setSubmitting] = useState(false)
 
   async function loadPost() {
+    if (!/^\d+$/.test(params.id as string)) { setLoading(false); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('posts')

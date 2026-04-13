@@ -102,6 +102,7 @@ export default function ChatPage() {
     if (!text || sending || !user) return
     setSending(true)
     setInput('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     // Optimistic
     const optimistic: Message = {
