@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Respawn Social — Login</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .auth-header { text-align: center; margin-bottom: 28px; }
+    .auth-header p {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .field-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+      text-align: left;
+    }
+    .field-group { width: 100%; display: flex; flex-direction: column; }
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+      letter-spacing: 2px;
+      margin-top: 0;
+      justify-content: center;
+    }
+    #loginError {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--pink);
+      text-align: center;
+      min-height: 16px;
+      width: 100%;
+    }
+    .auth-footer {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      width: 100%;
+    }
+    .auth-footer a { color: var(--cyan); font-weight: 600; }
+    .auth-footer a:hover { color: var(--purple); }
+    .section-divider { width: 100%; height: 1px; background: var(--border-subtle); }
+    .joystick-icon {
+      font-size: 36px;
+      text-align: center;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 0 10px rgba(0,255,247,0.6));
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">RESPAWN SOCIAL</div>
+
+  <div class="main-container">
+
+    <div class="auth-header">
+      <div class="joystick-icon">🕹️</div>
+      <div class="subtitle" style="margin-bottom: 4px;">Iniciar sesión</div>
+      <p>Bienvenido de vuelta, jugador</p>
+    </div>
+
+    <div class="form-container" style="gap: 16px;">
+
+      <div class="field-group">
+        <label class="field-label" for="email">Email</label>
+        <input id="email" class="input" type="email" placeholder="gamer@respawn.gg" autocomplete="email">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="password">Contraseña</label>
+        <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <p id="loginError"></p>
+
+      <button id="loginBtn" class="btn login-btn">INICIAR SESIÓN</button>
+
+      <div class="section-divider"></div>
+
+      <div class="auth-footer">
+        ¿No tenés cuenta? <a href="signup.html">Registrate gratis</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js?v=3"></script>
+  <script>
+    // Inicialización inline — garantiza que sb esté disponible antes que index.js
+    if (typeof sb === 'undefined') {
+      var sb = (window.supabase || window.supabaseJs).createClient(
+        'https://ajegcbzvviukuewqhqqb.supabase.co',
+        'sb_publishable_Nqo7KTTik0nnWidf04yuGw_hDOP28Eq'
+      );
+    }
+  </script>
+  <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Respawn — Breakout</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .navbar { position:sticky; top:0; z-index:100; background:rgba(7,7,15,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--border-subtle); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
+    .navbar-brand { font-family:var(--font-display); font-size:18px; font-weight:900; color:var(--cyan); letter-spacing:2px; text-decoration:none; text-shadow:0 0 12px rgba(0,255,247,0.5); }
+    .btn-back { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:transparent; border:1px solid var(--border-default); color:var(--text-secondary); border-radius:var(--radius-md); font-family:var(--font-display); font-size:11px; font-weight:700; letter-spacing:1px; cursor:pointer; text-decoration:none; transition:all 0.2s; }
+    .btn-back:hover { border-color:var(--purple); color:var(--purple); }
+
+    .game-wrapper { max-width: 540px; margin: 32px auto 60px; padding: 0 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .game-title { font-family: var(--font-display); font-size: 22px; font-weight: 900; color: var(--purple); letter-spacing: 3px; text-shadow: 0 0 20px var(--purple); text-align: center; }
+
+    .game-hud { width: 480px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 10px 16px; }
+    .hud-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .hud-label { font-family: var(--font-display); font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+    .hud-value { font-family: var(--font-display); font-size: 20px; font-weight: 900; color: var(--purple); }
+    .hud-value.lives { color: var(--pink); }
+
+    .canvas-wrap { position: relative; }
+    #breakout-board { border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: 0 0 32px var(--purple-glow), 0 0 0 1px var(--border-subtle); display: block; }
+    .game-overlay { position: absolute; inset: 0; background: rgba(7,7,15,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; border-radius: var(--radius-md); }
+    .game-controls { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: center; }
+    @media (max-width: 600px) {
+    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
+    canvas { width: 100% !important; height: auto !important; border-radius: 8px; }
+    .game-hud { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="feed.html" class="navbar-brand">RESPAWN</a>
+    <a href="gamemap.html" class="btn-back">← Mapa</a>
+  </nav>
+
+  <div class="game-wrapper">
+    <div class="game-title">🧱 BREAKOUT</div>
+
+    <div class="game-hud">
+      <div class="hud-item">
+        <span class="hud-label">Puntaje</span>
+        <span class="hud-value" id="score">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Vidas</span>
+        <span class="hud-value lives" id="lives">♥ ♥ ♥</span>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="breakout-board" width="480" height="320"></canvas>
+      <div class="game-overlay" id="overlay">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--purple);letter-spacing:2px;">BREAKOUT</div>
+        <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);">Presioná cualquier tecla para empezar</div>
+      </div>
+    </div>
+
+    <div class="game-controls">← → o A D para mover &nbsp;·&nbsp; Destruí todos los bloques</div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js?v=3"></script>
+  <script src="breakout.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>

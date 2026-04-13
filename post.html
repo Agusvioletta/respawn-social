@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00FFF7">
+  <title>Respawn — Post</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .post-view-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Back button ── */
+    .back-btn { display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:1px;cursor:pointer;border:none;background:none;padding:0;margin-bottom:16px;transition:color 0.2s; }
+    .back-btn:hover { color:var(--cyan); }
+
+    /* ── Post principal ── */
+    .post-main { background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:20px;margin-bottom:4px; }
+    .post-main-author { display:flex;align-items:center;gap:12px;margin-bottom:14px; }
+    .post-main-av { width:48px;height:48px;border-radius:12px;border:2px solid var(--cyan-dim);image-rendering:pixelated;cursor:pointer;flex-shrink:0; }
+    .post-main-name { font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text-primary);cursor:pointer; }
+    .post-main-name:hover { color:var(--cyan); }
+    .post-main-date { font-family:var(--font-mono);font-size:11px;color:var(--text-muted); }
+    .post-main-content { font-size:17px;line-height:1.65;color:var(--text-primary);margin-bottom:14px; }
+    .post-main-image { width:100%;max-height:500px;object-fit:cover;border-radius:10px;margin-bottom:14px;border:1px solid var(--border-subtle);cursor:pointer; }
+    .post-main-stats { display:flex;gap:20px;padding:12px 0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);margin-bottom:14px; }
+    .post-stat { font-family:var(--font-mono);font-size:12px;color:var(--text-muted); }
+    .post-stat strong { color:var(--text-primary);font-family:var(--font-display);font-size:13px; }
+    .post-main-actions { display:flex;gap:8px; }
+
+    /* ── Composer comentario ── */
+    .comment-composer { background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:16px;margin-bottom:4px; }
+    .comment-composer-top { display:flex;align-items:flex-start;gap:12px; }
+    .comment-composer-av { width:36px;height:36px;border-radius:8px;border:1px solid var(--border-default);image-rendering:pixelated;flex-shrink:0; }
+    .comment-composer-input { flex:1;min-height:52px;resize:none; }
+    .comment-composer-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px; }
+
+    /* ── Hilo de comentarios ── */
+    .thread-label { font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:2px;padding:12px 0 8px; }
+    .comment-card { background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:14px;margin-bottom:4px;transition:border-color 0.2s; }
+    .comment-card:hover { border-color:var(--border-default); }
+    .comment-header { display:flex;align-items:center;gap:10px;margin-bottom:8px; }
+    .comment-av { width:32px;height:32px;border-radius:8px;border:1px solid var(--border-subtle);image-rendering:pixelated;cursor:pointer;flex-shrink:0; }
+    .comment-author { font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--purple);cursor:pointer; }
+    .comment-author:hover { color:var(--cyan); }
+    .comment-date { font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-left:auto; }
+    .comment-content { font-size:14px;line-height:1.6;color:var(--text-primary);margin-bottom:10px; }
+    .comment-image { max-width:100%;max-height:280px;object-fit:cover;border-radius:8px;margin-bottom:10px;border:1px solid var(--border-subtle);cursor:pointer;display:block; }
+    .comment-actions { display:flex;align-items:center;gap:12px; }
+    .comment-like-btn { background:none;border:none;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer;padding:0;transition:color 0.2s; }
+    .comment-like-btn:hover,.comment-like-btn.voted { color:var(--pink); }
+    .comment-reply-btn { background:none;border:none;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer;padding:0;transition:color 0.2s; }
+    .comment-reply-btn:hover { color:var(--cyan); }
+    .comment-delete-btn { background:none;border:none;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);cursor:pointer;padding:0;margin-left:auto;transition:color 0.2s; }
+    .comment-delete-btn:hover { color:var(--pink); }
+
+    /* ── Respuestas ── */
+    .replies-section { margin-top:8px;padding-left:16px;border-left:2px solid var(--border-subtle); }
+    .reply-card { background:var(--bg-surface);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:4px; }
+    .reply-header { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+    .reply-av { width:24px;height:24px;border-radius:6px;image-rendering:pixelated;flex-shrink:0; }
+    .reply-author { font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--purple);cursor:pointer; }
+    .reply-date { font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-left:auto; }
+    .reply-content { font-size:13px;line-height:1.5;color:var(--text-secondary); }
+    .show-replies-btn { font-family:var(--font-mono);font-size:11px;color:var(--cyan);background:none;border:none;cursor:pointer;padding:4px 0;display:block; }
+
+    /* ── Reply composer inline ── */
+    .reply-composer { background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;margin-top:8px;display:none; }
+    .reply-composer.open { display:block; }
+    .reply-composer input { background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-body);font-size:13px;padding:8px 10px;width:100%;box-sizing:border-box;margin-bottom:8px; }
+    .reply-composer-footer { display:flex;justify-content:flex-end;gap:8px; }
+
+    /* ── Imagen en comentario composer ── */
+    .cmt-img-preview { max-width:100%;max-height:200px;border-radius:8px;margin-top:8px;display:none; }
+  </style>
+</head>
+<body>
+  <div id="globalNav"></div>
+
+  <div class="post-view-wrap">
+    <button class="back-btn" onclick="history.back()">← Volver</button>
+    <div id="postContent">
+      <div style="text-align:center;padding:60px;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);">Cargando...</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js?v=3"></script>
+  <script src="navbar.js"></script>
+  <script src="post.js"></script>
+</body>
+</html>

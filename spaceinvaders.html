@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Respawn — Space Invaders</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .navbar{position:sticky;top:0;z-index:100;background:rgba(7,7,15,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-subtle);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;}
+    .navbar-brand{font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--cyan);letter-spacing:2px;text-decoration:none;}
+    .btn-back{padding:6px 14px;background:transparent;border:1px solid var(--border-default);color:var(--text-secondary);border-radius:var(--radius-md);font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;text-decoration:none;transition:all 0.2s;}
+    .btn-back:hover{border-color:var(--cyan);color:var(--cyan);}
+    .game-wrapper{max-width:540px;margin:32px auto 60px;padding:0 16px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+    .game-title{font-family:var(--font-display);font-size:22px;font-weight:900;color:#4ade80;letter-spacing:3px;text-shadow:0 0 20px #4ade80;}
+    .game-hud{width:500px;display:flex;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 16px;}
+    .hud-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
+    .hud-label{font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:2px;}
+    .hud-value{font-family:var(--font-display);font-size:20px;font-weight:900;color:#4ade80;}
+    .canvas-wrap{position:relative;}
+    #si-board{border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:0 0 32px rgba(74,222,128,0.2);display:block;}
+    .game-overlay{position:absolute;inset:0;background:rgba(7,7,15,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border-radius:var(--radius-md);}
+    .game-controls{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);text-align:center;}
+    @media (max-width: 600px) {
+    .game-wrapper { padding: 0 8px 180px; margin: 12px auto; }
+    canvas { width: 100% !important; height: auto !important; border-radius: 8px; }
+    .game-hud { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="navbar"><a href="feed.html" class="navbar-brand">RESPAWN</a><a href="gamemap.html" class="btn-back">← Mapa</a></nav>
+  <div class="game-wrapper">
+    <div class="game-title">👾 SPACE INVADERS</div>
+    <div class="game-hud">
+      <div class="hud-item"><span class="hud-label">Score</span><span class="hud-value" id="score">0</span></div>
+      <div class="hud-item"><span class="hud-label">Vidas</span><span class="hud-value" id="lives">♥♥♥</span></div>
+      <div class="hud-item"><span class="hud-label">Oleada</span><span class="hud-value" id="wave">1</span></div>
+      <div class="hud-item"><span class="hud-label">Meta</span><span class="hud-value" style="color:var(--cyan)">500</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="si-board" width="500" height="440"></canvas>
+      <div class="game-overlay" id="overlay">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:#4ade80;letter-spacing:2px;">SPACE INVADERS</div>
+        <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);">Cualquier tecla para empezar</div>
+      </div>
+    </div>
+    <div class="game-controls">← → mover &nbsp;·&nbsp; Espacio disparar</div>
+  </div>
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js?v=3"></script>
+  <script src="spaceinvaders.js"></script>
+  <script src="touch-controls.js"></script>
+</body>
+</html>
