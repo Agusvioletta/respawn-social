@@ -16,18 +16,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
 
     async function loadSession() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) { setUser(null); setReady(true); return }
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) { setUser(null); return }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profile } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
 
-      if (profile) setUser({ ...profile, email: session.user.email! })
-      setReady(true)
+        if (profile) setUser({ ...profile, email: session.user.email! })
+      } catch (e) {
+        console.error('[AuthProvider] Error cargando sesión:', e)
+      } finally {
+        setReady(true)
+      }
     }
 
     loadSession()
