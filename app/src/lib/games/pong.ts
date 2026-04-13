@@ -13,6 +13,7 @@ export const pongEngine: GameEngine = {
     let ball   = { x: W / 2, y: H / 2, r: 7, speed: 5, dx: 5, dy: 3 }
     const keys: Record<string, boolean> = {}
     let raf: number
+    let alive = true
 
     function rr(x: number, y: number, w: number, h: number, r: number) {
       ctx.beginPath()
@@ -66,18 +67,18 @@ export const pongEngine: GameEngine = {
       }
       if (ball.x - ball.r < 0) {
         cpu.score++
-        if (cpu.score >= WIN_SCORE) { cancelAnimationFrame(raf); onGameOver(player.score * 20); return }
+        if (cpu.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(player.score * 20); return }
         resetBall()
       } else if (ball.x + ball.r > W) {
         player.score++
         const pts = player.score * 20
         onScore(pts)
-        if (player.score >= WIN_SCORE) { cancelAnimationFrame(raf); onGameOver(pts + 200); return }
+        if (player.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(pts + 200); return }
         resetBall()
       }
     }
 
-    function loop() { update(); draw(); raf = requestAnimationFrame(loop) }
+    function loop() { if (!alive) return; update(); draw(); raf = requestAnimationFrame(loop) }
     draw()
     raf = requestAnimationFrame(loop)
 

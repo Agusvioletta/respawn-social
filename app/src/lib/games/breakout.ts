@@ -16,6 +16,7 @@ export const breakoutEngine: GameEngine = {
     let lives = 3, score = 0
     const keys: Record<string, boolean> = {}
     let raf: number
+    let alive = true
 
     interface Brick { x: number; y: number; alive: boolean; color: string }
     let bricks: Brick[] = []
@@ -66,7 +67,7 @@ export const breakoutEngine: GameEngine = {
       if (ball.y - ball.r < 0) { ball.dy = Math.abs(ball.dy); ball.y = ball.r }
       if (ball.y + ball.r > H) {
         lives--
-        if (lives <= 0) { cancelAnimationFrame(raf); onGameOver(score); return }
+        if (lives <= 0) { alive = false; cancelAnimationFrame(raf); onGameOver(score); return }
         resetBall()
       }
       if (ball.x > paddle.x && ball.x < paddle.x + paddle.w &&
@@ -80,14 +81,14 @@ export const breakoutEngine: GameEngine = {
         if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + B_W &&
             ball.y + ball.r > b.y && ball.y - ball.r < b.y + B_H) {
           ball.dy = -ball.dy; b.alive = false; score += 10; onScore(score)
-          if (bricks.every(bk => !bk.alive)) { cancelAnimationFrame(raf); onGameOver(score + 500); return }
+          if (bricks.every(bk => !bk.alive)) { alive = false; cancelAnimationFrame(raf); onGameOver(score + 500); return }
           break
         }
       }
     }
 
     makeBricks(); draw()
-    raf = requestAnimationFrame(function loop() { update(); draw(); raf = requestAnimationFrame(loop) })
+    raf = requestAnimationFrame(function loop() { if (!alive) return; update(); draw(); raf = requestAnimationFrame(loop) })
 
     function onKey(e: KeyboardEvent) { keys[e.key] = true }
     function offKey(e: KeyboardEvent) { keys[e.key] = false }

@@ -13,6 +13,7 @@ export const flappyEngine: GameEngine = {
     let pipes: Pipe[] = []
     let score = 0, pipeTimer = 0
     let raf: number
+    let alive = true
 
     function spawnPipe() {
       const top = 60 + Math.random() * (GROUND - PIPE_GAP - 80 - 60)
@@ -66,18 +67,19 @@ export const flappyEngine: GameEngine = {
         }
       })
       if (bird.y + bird.radius > GROUND || bird.y - bird.radius < 0) {
-        cancelAnimationFrame(raf); onGameOver(score * 10); return
+        alive = false; cancelAnimationFrame(raf); onGameOver(score * 10); return
       }
       for (const p of pipes) {
         const bx = bird.x, by = bird.y, br = bird.radius - 2
         const inX = bx + br > p.x - 6 && bx - br < p.x + PIPE_W + 6
         if (inX && (by - br < p.top || by + br > p.top + PIPE_GAP)) {
-          cancelAnimationFrame(raf); onGameOver(score * 10); return
+          alive = false; cancelAnimationFrame(raf); onGameOver(score * 10); return
         }
       }
     }
 
     function loop() {
+      if (!alive) return
       drawBg(); pipes.forEach(drawPipe); drawBird()
       ctx.fillStyle = '#00FFF7'; ctx.font = "bold 28px 'Orbitron',monospace"; ctx.textAlign = 'center'
       ctx.shadowColor = '#00FFF7'; ctx.shadowBlur = 10
