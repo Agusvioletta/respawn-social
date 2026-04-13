@@ -8,6 +8,10 @@ export interface PostWithMeta {
   content: string
   image_url: string | null
   created_at: string
+  post_type?: 'normal' | 'lfg'
+  lfg_game?: string | null
+  lfg_platform?: string | null
+  lfg_slots?: number | null
   likes: { user_id: string }[]
   comments: {
     id: number
@@ -27,6 +31,7 @@ export async function getPosts(limit = 30, offset = 0): Promise<PostWithMeta[]> 
     .from('posts')
     .select(`
       id, user_id, username, avatar, content, image_url, created_at,
+      post_type, lfg_game, lfg_platform, lfg_slots,
       likes(user_id),
       comments(id, user_id, username, avatar, content, parent_id, created_at)
     `)

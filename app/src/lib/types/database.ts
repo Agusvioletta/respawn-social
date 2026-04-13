@@ -21,6 +21,19 @@ export interface Database {
           games: string[] | null
           max_level: number
           created_at: string
+          // Gaming status
+          now_playing: string | null
+          // Privacy
+          privacy_posts: 'public' | 'followers' | 'private'
+          privacy_messages: 'everyone' | 'followers' | 'none'
+          privacy_show_followers: boolean
+          privacy_show_following: boolean
+          // Notification prefs
+          notif_likes: boolean
+          notif_comments: boolean
+          notif_follows: boolean
+          notif_messages: boolean
+          notif_tournaments: boolean
         }
         Insert: {
           id: string
@@ -30,6 +43,16 @@ export interface Database {
           games?: string[] | null
           max_level?: number
           created_at?: string
+          now_playing?: string | null
+          privacy_posts?: string
+          privacy_messages?: string
+          privacy_show_followers?: boolean
+          privacy_show_following?: boolean
+          notif_likes?: boolean
+          notif_comments?: boolean
+          notif_follows?: boolean
+          notif_messages?: boolean
+          notif_tournaments?: boolean
         }
         Update: {
           id?: string
@@ -39,6 +62,16 @@ export interface Database {
           games?: string[] | null
           max_level?: number
           created_at?: string
+          now_playing?: string | null
+          privacy_posts?: string
+          privacy_messages?: string
+          privacy_show_followers?: boolean
+          privacy_show_following?: boolean
+          notif_likes?: boolean
+          notif_comments?: boolean
+          notif_follows?: boolean
+          notif_messages?: boolean
+          notif_tournaments?: boolean
         }
       }
       posts: {
@@ -50,6 +83,10 @@ export interface Database {
           content: string
           image_url: string | null
           created_at: string
+          post_type: 'normal' | 'lfg'
+          lfg_game: string | null
+          lfg_platform: string | null
+          lfg_slots: number | null
         }
         Insert: {
           id?: string
@@ -59,6 +96,10 @@ export interface Database {
           content: string
           image_url?: string | null
           created_at?: string
+          post_type?: string
+          lfg_game?: string | null
+          lfg_platform?: string | null
+          lfg_slots?: number | null
         }
         Update: {
           id?: string
@@ -68,6 +109,10 @@ export interface Database {
           content?: string
           image_url?: string | null
           created_at?: string
+          post_type?: string
+          lfg_game?: string | null
+          lfg_platform?: string | null
+          lfg_slots?: number | null
         }
       }
       comments: {

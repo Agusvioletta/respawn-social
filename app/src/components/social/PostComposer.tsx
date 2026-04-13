@@ -8,6 +8,8 @@ import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 const MAX_CHARS = 280
 
+const LFG_PLATFORMS = ['PC', 'PS5', 'PS4', 'Xbox', 'Nintendo Switch', 'Mobile', 'Cualquier plataforma']
+
 interface PostComposerProps {
   onPost: (post: PostWithMeta) => void
 }
@@ -22,6 +24,12 @@ export function PostComposer({ onPost }: PostComposerProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // LFG mode
+  const [isLFG, setIsLFG] = useState(false)
+  const [lfgGame, setLfgGame] = useState('')
+  const [lfgPlatform, setLfgPlatform] = useState('')
+  const [lfgSlots, setLfgSlots] = useState(1)
 
   const charCount = content.length
   const isOverLimit = charCount > MAX_CHARS
@@ -42,9 +50,15 @@ export function PostComposer({ onPost }: PostComposerProps) {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  function toggleLFG() {
+    setIsLFG((v) => !v)
+    if (isLFG) { setLfgGame(''); setLfgPlatform(''); setLfgSlots(1) }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if ((!content.trim() && !imageFile) || isOverLimit || !user) return
+    if (isLFG && !lfgGame.trim()) { setError('// Indicá el juego para el post LFG.'); return }
     setLoading(true)
     setError('')
 
@@ -66,16 +80,24 @@ export function PostComposer({ onPost }: PostComposerProps) {
         imageUrl = urlData.publicUrl
       }
 
+      const payload: Record<string, unknown> = {
+        user_id: user.id,
+        username: user.username,
+        avatar: user.avatar,
+        content: content.trim(),
+        image_url: imageUrl,
+        post_type: isLFG ? 'lfg' : 'normal',
+      }
+      if (isLFG) {
+        payload.lfg_game = lfgGame.trim()
+        payload.lfg_platform = lfgPlatform || null
+        payload.lfg_slots = lfgSlots
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: postError } = await (supabase as any)
         .from('posts')
-        .insert({
-          user_id: user.id,
-          username: user.username,
-          avatar: user.avatar,
-          content: content.trim(),
-          image_url: imageUrl,
-        })
+        .insert(payload)
         .select()
         .single()
 
@@ -84,6 +106,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
       onPost({ ...data, likes: [], comments: [] })
       setContent('')
       removeImage()
+      if (isLFG) { setLfgGame(''); setLfgPlatform(''); setLfgSlots(1); setIsLFG(false) }
 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al publicar'
@@ -95,38 +118,87 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
   if (!user) return null
 
+  const inputStyle = {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+    color: 'var(--text-primary)', fontFamily: 'var(--font-mono)',
+    fontSize: '12px', outline: 'none',
+  }
+
   return (
     <form onSubmit={handleSubmit} style={{
       background: 'var(--card)',
-      border: '1px solid var(--border)',
+      border: `1px solid ${isLFG ? 'rgba(192,132,252,0.4)' : 'var(--border)'}`,
       borderRadius: 'var(--radius-lg)',
       padding: '16px',
       marginBottom: '16px',
+      transition: 'border-color var(--transition)',
+      boxShadow: isLFG ? '0 0 20px rgba(192,132,252,0.08)' : 'none',
     }}>
+
+      {/* LFG banner */}
+      {isLFG && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.3)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '14px' }}>🔎</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--purple)', letterSpacing: '1px' }}>
+            LOOKING FOR GROUP
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+            Buscás compañeros de juego
+          </span>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '12px' }}>
-        {/* Avatar */}
         <UserAvatar avatar={user.avatar} username={user.username} size={38} />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* Textarea */}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSubmit(e as unknown as React.FormEvent) }}
-            placeholder="¿Qué estás jugando?"
+            placeholder={isLFG ? '¿Qué necesitás de tus compañeros? Nivel, horario, idioma...' : '¿Qué estás jugando?'}
             rows={3}
             style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-body)',
-              fontSize: '15px',
-              lineHeight: '1.5',
-              resize: 'none',
-              width: '100%',
+              background: 'transparent', border: 'none', outline: 'none',
+              color: 'var(--text-primary)', fontFamily: 'var(--font-body)',
+              fontSize: '15px', lineHeight: '1.5', resize: 'none', width: '100%',
             }}
           />
+
+          {/* LFG fields */}
+          {isLFG && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '1px' }}>JUEGO *</div>
+                <input
+                  style={{ ...inputStyle, width: '100%' }}
+                  placeholder="ej: Valorant"
+                  value={lfgGame}
+                  onChange={e => setLfgGame(e.target.value)}
+                />
+              </div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '1px' }}>PLATAFORMA</div>
+                <select
+                  style={{ ...inputStyle, width: '100%', cursor: 'pointer' }}
+                  value={lfgPlatform}
+                  onChange={e => setLfgPlatform(e.target.value)}
+                >
+                  <option value="">Cualquiera</option>
+                  {LFG_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '1px' }}>LUGARES</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <button type="button" onClick={() => setLfgSlots(s => Math.max(1, s - 1))} style={{ ...inputStyle, padding: '7px 10px', cursor: 'pointer', lineHeight: 1 }}>−</button>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--purple)', minWidth: '20px', textAlign: 'center' }}>{lfgSlots}</span>
+                  <button type="button" onClick={() => setLfgSlots(s => Math.min(9, s + 1))} style={{ ...inputStyle, padding: '7px 10px', cursor: 'pointer', lineHeight: 1 }}>+</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Image preview */}
           {imagePreview && (
@@ -149,7 +221,6 @@ export function PostComposer({ onPost }: PostComposerProps) {
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)', margin: 0 }}>
               {error}
@@ -158,42 +229,49 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
           {/* Footer bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              {/* LFG toggle */}
+              <button type="button" onClick={toggleLFG} style={{
+                background: isLFG ? 'rgba(192,132,252,0.15)' : 'transparent',
+                border: `1px solid ${isLFG ? 'var(--purple)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-sm)', color: isLFG ? 'var(--purple)' : 'var(--text-muted)',
+                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: isLFG ? 700 : 400,
+                padding: '4px 10px', cursor: 'pointer', letterSpacing: '1px',
+                transition: 'all var(--transition)',
+              }}>
+                🔎 LFG
+              </button>
+
               {/* Image button */}
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                style={{
-                  background: 'transparent', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)',
-                  fontFamily: 'var(--font-mono)', fontSize: '11px',
-                  padding: '4px 10px', cursor: 'pointer',
-                  transition: 'all var(--transition)',
-                }}>
+              <button type="button" onClick={() => fileInputRef.current?.click()} style={{
+                background: 'transparent', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)', fontSize: '11px',
+                padding: '4px 10px', cursor: 'pointer',
+                transition: 'all var(--transition)',
+              }}>
                 📎 imagen
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: 'none' }} />
 
-              {/* Char counter */}
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: counterColor }}>
                 {charCount} / {MAX_CHARS}
               </span>
             </div>
 
-            {/* Submit */}
             <button type="submit" disabled={loading || isOverLimit || (!content.trim() && !imageFile)}
               style={{
-                background: 'transparent',
-                border: '1px solid var(--cyan)',
+                background: isLFG ? 'rgba(192,132,252,0.15)' : 'transparent',
+                border: `1px solid ${isLFG ? 'var(--purple)' : 'var(--cyan)'}`,
                 borderRadius: 'var(--radius-md)',
-                color: 'var(--cyan)',
-                fontFamily: 'var(--font-display)',
-                fontSize: '11px', fontWeight: 700,
-                letterSpacing: '2px',
-                padding: '6px 16px',
+                color: isLFG ? 'var(--purple)' : 'var(--cyan)',
+                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                letterSpacing: '2px', padding: '6px 16px',
                 cursor: (loading || isOverLimit) ? 'not-allowed' : 'pointer',
                 opacity: (loading || isOverLimit || (!content.trim() && !imageFile)) ? 0.4 : 1,
                 transition: 'all var(--transition)',
               }}>
-              {loading ? '...' : 'PUBLICAR'}
+              {loading ? '...' : isLFG ? 'BUSCAR EQUIPO' : 'PUBLICAR'}
             </button>
           </div>
         </div>

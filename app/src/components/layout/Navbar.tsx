@@ -130,9 +130,21 @@ export function Navbar() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>
                     @{user.username}
                   </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                    Nivel {user.max_level}
-                  </div>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(user as any).now_playing ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#4ade80', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(user as any).now_playing}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
+                      Nivel {user.max_level}
+                    </div>
+                  )}
                 </div>
               </div>
             </Link>

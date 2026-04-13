@@ -166,6 +166,18 @@ export default function ProfilePage() {
               </p>
             )}
 
+            {/* Now Playing */}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(profile as any).now_playing && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)', borderRadius: '6px', padding: '4px 10px', marginBottom: '8px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 8px #4ade80', animation: 'pulse 2s infinite', flexShrink: 0 }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#4ade80' }}>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  Jugando: {(profile as any).now_playing}
+                </span>
+              </div>
+            )}
+
             {/* Games */}
             {profile.games && profile.games.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
