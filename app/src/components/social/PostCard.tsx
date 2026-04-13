@@ -81,26 +81,51 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
       .replace(/@(\w+)/g, '<span style="color:var(--purple);">@$1</span>')
   }
 
+  const isLFG = post.post_type === 'lfg'
+
   return (
     <article
       onClick={() => router.push(`/post/${post.id}`)}
       style={{
         background: 'var(--card)',
-        border: '1px solid var(--border)',
+        border: `1px solid ${isLFG ? 'rgba(192,132,252,0.35)' : 'var(--border)'}`,
         borderRadius: 'var(--radius-lg)',
         padding: '16px',
         cursor: 'pointer',
         transition: 'border-color var(--transition), background var(--transition)',
+        boxShadow: isLFG ? '0 0 16px rgba(192,132,252,0.06)' : 'none',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border-bright)'
+        e.currentTarget.style.borderColor = isLFG ? 'rgba(192,132,252,0.6)' : 'var(--border-bright)'
         e.currentTarget.style.background = 'var(--card-hover)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.borderColor = isLFG ? 'rgba(192,132,252,0.35)' : 'var(--border)'
         e.currentTarget.style.background = 'var(--card)'
       }}
     >
+      {/* LFG badge */}
+      {isLFG && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.25)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--purple)', letterSpacing: '2px' }}>🔎 LFG</span>
+          {post.lfg_game && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-primary)', background: 'rgba(192,132,252,0.15)', borderRadius: '4px', padding: '1px 8px' }}>
+              🎮 {post.lfg_game}
+            </span>
+          )}
+          {post.lfg_platform && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              📱 {post.lfg_platform}
+            </span>
+          )}
+          {post.lfg_slots != null && post.lfg_slots > 0 && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#4ade80', marginLeft: 'auto' }}>
+              {post.lfg_slots} lugar{post.lfg_slots !== 1 ? 'es' : ''} libre{post.lfg_slots !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -121,6 +146,11 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
                   padding: '1px 6px',
                 }}>
                   {gameTag.icon} {gameTag.game}
+                </span>
+              )}
+              {isLFG && !gameTag && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--purple)', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.3)', borderRadius: '4px', padding: '1px 6px' }}>
+                  🔎 LFG
                 </span>
               )}
             </div>
