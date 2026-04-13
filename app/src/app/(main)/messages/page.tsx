@@ -33,7 +33,7 @@ export default function MessagesPage() {
   const [newConvSearch, setNewConvSearch] = useState('')
 
   async function loadConversations() {
-    if (!user) return
+    if (!user) { setLoading(false); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: msgs } = await (supabase as any)
       .from('messages')

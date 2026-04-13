@@ -26,9 +26,27 @@ export function Navbar() {
     router.push('/login')
   }
 
+  const navItemStyle = (active: boolean) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 14px',
+    borderRadius: 'var(--radius-md)',
+    background: active ? 'var(--cyan-glow)' : 'transparent',
+    border: active ? '1px solid var(--cyan-border)' : '1px solid transparent',
+    color: active ? 'var(--cyan)' : 'var(--text-secondary)',
+    fontFamily: 'var(--font-display)',
+    fontSize: '13px',
+    fontWeight: active ? 700 : 500,
+    letterSpacing: '1px',
+    transition: 'all var(--transition)',
+    cursor: 'pointer',
+    textDecoration: 'none',
+  })
+
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — display controlado por Tailwind (hidden md:flex), NO poner display en style */}
       <nav style={{
         width: '256px',
         height: '100vh',
@@ -37,10 +55,10 @@ export function Navbar() {
         left: 0,
         background: 'var(--deep)',
         borderRight: '1px solid var(--border)',
-        display: 'flex',
         flexDirection: 'column',
         padding: '24px 16px',
         zIndex: 50,
+        overflowY: 'auto',
       }}
         className="hidden md:flex"
       >
@@ -68,50 +86,49 @@ export function Navbar() {
 
         {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-          {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href)
-            return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  background: active ? 'var(--cyan-glow)' : 'transparent',
-                  border: active ? '1px solid var(--cyan-border)' : '1px solid transparent',
-                  color: active ? 'var(--cyan)' : 'var(--text-secondary)',
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '13px',
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: '1px',
-                  transition: 'all var(--transition)',
-                  cursor: 'pointer',
-                }}>
-                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                  {item.label}
-                </div>
-              </Link>
-            )
-          })}
+          {NAV_ITEMS.map((item) => (
+            <Link key={item.href} href={item.href} style={navItemStyle(pathname.startsWith(item.href))}>
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+
+          {/* Separador */}
+          <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+
+          {/* Perfil */}
+          {user && (
+            <Link href={`/profile/${user.username}`} style={navItemStyle(pathname.startsWith('/profile'))}>
+              <span style={{ fontSize: '18px' }}>👤</span>
+              Perfil
+            </Link>
+          )}
+
+          {/* Notificaciones */}
+          <Link href="/notifications" style={navItemStyle(pathname === '/notifications')}>
+            <span style={{ fontSize: '18px' }}>🔔</span>
+            Notificaciones
+          </Link>
+
+          {/* Configuración */}
+          <Link href="/settings" style={navItemStyle(pathname === '/settings')}>
+            <span style={{ fontSize: '18px' }}>⚙️</span>
+            Configuración
+          </Link>
         </div>
 
-        {/* User + logout */}
+        {/* User info + logout */}
         {user && (
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '8px',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
               }}>
                 <UserAvatar avatar={user.avatar} username={user.username} size={36} />
                 <div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {user.username}
+                    @{user.username}
                   </div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
                     Nivel {user.max_level}
@@ -120,15 +137,10 @@ export function Navbar() {
               </div>
             </Link>
             <button onClick={handleLogout} style={{
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              padding: '8px',
-              cursor: 'pointer',
-              letterSpacing: '1px',
+              background: 'transparent', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)', fontSize: '11px',
+              padding: '8px', cursor: 'pointer', letterSpacing: '1px',
               transition: 'all var(--transition)',
             }}>
               // salir
@@ -137,7 +149,7 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — display controlado por Tailwind (flex md:hidden), NO poner display en style */}
       <nav style={{
         position: 'fixed',
         bottom: 0,
@@ -146,7 +158,6 @@ export function Navbar() {
         height: '64px',
         background: 'var(--deep)',
         borderTop: '1px solid var(--border)',
-        display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
         padding: '0 8px',
@@ -159,28 +170,31 @@ export function Navbar() {
           return (
             <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
               <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-md)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                padding: '6px 10px', borderRadius: 'var(--radius-md)',
                 color: active ? 'var(--cyan)' : 'var(--text-muted)',
                 transition: 'color var(--transition)',
               }}>
                 <span style={{ fontSize: '20px' }}>{item.icon}</span>
-                <span style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '8px',
-                  letterSpacing: '1px',
-                  fontWeight: active ? 700 : 400,
-                }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', letterSpacing: '1px', fontWeight: active ? 700 : 400 }}>
                   {item.label.toUpperCase()}
                 </span>
               </div>
             </Link>
           )
         })}
+        {user && (
+          <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+              padding: '6px 10px', borderRadius: 'var(--radius-md)',
+              color: pathname.startsWith('/profile') ? 'var(--cyan)' : 'var(--text-muted)',
+            }}>
+              <span style={{ fontSize: '20px' }}>👤</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', letterSpacing: '1px' }}>PERFIL</span>
+            </div>
+          </Link>
+        )}
       </nav>
     </>
   )
