@@ -75,7 +75,9 @@ export default function MessagesPage() {
     }
   }
 
-  useEffect(() => { loadConversations() }, [user])
+  // Usar user?.id como dep — evita re-fetch en TOKEN_REFRESHED (misma referencia distinta)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadConversations() }, [user?.id])
 
   const filtered = conversations.filter((c) =>
     c.otherProfile.username.toLowerCase().includes(search.toLowerCase())

@@ -134,9 +134,17 @@ body {
   color: var(--cyan);
 }
 
-/* Focus visible */
+/* Focus visible — solo para elementos interactivos que NO sean links de nav */
 :focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Nav links: nunca mostrar outline — el estado activo ya es visual con bg+border */
+nav a:focus,
+nav a:focus-visible,
+nav a:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }

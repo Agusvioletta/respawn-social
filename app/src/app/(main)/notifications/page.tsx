@@ -22,11 +22,12 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Usar user?.id como dep — evita re-fetch en TOKEN_REFRESHED (misma referencia distinta)
   useEffect(() => {
-    if (!user) { setLoading(false); return }
+    if (!user?.id) { setLoading(false); return }
     loadNotifications()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user?.id])
 
   async function loadNotifications() {
     if (!user) { setLoading(false); return }

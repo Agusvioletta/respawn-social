@@ -20,6 +20,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      // TOKEN_REFRESHED con el mismo usuario → no refetchear perfil, evita
+      // re-renders innecesarios que causan "Cargando..." intermitente
+      if (event === 'TOKEN_REFRESHED') {
+        const currentUser = useAuthStore.getState().user
+        if (currentUser?.id === session.user.id) return
+      }
+
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase as any)
