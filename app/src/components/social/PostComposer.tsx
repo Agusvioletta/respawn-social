@@ -87,7 +87,6 @@ export function PostComposer({ onPost }: PostComposerProps) {
         content: content.trim(),
         image_url: imageUrl,
       }
-      // Campos LFG — solo si la migración SQL ya fue aplicada
       if (isLFG) {
         payload.post_type = 'lfg'
         payload.lfg_game = lfgGame.trim()
@@ -95,23 +94,41 @@ export function PostComposer({ onPost }: PostComposerProps) {
         payload.lfg_slots = lfgSlots
       }
 
+      // INSERT separado del SELECT — evita fallos de RLS si la política
+      // de lectura no devuelve la fila recién insertada via .select().single()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: postError } = await (supabase as any)
+      const { error: postError } = await (supabase as any)
         .from('posts')
         .insert(payload)
-        .select()
-        .single()
 
       if (postError) throw postError
 
-      onPost({ ...data, likes: [], comments: [] })
+      // Fetch del post recién creado con likes/comments para el callback
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: inserted } = await (supabase as any)
+        .from('posts')
+        .select('*, likes(user_id), comments(id, user_id, username, avatar, content, parent_id, created_at)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (inserted) onPost({ ...inserted, likes: inserted.likes ?? [], comments: inserted.comments ?? [] })
       setContent('')
       removeImage()
       if (isLFG) { setLfgGame(''); setLfgPlatform(''); setLfgSlots(1); setIsLFG(false) }
 
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al publicar'
-      setError(`// ${message}`)
+      console.error('[PostComposer] Error al publicar:', err)
+      let message = 'Error al publicar. Intentá de nuevo.'
+      if (err instanceof Error) {
+        message = err.message
+      } else if (typeof err === 'object' && err !== null) {
+        // Supabase devuelve objetos, no instancias de Error
+        const e = err as { message?: string; details?: string; hint?: string; code?: string }
+        message = e.message || e.details || JSON.stringify(err)
+      }
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -232,9 +249,16 @@ export function PostComposer({ onPost }: PostComposerProps) {
           )}
 
           {error && (
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)', margin: 0 }}>
-              {error}
-            </p>
+            <div style={{
+              background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.4)',
+              borderRadius: 'var(--radius-sm)', padding: '8px 12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--pink)' }}>
+                ⚠ {error}
+              </span>
+              <button type="button" onClick={() => setError('')} style={{ background: 'none', border: 'none', color: 'var(--pink)', cursor: 'pointer', fontSize: '14px', flexShrink: 0 }}>✕</button>
+            </div>
           )}
 
           {/* Footer bar */}
