@@ -15,6 +15,15 @@ interface SuggestedUser {
   bio: string | null
 }
 
+interface TopGamer {
+  id: string
+  username: string
+  avatar: string | null
+  max_level: number
+  xp: number
+  rank: number
+}
+
 const TRENDING_TAGS = [
   { tag: 'Valorant', hot: true },
   { tag: 'Minecraft', hot: false },
@@ -30,15 +39,62 @@ export function FeedSidebar() {
   const supabase = createClient()
   const [suggested, setSuggested] = useState<SuggestedUser[]>([])
   const [following, setFollowing] = useState<Set<string>>(new Set())
+  const [topGamers, setTopGamers] = useState<TopGamer[]>([])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const u = user as any
 
   useEffect(() => {
+    loadTopGamers()
     if (!user) return
     loadSuggested()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  async function loadTopGamers() {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, username, avatar, max_level')
+        .order('max_level', { ascending: false })
+        .limit(20)
+
+      if (!profiles) return
+
+      // For each profile, count followers and posts to compute XP
+      const withXP = await Promise.all(
+        profiles.map(async (p: { id: string; username: string; avatar: string | null; max_level: number }) => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const [{ count: posts }, { count: followers }] = await Promise.all([
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (supabase as any).from('posts').select('*', { count: 'exact', head: true }).eq('user_id', p.id),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('following_id', p.id),
+            ])
+            const xp = calculateXP({
+              posts: posts ?? 0,
+              followers: followers ?? 0,
+              following: 0,
+              likes: 0,
+              gameLevels: p.max_level ?? 1,
+            })
+            return { ...p, xp }
+          } catch {
+            return { ...p, xp: (p.max_level ?? 1) * 50 }
+          }
+        })
+      )
+
+      const sorted = withXP
+        .sort((a, b) => b.xp - a.xp)
+        .slice(0, 5)
+        .map((p, i) => ({ ...p, rank: i + 1 }))
+
+      setTopGamers(sorted)
+    } catch { /* silently skip */ }
+  }
 
   async function loadSuggested() {
     if (!user) return
@@ -239,6 +295,59 @@ export function FeedSidebar() {
           </Link>
         </div>
       </div>
+
+      {/* Top Gamers */}
+      {topGamers.length > 0 && (
+        <div style={cardStyle}>
+          <div style={titleStyle}>👑 TOP GAMERS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            {topGamers.map((g, i) => {
+              const { level } = xpLevel(g.xp)
+              const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32', 'var(--text-muted)', 'var(--text-muted)']
+              const medalEmojis = ['🥇', '🥈', '🥉', '4', '5']
+              const isMe = user?.id === g.id
+              return (
+                <div key={g.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 0',
+                  borderBottom: i < topGamers.length - 1 ? '1px solid var(--border)' : 'none',
+                  background: isMe ? 'rgba(0,255,247,0.03)' : 'transparent',
+                  borderRadius: isMe ? 'var(--radius-sm)' : '0',
+                }}>
+                  {/* Rank */}
+                  <div style={{
+                    width: '20px', textAlign: 'center', flexShrink: 0,
+                    fontFamily: 'var(--font-display)', fontSize: i < 3 ? '14px' : '11px',
+                    fontWeight: 700, color: medalColors[i],
+                  }}>
+                    {i < 3 ? medalEmojis[i] : medalEmojis[i]}
+                  </div>
+                  <Link href={`/profile/${g.username}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <UserAvatar avatar={g.avatar} username={g.username} size={30} />
+                      {isMe && (
+                        <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', background: 'var(--cyan)', borderRadius: '50%', border: '1px solid var(--card)' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                        color: isMe ? 'var(--cyan)' : 'var(--text-primary)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        @{g.username}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)' }}>
+                        LVL {level} · {g.xp.toLocaleString('es-AR')} XP
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Trending tags */}
       <div style={cardStyle}>

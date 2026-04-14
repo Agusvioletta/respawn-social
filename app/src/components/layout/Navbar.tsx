@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar'
 const NAV_ITEMS = [
   { href: '/feed',        icon: '🏠', label: 'Feed' },
   { href: '/explore',     icon: '🔍', label: 'Explorar' },
+  { href: '/lfg',         icon: '🔎', label: 'LFG' },
   { href: '/tournaments', icon: '🏆', label: 'Torneos' },
   { href: '/arcade',      icon: '🕹️', label: 'Arcade' },
   { href: '/messages',    icon: '💬', label: 'Mensajes' },
