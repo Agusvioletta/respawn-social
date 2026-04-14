@@ -107,6 +107,10 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
 
 .animate-fade-in-up {
   animation: fadeInUp 0.2s ease forwards;
