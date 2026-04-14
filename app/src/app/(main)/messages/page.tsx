@@ -34,40 +34,45 @@ export default function MessagesPage() {
 
   async function loadConversations() {
     if (!user) { setLoading(false); return }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: msgs } = await (supabase as any)
-      .from('messages')
-      .select('*')
-      .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
-      .order('created_at', { ascending: false })
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: msgs } = await (supabase as any)
+        .from('messages')
+        .select('*')
+        .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: allProfiles } = await (supabase as any).from('profiles').select('id, username, avatar, bio')
-    setProfiles(allProfiles ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: allProfiles } = await (supabase as any).from('profiles').select('id, username, avatar, bio')
+      setProfiles(allProfiles ?? [])
 
-    if (!msgs?.length) { setLoading(false); return }
+      if (!msgs?.length) return
 
-    // Agrupar por conversación (último mensaje por usuario)
-    const convMap = new Map<string, { msg: { from_id: string; to_id: string; content: string; created_at: string }; otherId: string }>()
-    for (const m of msgs) {
-      const otherId = m.from_id === user.id ? m.to_id : m.from_id
-      if (!convMap.has(otherId)) convMap.set(otherId, { msg: m, otherId })
+      // Agrupar por conversación (último mensaje por usuario)
+      const convMap = new Map<string, { msg: { from_id: string; to_id: string; content: string; created_at: string }; otherId: string }>()
+      for (const m of msgs) {
+        const otherId = m.from_id === user.id ? m.to_id : m.from_id
+        if (!convMap.has(otherId)) convMap.set(otherId, { msg: m, otherId })
+      }
+
+      const convs: Conversation[] = []
+      for (const [otherId, { msg }] of convMap.entries()) {
+        const profile = (allProfiles ?? []).find((p: Profile) => p.id === otherId)
+        if (!profile) continue
+        convs.push({
+          otherId,
+          otherProfile: profile,
+          lastMessage: (msg.from_id === user.id ? 'Vos: ' : '') + msg.content.slice(0, 40) + (msg.content.length > 40 ? '...' : ''),
+          lastTime: new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          isMine: msg.from_id === user.id,
+        })
+      }
+      setConversations(convs)
+    } catch (e) {
+      console.error('[Messages]', e)
+    } finally {
+      setLoading(false)
     }
-
-    const convs: Conversation[] = []
-    for (const [otherId, { msg }] of convMap.entries()) {
-      const profile = (allProfiles ?? []).find((p: Profile) => p.id === otherId)
-      if (!profile) continue
-      convs.push({
-        otherId,
-        otherProfile: profile,
-        lastMessage: (msg.from_id === user.id ? 'Vos: ' : '') + msg.content.slice(0, 40) + (msg.content.length > 40 ? '...' : ''),
-        lastTime: new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-        isMine: msg.from_id === user.id,
-      })
-    }
-    setConversations(convs)
-    setLoading(false)
   }
 
   useEffect(() => { loadConversations() }, [user])

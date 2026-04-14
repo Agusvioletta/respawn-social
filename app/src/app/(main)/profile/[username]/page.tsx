@@ -59,39 +59,43 @@ export default function ProfilePage() {
   const isOwn = currentUser?.username === username
 
   async function loadProfile() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profileData } = await (supabase as any).from('profiles').select('*').eq('username', username).single()
-    if (!profileData) { setLoading(false); return }
-    setProfile(profileData)
-
-    // Posts del usuario
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: postsData } = await (supabase as any).from('posts')
-      .select('*, likes(user_id), comments(id, user_id, username, avatar, content, parent_id, created_at)')
-      .eq('user_id', profileData.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    setPosts(postsData ?? [])
-
-    // Followers / following
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [{ count: followerCount }, { count: followingCount }] = await Promise.all([
+    try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileData.id),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileData.id),
-    ])
+      const { data: profileData } = await (supabase as any).from('profiles').select('*').eq('username', username).single()
+      if (!profileData) return
+      setProfile(profileData)
 
-    const likesReceived = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
-    setStats({ followers: followerCount ?? 0, following: followingCount ?? 0, likes: likesReceived })
-
-    if (currentUser && !isOwn) {
+      // Posts del usuario
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: followData } = await (supabase as any).from('follows').select('follower_id').eq('follower_id', currentUser.id).eq('following_id', profileData.id).maybeSingle()
-      setIsFollowing(!!followData)
+      const { data: postsData } = await (supabase as any).from('posts')
+        .select('*, likes(user_id), comments(id, user_id, username, avatar, content, parent_id, created_at)')
+        .eq('user_id', profileData.id)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      setPosts(postsData ?? [])
+
+      // Followers / following
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [{ count: followerCount }, { count: followingCount }] = await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileData.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileData.id),
+      ])
+
+      const likesReceived = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
+      setStats({ followers: followerCount ?? 0, following: followingCount ?? 0, likes: likesReceived })
+
+      if (currentUser && !isOwn) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: followData } = await (supabase as any).from('follows').select('follower_id').eq('follower_id', currentUser.id).eq('following_id', profileData.id).maybeSingle()
+        setIsFollowing(!!followData)
+      }
+    } catch (e) {
+      console.error('[Profile]', e)
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   useEffect(() => { loadProfile() }, [username])

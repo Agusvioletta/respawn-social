@@ -43,6 +43,10 @@ export function Navbar() {
     transition: 'all var(--transition)',
     cursor: 'pointer',
     textDecoration: 'none',
+    // Prevent browser `:focus` blue outline from staying after click
+    outline: 'none',
+    WebkitTapHighlightColor: 'transparent',
+    userSelect: 'none' as const,
   })
 
   return (
@@ -181,12 +185,13 @@ export function Navbar() {
         {NAV_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href)
           return (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+            <Link key={item.href} href={item.href} style={{ textDecoration: 'none', outline: 'none', WebkitTapHighlightColor: 'transparent' }}>
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
                 padding: '6px 10px', borderRadius: 'var(--radius-md)',
                 color: active ? 'var(--cyan)' : 'var(--text-muted)',
                 transition: 'color var(--transition)',
+                userSelect: 'none',
               }}>
                 <span style={{ fontSize: '20px' }}>{item.icon}</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', letterSpacing: '1px', fontWeight: active ? 700 : 400 }}>

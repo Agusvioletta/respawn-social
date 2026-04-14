@@ -8,7 +8,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar'
 
 interface Notification {
   id: string
-  type: 'like' | 'comment' | 'follow' | 'mention'
+  type: 'like' | 'comment' | 'follow'
   actor_username: string
   actor_avatar: string | null
   post_id?: number
@@ -25,87 +25,113 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (!user) { setLoading(false); return }
     loadNotifications()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   async function loadNotifications() {
-    if (!user) return
+    if (!user) { setLoading(false); return }
     setLoading(true)
+    try {
+      // Get current user's post IDs first
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: userPosts } = await (supabase as any)
+        .from('posts').select('id').eq('user_id', user.id)
+      const userPostIds = new Set<number>((userPosts ?? []).map((p: { id: number }) => p.id))
 
-    // Construir notificaciones desde las tablas existentes
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [{ data: likes }, { data: comments }, { data: follows }] = await Promise.all([
-      // Likes en posts del usuario
-      (supabase as any)
+      const notifs: Notification[] = []
+
+      // --- Likes en posts del usuario ---
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: likes } = await (supabase as any)
         .from('likes')
-        .select('id, user_id, post_id, profiles!likes_user_id_fkey(username, avatar), posts!likes_post_id_fkey(created_at)')
+        .select('id, user_id, post_id')
         .neq('user_id', user.id)
         .order('id', { ascending: false })
-        .limit(30),
-      // Comentarios en posts del usuario
-      (supabase as any)
+        .limit(50)
+
+      if (likes?.length) {
+        const likerIds = [...new Set<string>((likes as { user_id: string }[]).map(l => l.user_id))]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: likerProfiles } = await (supabase as any)
+          .from('profiles').select('id, username, avatar').in('id', likerIds)
+        const likerMap = new Map<string, { username: string; avatar: string | null }>()
+        for (const p of (likerProfiles ?? [])) likerMap.set(p.id, p)
+
+        for (const like of likes) {
+          if (!userPostIds.has(like.post_id)) continue
+          const prof = likerMap.get(like.user_id)
+          if (!prof) continue
+          notifs.push({
+            id: `like-${like.id}`,
+            type: 'like',
+            actor_username: prof.username,
+            actor_avatar: prof.avatar,
+            post_id: like.post_id,
+            created_at: new Date(Date.now() - notifs.length * 1000).toISOString(),
+          })
+        }
+      }
+
+      // --- Comentarios en posts del usuario ---
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: comments } = await (supabase as any)
         .from('comments')
-        .select('id, user_id, post_id, content, created_at, profiles!comments_user_id_fkey(username, avatar), posts!comments_post_id_fkey(user_id)')
+        .select('id, user_id, post_id, content, created_at, username, avatar')
         .neq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(30),
-      // Nuevos seguidores
-      (supabase as any)
+        .limit(30)
+
+      for (const comment of (comments ?? [])) {
+        if (!userPostIds.has(comment.post_id)) continue
+        notifs.push({
+          id: `comment-${comment.id}`,
+          type: 'comment',
+          actor_username: comment.username,
+          actor_avatar: comment.avatar,
+          post_id: comment.post_id,
+          content: comment.content?.slice(0, 60),
+          created_at: comment.created_at,
+        })
+      }
+
+      // --- Nuevos seguidores ---
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: follows } = await (supabase as any)
         .from('follows')
-        .select('follower_id, created_at, profiles!follows_follower_id_fkey(username, avatar)')
+        .select('follower_id, created_at')
         .eq('following_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(30),
-    ])
+        .limit(30)
 
-    const notifs: Notification[] = []
+      if (follows?.length) {
+        const followerIds = (follows as { follower_id: string }[]).map(f => f.follower_id)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: followerProfiles } = await (supabase as any)
+          .from('profiles').select('id, username, avatar').in('id', followerIds)
+        const followerMap = new Map<string, { username: string; avatar: string | null }>()
+        for (const p of (followerProfiles ?? [])) followerMap.set(p.id, p)
 
-    // Filtrar likes en posts del usuario — necesitamos los post_ids del usuario primero
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: userPosts } = await (supabase as any).from('posts').select('id').eq('user_id', user.id)
-    const userPostIds = new Set((userPosts ?? []).map((p: { id: number }) => p.id))
+        for (const follow of follows) {
+          const prof = followerMap.get(follow.follower_id)
+          if (!prof) continue
+          notifs.push({
+            id: `follow-${follow.follower_id}`,
+            type: 'follow',
+            actor_username: prof.username,
+            actor_avatar: prof.avatar,
+            created_at: follow.created_at,
+          })
+        }
+      }
 
-    for (const like of (likes ?? [])) {
-      if (!userPostIds.has(like.post_id)) continue
-      if (!like.profiles?.username) continue // perfil eliminado
-      notifs.push({
-        id: `like-${like.id}`,
-        type: 'like',
-        actor_username: like.profiles.username,
-        actor_avatar: like.profiles?.avatar ?? null,
-        post_id: like.post_id,
-        created_at: like.posts?.created_at ?? '2000-01-01T00:00:00Z', // likes sin fecha → al final
-      })
+      // Ordenar por fecha descendente
+      notifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      setNotifications(notifs.slice(0, 50))
+    } catch (e) {
+      console.error('[Notifications]', e)
+    } finally {
+      setLoading(false)
     }
-
-    for (const comment of (comments ?? [])) {
-      if (!userPostIds.has(comment.post_id)) continue
-      if (!comment.profiles?.username) continue // perfil eliminado
-      notifs.push({
-        id: `comment-${comment.id}`,
-        type: 'comment',
-        actor_username: comment.profiles.username,
-        actor_avatar: comment.profiles?.avatar ?? null,
-        post_id: comment.post_id,
-        content: comment.content?.slice(0, 60),
-        created_at: comment.created_at,
-      })
-    }
-
-    for (const follow of (follows ?? [])) {
-      if (!follow.profiles?.username) continue // perfil eliminado
-      notifs.push({
-        id: `follow-${follow.follower_id}`,
-        type: 'follow',
-        actor_username: follow.profiles.username,
-        actor_avatar: follow.profiles?.avatar ?? null,
-        created_at: follow.created_at,
-      })
-    }
-
-    // Ordenar por fecha descendente
-    notifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    setNotifications(notifs.slice(0, 50))
-    setLoading(false)
   }
 
   function formatTime(iso: string) {
@@ -128,7 +154,7 @@ export default function NotificationsPage() {
   }
 
   function notifIcon(type: string) {
-    return { like: '❤️', comment: '💬', follow: '👤', mention: '📢' }[type] ?? '🔔'
+    return { like: '❤️', comment: '💬', follow: '👤' }[type] ?? '🔔'
   }
 
   return (
@@ -138,14 +164,16 @@ export default function NotificationsPage() {
       </h1>
 
       {loading ? (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '40px' }}>
-          Cargando...
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ height: '64px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', opacity: 1 - i * 0.15 }} />
+          ))}
+        </div>
       ) : notifications.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔔</div>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
-            Sin notificaciones todavía.
+            Sin notificaciones todavía.<br />Cuando alguien interactúe con tu contenido, aparecerá acá.
           </p>
         </div>
       ) : (
