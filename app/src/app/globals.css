@@ -145,6 +145,17 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* Explore grid — 3 cols en desktop, 1 col en mobile */
+.explore-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .explore-grid { grid-template-columns: 1fr; }
+}
+
 /* Nav links: nunca mostrar outline — el estado activo ya es visual con bg+border */
 nav a:focus,
 nav a:focus-visible,
