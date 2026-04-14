@@ -1,5 +1,6 @@
 import { getPosts } from '@/lib/supabase/queries/posts'
 import { FeedList } from '@/components/social/FeedList'
+import { FeedSidebar } from '@/components/social/FeedSidebar'
 
 export const metadata = { title: 'Feed' }
 
@@ -8,22 +9,20 @@ export default async function FeedPage() {
   try {
     initialPosts = await getPosts(30)
   } catch {
-    // Si falla la carga inicial, mostramos feed vacío y el client carga por realtime
+    // Feed vacío si falla la carga inicial
   }
 
   return (
-    <div style={{ maxWidth: '620px', margin: '0 auto', padding: '24px 16px' }}>
-      <h1 style={{
-        fontFamily: 'var(--font-display)',
-        fontSize: '16px',
-        letterSpacing: '3px',
-        color: 'var(--text-muted)',
-        marginBottom: '20px',
-        fontWeight: 700,
-      }}>
-        FEED
-      </h1>
-      <FeedList initialPosts={initialPosts} />
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 16px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+      {/* Main */}
+      <main style={{ flex: 1, maxWidth: '640px', minWidth: 0 }}>
+        <FeedList initialPosts={initialPosts} />
+      </main>
+
+      {/* Sidebar — oculto en mobile */}
+      <aside className="hidden lg:block" style={{ width: '300px', flexShrink: 0, position: 'sticky', top: '24px' }}>
+        <FeedSidebar />
+      </aside>
     </div>
   )
 }

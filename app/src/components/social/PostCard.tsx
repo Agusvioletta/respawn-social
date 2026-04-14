@@ -86,24 +86,41 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
   return (
     <article
       onClick={() => router.push(`/post/${post.id}`)}
+      className="animate-fade-in-up"
       style={{
         background: 'var(--card)',
         border: `1px solid ${isLFG ? 'rgba(192,132,252,0.35)' : 'var(--border)'}`,
         borderRadius: 'var(--radius-lg)',
-        padding: '16px',
+        padding: '18px 20px',
         cursor: 'pointer',
-        transition: 'border-color var(--transition), background var(--transition)',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'border-color var(--transition), background var(--transition), box-shadow var(--transition)',
         boxShadow: isLFG ? '0 0 16px rgba(192,132,252,0.06)' : 'none',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = isLFG ? 'rgba(192,132,252,0.6)' : 'var(--border-bright)'
+        e.currentTarget.style.borderColor = isLFG ? 'rgba(192,132,252,0.6)' : 'rgba(0,255,247,0.2)'
         e.currentTarget.style.background = 'var(--card-hover)'
+        e.currentTarget.style.boxShadow = isLFG ? '0 4px 24px rgba(192,132,252,0.1)' : '0 4px 24px rgba(0,0,0,0.3)'
+        const shine = e.currentTarget.querySelector('.post-shine') as HTMLElement
+        if (shine) shine.style.opacity = '1'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = isLFG ? 'rgba(192,132,252,0.35)' : 'var(--border)'
         e.currentTarget.style.background = 'var(--card)'
+        e.currentTarget.style.boxShadow = isLFG ? '0 0 16px rgba(192,132,252,0.06)' : 'none'
+        const shine = e.currentTarget.querySelector('.post-shine') as HTMLElement
+        if (shine) shine.style.opacity = '0'
       }}
     >
+      {/* Top shine line — igual que versión vieja */}
+      <div className="post-shine" style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+        background: isLFG
+          ? 'linear-gradient(90deg, transparent, rgba(192,132,252,0.6), transparent)'
+          : 'linear-gradient(90deg, transparent, var(--cyan-dim), transparent)',
+        opacity: 0, transition: 'opacity var(--transition)',
+      }} />
       {/* LFG badge */}
       {isLFG && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.25)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', marginBottom: '10px', flexWrap: 'wrap' }}>

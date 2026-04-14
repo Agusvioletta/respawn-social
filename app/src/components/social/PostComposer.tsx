@@ -86,9 +86,10 @@ export function PostComposer({ onPost }: PostComposerProps) {
         avatar: user.avatar,
         content: content.trim(),
         image_url: imageUrl,
-        post_type: isLFG ? 'lfg' : 'normal',
       }
+      // Campos LFG — solo si la migración SQL ya fue aplicada
       if (isLFG) {
+        payload.post_type = 'lfg'
         payload.lfg_game = lfgGame.trim()
         payload.lfg_platform = lfgPlatform || null
         payload.lfg_slots = lfgSlots
@@ -132,9 +133,18 @@ export function PostComposer({ onPost }: PostComposerProps) {
       borderRadius: 'var(--radius-lg)',
       padding: '16px',
       marginBottom: '16px',
+      position: 'relative',
+      overflow: 'hidden',
       transition: 'border-color var(--transition)',
       boxShadow: isLFG ? '0 0 20px rgba(192,132,252,0.08)' : 'none',
     }}>
+      {/* Top gradient line — igual versión vieja */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+        background: isLFG
+          ? 'linear-gradient(90deg, var(--purple-dim), var(--cyan-dim), var(--pink-dim))'
+          : 'linear-gradient(90deg, var(--cyan-dim), var(--purple-dim), var(--pink-dim))',
+      }} />
 
       {/* LFG banner */}
       {isLFG && (
