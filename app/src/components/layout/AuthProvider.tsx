@@ -6,7 +6,9 @@ import { useAuthStore } from '@/stores/authStore'
 
 /**
  * Rehidrata el authStore desde la sesión activa de Supabase.
- * Sin esto, al refrescar la página el user siempre queda null.
+ * Usa onAuthStateChange (INITIAL_SESSION) en vez de getSession(),
+ * que puede colgarse indefinidamente si Supabase no responde.
+ * Timeout de seguridad de 5s por si INITIAL_SESSION nunca llega.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser)
@@ -15,43 +17,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
 
-    async function loadSession() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user) { setUser(null); return }
+    // Timeout de seguridad: si después de 5s no cargó, mostramos igual
+    const timeout = setTimeout(() => setReady(true), 5000)
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null)
+        clearTimeout(timeout)
+        setReady(true)
+        return
+      }
+
+      try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase as any)
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
-
         if (profile) setUser({ ...profile, email: session.user.email! })
       } catch (e) {
-        console.error('[AuthProvider] Error cargando sesión:', e)
+        console.error('[AuthProvider]', e)
       } finally {
+        clearTimeout(timeout)
         setReady(true)
       }
-    }
-
-    loadSession()
-
-    // Mantener sincronizado cuando el usuario inicia/cierra sesión en otra pestaña
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        setUser(null); return
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-      if (profile) setUser({ ...profile, email: session.user.email! })
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
