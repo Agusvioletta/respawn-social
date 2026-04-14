@@ -8,7 +8,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <main style={{
           flex: 1,
-          marginLeft: '0',
+          minWidth: 0,
           paddingBottom: '80px',
         }}
           className="md:ml-64"
