@@ -107,6 +107,18 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0);   opacity: 0.4; }
+  30%            { transform: translateY(-4px); opacity: 1;   }
+}
+@keyframes spin-ring {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 .animate-fade-in-up {
   animation: fadeInUp 0.2s ease forwards;
@@ -134,9 +146,28 @@ body {
   color: var(--cyan);
 }
 
-/* Focus visible */
+/* Focus visible — solo para elementos interactivos que NO sean links de nav */
 :focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Explore grid — 3 cols en desktop, 1 col en mobile */
+.explore-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .explore-grid { grid-template-columns: 1fr; }
+}
+
+/* Nav links: nunca mostrar outline — el estado activo ya es visual con bg+border */
+nav a:focus,
+nav a:focus-visible,
+nav a:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }

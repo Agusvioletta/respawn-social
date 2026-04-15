@@ -46,10 +46,10 @@ export function FeedSidebar() {
 
   useEffect(() => {
     loadTopGamers()
-    if (!user) return
+    if (!user?.id) return
     loadSuggested()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user?.id])
 
   async function loadTopGamers() {
     try {

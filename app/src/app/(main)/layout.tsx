@@ -6,13 +6,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <AuthProvider>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--void)' }}>
         <Navbar />
-        <main style={{
-          flex: 1,
-          minWidth: 0,
-          paddingBottom: '80px',
-        }}
-          className="md:ml-64"
-        >
+        <main style={{ flex: 1, minWidth: 0, paddingBottom: '80px' }} className="md:ml-64">
           {children}
         </main>
       </div>
