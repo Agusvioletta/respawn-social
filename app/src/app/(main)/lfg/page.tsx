@@ -69,7 +69,8 @@ export default function LFGPage() {
     } finally {
       setLoading(false)
     }
-  }, [gameFilter, platformFilter, supabase])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameFilter, platformFilter])
 
   useEffect(() => { loadLFG() }, [loadLFG])
 
