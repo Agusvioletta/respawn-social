@@ -2,157 +2,135 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 
-const NAV_ITEMS = [
-  { href: '/feed',        icon: '🏠', label: 'Feed' },
-  { href: '/explore',     icon: '🔍', label: 'Explorar' },
-  { href: '/lfg',         icon: '🔎', label: 'LFG' },
-  { href: '/tournaments', icon: '🏆', label: 'Torneos' },
-  { href: '/arcade',      icon: '🕹️', label: 'Arcade' },
-  { href: '/messages',    icon: '💬', label: 'Mensajes' },
+// ── Nav items ─────────────────────────────────────────────────────────────────
+// Primarios: aparecen siempre en mobile bottom bar (máx 5 con el botón Más)
+const PRIMARY_NAV = [
+  { href: '/feed',     icon: '🏠', label: 'Feed'     },
+  { href: '/explore',  icon: '🔍', label: 'Explorar' },
+  { href: '/messages', icon: '💬', label: 'Mensajes' },
+  { href: '/arcade',   icon: '🕹️', label: 'Arcade'   },
 ]
 
-// ── Sonido de notificación con Web Audio API ──────────────────────────────────
+// Secundarios: van en el drawer "Más"
+const SECONDARY_NAV = [
+  { href: '/lfg',           icon: '🔎', label: 'LFG'           },
+  { href: '/tournaments',   icon: '🏆', label: 'Torneos'       },
+  { href: '/notifications', icon: '🔔', label: 'Notificaciones'},
+  { href: '/settings',      icon: '⚙️', label: 'Configuración' },
+]
+
+// Desktop sidebar muestra todos
+const ALL_NAV = [
+  { href: '/feed',        icon: '🏠', label: 'Feed'        },
+  { href: '/explore',     icon: '🔍', label: 'Explorar'    },
+  { href: '/lfg',         icon: '🔎', label: 'LFG'         },
+  { href: '/tournaments', icon: '🏆', label: 'Torneos'     },
+  { href: '/arcade',      icon: '🕹️', label: 'Arcade'      },
+  { href: '/messages',    icon: '💬', label: 'Mensajes'    },
+]
+
+// ── Sonido notificación ───────────────────────────────────────────────────────
 function playMsgSound() {
   try {
     const ctx = new AudioContext()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
+    const osc = ctx.createOscillator(); const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
     osc.type = 'sine'
     osc.frequency.setValueAtTime(880, ctx.currentTime)
     osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08)
     gain.gain.setValueAtTime(0.12, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.35)
-  } catch { /* autoplay policy puede bloquear antes de interacción */ }
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35)
+  } catch { /* autoplay policy */ }
 }
 
 export function Navbar() {
   const pathname = usePathname()
   const router   = useRouter()
-  const { user, setUser } = useAuthStore()
+  const { user, setUser }                         = useAuthStore()
   const { unreadMessages, addUnread, clearUnread } = useNotificationStore()
   const supabase = createClient()
   const msgChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // ── Limpiar badge cuando el usuario está en /messages ─────────────────────
+  // Cerrar drawer en cambio de ruta
+  useEffect(() => { setDrawerOpen(false) }, [pathname])
+
+  // Limpiar badge al entrar a /messages
   useEffect(() => {
     if (pathname.startsWith('/messages')) clearUnread()
   }, [pathname, clearUnread])
 
-  // ── Suscripción global: mensajes nuevos para este usuario ─────────────────
+  // Suscripción global: mensajes nuevos
   useEffect(() => {
     if (!user?.id) return
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ch = (supabase as any)
       .channel(`navbar-msgs:${user.id}`)
-      .on(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        'postgres_changes' as any,
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `to_id=eq.${user.id}`,
-        },
-        () => {
-          // Solo notificar si no estás dentro de /messages
-          if (!window.location.pathname.startsWith('/messages')) {
-            addUnread()
-            playMsgSound()
-          }
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: `to_id=eq.${user.id}`,
+      }, () => {
+        if (!window.location.pathname.startsWith('/messages')) {
+          addUnread(); playMsgSound()
         }
-      )
+      })
       .subscribe()
-
     msgChannelRef.current = ch
     return () => { supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   async function handleLogout() {
-    await supabase.auth.signOut()
-    setUser(null)
-    router.push('/login')
+    await supabase.auth.signOut(); setUser(null); router.push('/login')
   }
 
-  const navItemStyle = (active: boolean) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '10px 14px',
-    borderRadius: 'var(--radius-md)',
+  // ── Estilos ──────────────────────────────────────────────────────────────
+  const desktopNavItemStyle = (active: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: '12px',
+    padding: '10px 14px', borderRadius: 'var(--radius-md)',
     background: active ? 'var(--cyan-glow)' : 'transparent',
     border: active ? '1px solid var(--cyan-border)' : '1px solid transparent',
     color: active ? 'var(--cyan)' : 'var(--text-secondary)',
-    fontFamily: 'var(--font-display)',
-    fontSize: '13px',
-    fontWeight: active ? 700 : 500,
-    letterSpacing: '1px',
-    transition: 'all var(--transition)',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    outline: 'none',
+    fontFamily: 'var(--font-display)', fontSize: '13px',
+    fontWeight: active ? 700 : 500, letterSpacing: '1px',
+    transition: 'all var(--transition)', cursor: 'pointer',
+    textDecoration: 'none', outline: 'none',
     WebkitTapHighlightColor: 'transparent',
     userSelect: 'none' as const,
   })
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <nav style={{
-        width: '256px', height: '100vh', position: 'fixed', top: 0, left: 0,
-        background: 'var(--deep)', borderRight: '1px solid var(--border)',
-        flexDirection: 'column', padding: '24px 16px', zIndex: 50, overflowY: 'auto',
-      }}
+      {/* ── Desktop sidebar ─────────────────────────────────────────────────── */}
+      <nav
         className="hidden md:flex"
+        style={{
+          width: '256px', height: '100vh', position: 'fixed', top: 0, left: 0,
+          background: 'var(--deep)', borderRight: '1px solid var(--border)',
+          flexDirection: 'column', padding: '24px 16px', zIndex: 50, overflowY: 'auto',
+        }}
       >
-        {/* Logo */}
         <Link href="/feed" style={{ textDecoration: 'none', marginBottom: '32px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, letterSpacing: '2px', color: 'var(--cyan)', textShadow: '0 0 20px rgba(0,255,247,0.4)' }}>
-            RESPAWN
-          </div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-            el lugar donde siempre volvés
-          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, letterSpacing: '2px', color: 'var(--cyan)', textShadow: '0 0 20px rgba(0,255,247,0.4)' }}>RESPAWN</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '1px' }}>el lugar donde siempre volvés</div>
         </Link>
 
-        {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-          {NAV_ITEMS.map((item) => {
+          {ALL_NAV.map((item) => {
             const isMessages = item.href === '/messages'
             const showBadge  = isMessages && unreadMessages > 0
             return (
-              <Link key={item.href} href={item.href} style={{ ...navItemStyle(pathname.startsWith(item.href)), position: 'relative' }}>
+              <Link key={item.href} href={item.href} style={{ ...desktopNavItemStyle(pathname.startsWith(item.href)), position: 'relative' }}>
                 <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 {item.label}
-                {showBadge && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    minWidth: '20px', height: '20px',
-                    borderRadius: '999px',
-                    background: 'var(--pink)',
-                    color: '#fff',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 5px',
-                    boxShadow: '0 0 8px rgba(255,79,123,0.6)',
-                    animation: 'pulse-dot 1.5s ease-in-out infinite',
-                  }}>
-                    {unreadMessages > 99 ? '99+' : unreadMessages}
-                  </span>
-                )}
+                {showBadge && <BadgePill count={unreadMessages} />}
               </Link>
             )
           })}
@@ -160,55 +138,42 @@ export function Navbar() {
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 
           {user && (
-            <Link href={`/profile/${user.username}`} style={navItemStyle(pathname.startsWith('/profile'))}>
-              <span style={{ fontSize: '18px' }}>👤</span>
-              Perfil
+            <Link href={`/profile/${user.username}`} style={desktopNavItemStyle(pathname.startsWith('/profile'))}>
+              <span style={{ fontSize: '18px' }}>👤</span>Perfil
             </Link>
           )}
-          <Link href="/notifications" style={navItemStyle(pathname === '/notifications')}>
-            <span style={{ fontSize: '18px' }}>🔔</span>
-            Notificaciones
+          <Link href="/notifications" style={desktopNavItemStyle(pathname === '/notifications')}>
+            <span style={{ fontSize: '18px' }}>🔔</span>Notificaciones
           </Link>
-          <Link href="/settings" style={navItemStyle(pathname === '/settings')}>
-            <span style={{ fontSize: '18px' }}>⚙️</span>
-            Configuración
+          <Link href="/settings" style={desktopNavItemStyle(pathname === '/settings')}>
+            <span style={{ fontSize: '18px' }}>⚙️</span>Configuración
           </Link>
         </div>
 
-        {/* User info + logout */}
         {user && (
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
                 <UserAvatar avatar={user.avatar} username={user.username} size={36} />
                 <div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                    @{user.username}
-                  </div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>@{user.username}</div>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {(user as any).now_playing ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
                       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#4ade80', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {(user as any).now_playing}
-                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#4ade80', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{(user as any).now_playing}</span>
                     </div>
                   ) : (
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                      Nivel {user.max_level}
-                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>Nivel {user.max_level}</div>
                   )}
                 </div>
               </div>
             </Link>
             <button onClick={handleLogout} style={{
-              background: 'transparent', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)', fontSize: '11px',
-              padding: '8px', cursor: 'pointer', letterSpacing: '1px',
-              transition: 'all var(--transition)',
+              background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '11px',
+              padding: '8px', cursor: 'pointer', letterSpacing: '1px', transition: 'all var(--transition)',
             }}>
               // salir
             </button>
@@ -216,64 +181,211 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* Mobile bottom nav */}
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, height: '64px',
-        background: 'var(--deep)', borderTop: '1px solid var(--border)',
-        alignItems: 'center', justifyContent: 'space-around',
-        padding: '0 8px', zIndex: 50,
-      }}
+      {/* ── Mobile bottom bar ───────────────────────────────────────────────── */}
+      <nav
         className="flex md:hidden"
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          height: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          background: 'var(--deep)', borderTop: '1px solid var(--border)',
+          alignItems: 'center', justifyContent: 'space-around',
+          padding: '0 4px', zIndex: 60,
+        }}
       >
-        {NAV_ITEMS.map((item) => {
+        {/* 4 ítems primarios */}
+        {PRIMARY_NAV.map((item) => {
           const active     = pathname.startsWith(item.href)
           const isMessages = item.href === '/messages'
           const showBadge  = isMessages && unreadMessages > 0
           return (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none', outline: 'none', WebkitTapHighlightColor: 'transparent' }}>
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                padding: '6px 10px', borderRadius: 'var(--radius-md)',
-                color: active ? 'var(--cyan)' : 'var(--text-muted)',
-                transition: 'color var(--transition)', userSelect: 'none',
-                position: 'relative',
-              }}>
-                <span style={{ fontSize: '20px', position: 'relative' }}>
-                  {item.icon}
-                  {showBadge && (
-                    <span style={{
-                      position: 'absolute', top: '-4px', right: '-8px',
-                      minWidth: '16px', height: '16px', borderRadius: '999px',
-                      background: 'var(--pink)', color: '#fff',
-                      fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 800,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 3px',
-                      boxShadow: '0 0 6px rgba(255,79,123,0.7)',
-                    }}>
-                      {unreadMessages > 99 ? '99+' : unreadMessages}
-                    </span>
-                  )}
-                </span>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', letterSpacing: '1px', fontWeight: active ? 700 : 400 }}>
-                  {item.label.toUpperCase()}
-                </span>
-              </div>
+            <Link
+              key={item.href} href={item.href}
+              style={{ textDecoration: 'none', outline: 'none', WebkitTapHighlightColor: 'transparent', flex: 1 }}
+            >
+              <MobileNavItem icon={item.icon} label={item.label} active={active} badge={showBadge ? unreadMessages : 0} />
             </Link>
           )
         })}
+
+        {/* Botón Más */}
+        <button
+          onClick={() => setDrawerOpen(v => !v)}
+          style={{
+            flex: 1, background: 'transparent', border: 'none', outline: 'none',
+            WebkitTapHighlightColor: 'transparent', cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          <MobileNavItem
+            icon={drawerOpen ? '✕' : '⋯'}
+            label="Más"
+            active={drawerOpen || SECONDARY_NAV.some(i => pathname.startsWith(i.href)) || pathname.startsWith('/profile')}
+            badge={0}
+            isMore
+          />
+        </button>
+      </nav>
+
+      {/* ── Drawer "Más" ────────────────────────────────────────────────────── */}
+      {/* Backdrop */}
+      {drawerOpen && (
+        <div
+          className="md:hidden"
+          onClick={() => setDrawerOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 55,
+            background: 'rgba(7,7,15,0.7)', backdropFilter: 'blur(4px)',
+          }}
+        />
+      )}
+
+      {/* Sheet */}
+      <div
+        className="md:hidden"
+        style={{
+          position: 'fixed', left: 0, right: 0, zIndex: 56,
+          bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          borderRadius: '20px 20px 0 0',
+          padding: '8px 0 12px',
+          transform: drawerOpen ? 'translateY(0)' : 'translateY(110%)',
+          transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+        }}
+      >
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'var(--border)' }} />
+        </div>
+
+        {/* Usuario info */}
         {user && (
-          <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
+          <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none', display: 'block' }}>
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-              padding: '6px 10px', borderRadius: 'var(--radius-md)',
-              color: pathname.startsWith('/profile') ? 'var(--cyan)' : 'var(--text-muted)',
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '10px 20px 14px', borderBottom: '1px solid var(--border)', marginBottom: '6px',
             }}>
-              <span style={{ fontSize: '20px' }}>👤</span>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', letterSpacing: '1px' }}>PERFIL</span>
+              <UserAvatar avatar={user.avatar} username={user.username} size={40} />
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                  @{user.username}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Nivel {user.max_level} · ver perfil →
+                </div>
+              </div>
             </div>
           </Link>
         )}
-      </nav>
+
+        {/* Items secundarios */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '0 12px' }}>
+          {SECONDARY_NAV.map(item => {
+            const active = pathname.startsWith(item.href)
+            return (
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '12px 14px', borderRadius: 'var(--radius-md)',
+                  background: active ? 'var(--cyan-glow)' : 'transparent',
+                  border: `1px solid ${active ? 'var(--cyan-border)' : 'transparent'}`,
+                  transition: 'all var(--transition)',
+                }}>
+                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                  <span style={{
+                    fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: active ? 700 : 500,
+                    color: active ? 'var(--cyan)' : 'var(--text-secondary)', letterSpacing: '0.5px',
+                  }}>
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Logout */}
+        {user && (
+          <div style={{ padding: '10px 12px 0' }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', background: 'transparent',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
+                fontSize: '11px', letterSpacing: '1px', padding: '10px',
+                cursor: 'pointer', transition: 'all var(--transition)',
+              }}
+            >
+              // salir
+            </button>
+          </div>
+        )}
+      </div>
     </>
+  )
+}
+
+// ── Sub-componentes ───────────────────────────────────────────────────────────
+function MobileNavItem({ icon, label, active, badge, isMore }: {
+  icon: string; label: string; active: boolean; badge: number; isMore?: boolean
+}) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+      padding: '6px 0', position: 'relative',
+      color: active ? (isMore ? 'var(--purple)' : 'var(--cyan)') : 'var(--text-muted)',
+      transition: 'color var(--transition)', userSelect: 'none',
+    }}>
+      {/* Dot indicator cuando está activo */}
+      {active && (
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '20px', height: '2px', borderRadius: '1px',
+          background: isMore ? 'var(--purple)' : 'var(--cyan)',
+          boxShadow: isMore ? '0 0 6px var(--purple)' : '0 0 6px var(--cyan)',
+        }} />
+      )}
+
+      <span style={{ fontSize: '22px', position: 'relative', lineHeight: 1 }}>
+        {icon}
+        {badge > 0 && (
+          <span style={{
+            position: 'absolute', top: '-4px', right: '-8px',
+            minWidth: '16px', height: '16px', borderRadius: '999px',
+            background: 'var(--pink)', color: '#fff',
+            fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 800,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+            boxShadow: '0 0 6px rgba(255,79,123,0.7)',
+          }}>
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </span>
+
+      <span style={{
+        fontFamily: 'var(--font-display)', fontSize: '9px',
+        letterSpacing: '0.5px', fontWeight: active ? 700 : 400,
+        lineHeight: 1,
+      }}>
+        {label.toUpperCase()}
+      </span>
+    </div>
+  )
+}
+
+function BadgePill({ count }: { count: number }) {
+  return (
+    <span style={{
+      marginLeft: 'auto', minWidth: '20px', height: '20px', borderRadius: '999px',
+      background: 'var(--pink)', color: '#fff',
+      fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 800,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+      boxShadow: '0 0 8px rgba(255,79,123,0.6)',
+    }}>
+      {count > 99 ? '99+' : count}
+    </span>
   )
 }
