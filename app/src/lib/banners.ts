@@ -6,7 +6,14 @@ export interface BannerPreset {
   accent: string
   gridColor: string
   category: string
+  image?: string
+  heroImage?: string
 }
+
+const steam = (appId: number) => ({
+  image:     `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+  heroImage: `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/library_hero.jpg`,
+})
 
 export const BANNER_CATALOG: BannerPreset[] = [
   // ── Acción / Aventura ────────────────────────────────────────────────────────
@@ -18,6 +25,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C9502A',
     gridColor: 'rgba(201,80,42,0.06)',
     category: 'Acción / Aventura',
+    ...steam(1593500),
   },
   {
     id: 'tlou2',
@@ -27,6 +35,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#5C8A3A',
     gridColor: 'rgba(92,138,58,0.06)',
     category: 'Acción / Aventura',
+    ...steam(2531310),
   },
   {
     id: 'ghost_tsushima',
@@ -36,6 +45,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#D4A853',
     gridColor: 'rgba(212,168,83,0.06)',
     category: 'Acción / Aventura',
+    ...steam(2215430),
   },
   {
     id: 'spiderman',
@@ -45,6 +55,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#E82020',
     gridColor: 'rgba(232,32,32,0.06)',
     category: 'Acción / Aventura',
+    ...steam(1817070),
   },
   {
     id: 'rdr2',
@@ -54,6 +65,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C8792A',
     gridColor: 'rgba(200,121,42,0.06)',
     category: 'Acción / Aventura',
+    ...steam(1174180),
   },
   {
     id: 'batman',
@@ -63,6 +75,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#9060C0',
     gridColor: 'rgba(144,96,192,0.06)',
     category: 'Acción / Aventura',
+    ...steam(208650),
   },
 
   // ── Shooter / FPS ────────────────────────────────────────────────────────────
@@ -74,6 +87,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#FF4655',
     gridColor: 'rgba(255,70,85,0.06)',
     category: 'Shooter / FPS',
+    // NOT on Steam — no image
   },
   {
     id: 'cs2',
@@ -83,6 +97,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#F0A000',
     gridColor: 'rgba(240,160,0,0.06)',
     category: 'Shooter / FPS',
+    ...steam(730),
   },
   {
     id: 'overwatch2',
@@ -92,6 +107,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#FA9C1E',
     gridColor: 'rgba(250,156,30,0.06)',
     category: 'Shooter / FPS',
+    // NOT on Steam — no image
   },
   {
     id: 'cod',
@@ -101,6 +117,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#62A62A',
     gridColor: 'rgba(98,166,42,0.06)',
     category: 'Shooter / FPS',
+    ...steam(1962663),
   },
   {
     id: 'halo',
@@ -110,6 +127,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#00B8FF',
     gridColor: 'rgba(0,184,255,0.06)',
     category: 'Shooter / FPS',
+    ...steam(1240440),
   },
 
   // ── Battle Royale ────────────────────────────────────────────────────────────
@@ -121,6 +139,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#7B3FEB',
     gridColor: 'rgba(123,63,235,0.06)',
     category: 'Battle Royale',
+    // NOT on Steam — no image
   },
   {
     id: 'apex',
@@ -130,6 +149,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#CD4320',
     gridColor: 'rgba(205,67,32,0.06)',
     category: 'Battle Royale',
+    ...steam(1172470),
   },
   {
     id: 'pubg',
@@ -139,6 +159,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C8A040',
     gridColor: 'rgba(200,160,64,0.06)',
     category: 'Battle Royale',
+    ...steam(578080),
   },
 
   // ── RPG ──────────────────────────────────────────────────────────────────────
@@ -150,6 +171,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C5A028',
     gridColor: 'rgba(197,160,40,0.05)',
     category: 'RPG',
+    ...steam(1245620),
   },
   {
     id: 'cyberpunk',
@@ -159,6 +181,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#F9E900',
     gridColor: 'rgba(249,233,0,0.05)',
     category: 'RPG',
+    ...steam(1091500),
   },
   {
     id: 'witcher3',
@@ -168,6 +191,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#A0C0A0',
     gridColor: 'rgba(160,192,160,0.05)',
     category: 'RPG',
+    ...steam(292030),
   },
   {
     id: 'hades',
@@ -177,6 +201,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#E8562A',
     gridColor: 'rgba(232,86,42,0.06)',
     category: 'RPG',
+    ...steam(1145360),
   },
   {
     id: 'skyrim',
@@ -186,6 +211,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#A0A8C0',
     gridColor: 'rgba(160,168,192,0.05)',
     category: 'RPG',
+    ...steam(489830),
   },
   {
     id: 'lol',
@@ -195,6 +221,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C89B3C',
     gridColor: 'rgba(200,155,60,0.05)',
     category: 'RPG',
+    // NOT on Steam — no image
   },
 
   // ── Indie ────────────────────────────────────────────────────────────────────
@@ -206,6 +233,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#A0A0FF',
     gridColor: 'rgba(160,160,255,0.05)',
     category: 'Indie',
+    ...steam(367520),
   },
   {
     id: 'celeste',
@@ -215,6 +243,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#E840A0',
     gridColor: 'rgba(232,64,160,0.05)',
     category: 'Indie',
+    ...steam(504230),
   },
   {
     id: 'stardew',
@@ -224,6 +253,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#90CC50',
     gridColor: 'rgba(144,204,80,0.05)',
     category: 'Indie',
+    ...steam(413150),
   },
   {
     id: 'among_us',
@@ -233,6 +263,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#C83030',
     gridColor: 'rgba(200,48,48,0.05)',
     category: 'Indie',
+    ...steam(945360),
   },
   {
     id: 'terraria',
@@ -242,6 +273,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#60A840',
     gridColor: 'rgba(96,168,64,0.05)',
     category: 'Indie',
+    ...steam(105600),
   },
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
@@ -253,6 +285,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#7AB000',
     gridColor: 'rgba(122,176,0,0.05)',
     category: 'Sandbox',
+    // NOT on Steam — no image
   },
   {
     id: 'gta5',
@@ -262,6 +295,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#00E5FF',
     gridColor: 'rgba(0,229,255,0.05)',
     category: 'Sandbox',
+    ...steam(271590),
   },
   {
     id: 'nms',
@@ -271,6 +305,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#00D4B0',
     gridColor: 'rgba(0,212,176,0.05)',
     category: 'Sandbox',
+    ...steam(275850),
   },
 
   // ── Deportes / Racing ────────────────────────────────────────────────────────
@@ -282,6 +317,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#00AAFF',
     gridColor: 'rgba(0,170,255,0.05)',
     category: 'Deportes / Racing',
+    ...steam(252950),
   },
   {
     id: 'fc25',
@@ -291,6 +327,7 @@ export const BANNER_CATALOG: BannerPreset[] = [
     accent: '#40CC60',
     gridColor: 'rgba(64,204,96,0.05)',
     category: 'Deportes / Racing',
+    // NOT on Steam — no image
   },
 
   // ── Clásicos / Abstractos ────────────────────────────────────────────────────

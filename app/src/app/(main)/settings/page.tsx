@@ -45,10 +45,11 @@ interface D {
   dmsSent: number; level: number
 }
 
-type Section = 'perfil' | 'privacidad' | 'notificaciones' | 'seguridad' | 'cuenta' | 'logros' | 'faq'
+type Section = 'perfil' | 'banners' | 'privacidad' | 'notificaciones' | 'seguridad' | 'cuenta' | 'logros' | 'faq'
 
 const SECTIONS: { id: Section; icon: string; label: string }[] = [
   { id: 'perfil',        icon: '👤', label: 'Perfil' },
+  { id: 'banners',       icon: '🎨', label: 'Banners' },
   { id: 'privacidad',    icon: '🔒', label: 'Privacidad' },
   { id: 'notificaciones',icon: '🔔', label: 'Notificaciones' },
   { id: 'seguridad',     icon: '🛡️', label: 'Seguridad' },
@@ -171,7 +172,6 @@ export default function SettingsPage() {
         avatar: selectedAvatar,
         games: form.games.filter(Boolean),
         now_playing: form.nowPlaying.trim() || null,
-        banner_preset: selectedBanner,
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('profiles').update(updates).eq('id', user.id)
@@ -182,6 +182,18 @@ export default function SettingsPage() {
       setSaveMsg('⚠ ' + (e instanceof Error ? e.message : 'Error'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleSaveBanner(id: string) {
+    setSelectedBanner(id)
+    if (!user) return
+    try {
+      await (supabase as any).from('profiles').update({ banner_preset: id }).eq('id', user.id)  // eslint-disable-line @typescript-eslint/no-explicit-any
+      setUser({ ...user, ...({ banner_preset: id } as any) } as typeof user)  // eslint-disable-line @typescript-eslint/no-explicit-any
+      setSaveMsg('✓ Banner guardado.')
+    } catch (e) {
+      setSaveMsg('⚠ Error al guardar banner')
     }
   }
 
@@ -462,119 +474,52 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* BANNER */}
+          {/* BANNER - shortcut */}
           <div>
             <span style={labelStyle}>BANNER DEL PERFIL</span>
-
-            {/* Preview del banner seleccionado */}
             {(() => {
               const current = getBanner(selectedBanner)
               return (
-                <div style={{
-                  height: '64px', borderRadius: 'var(--radius-md)', marginBottom: '12px',
-                  background: current.gradient, position: 'relative', overflow: 'hidden',
-                  border: `1px solid ${current.accent}44`,
-                  boxShadow: `0 0 20px ${current.accent}22`,
-                }}>
+                <button
+                  onClick={() => setSection('banners')}
+                  style={{
+                    width: '100%', height: '60px', borderRadius: 'var(--radius-md)',
+                    background: current.image ? 'none' : current.gradient,
+                    backgroundImage: current.image ? `url(${current.image})` : undefined,
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    border: `2px solid ${current.accent}44`,
+                    cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                    textAlign: 'left',
+                  }}
+                >
+                  {!current.image && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      backgroundImage: `linear-gradient(${current.gridColor} 1px,transparent 1px),linear-gradient(90deg,${current.gridColor} 1px,transparent 1px)`,
+                      backgroundSize: '16px 16px',
+                    }} />
+                  )}
                   <div style={{
                     position: 'absolute', inset: 0,
-                    backgroundImage: `linear-gradient(${current.gridColor} 1px,transparent 1px),linear-gradient(90deg,${current.gridColor} 1px,transparent 1px)`,
-                    backgroundSize: '20px 20px',
+                    background: 'linear-gradient(90deg, rgba(0,0,0,0.7) 0%, transparent 60%)',
                   }} />
                   <div style={{
-                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-                    paddingLeft: '14px', gap: '8px',
+                    position: 'relative', height: '100%', display: 'flex',
+                    alignItems: 'center', paddingLeft: '14px', gap: '8px',
                   }}>
-                    <span style={{ fontSize: '18px' }}>{current.emoji}</span>
+                    <span style={{ fontSize: '16px' }}>{current.emoji}</span>
                     <div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: current.accent, letterSpacing: '1px' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: current.accent, letterSpacing: '1px' }}>
                         {current.name.toUpperCase()}
                       </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                        {current.category}
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.5)', marginTop: '1px' }}>
+                        Tocá para cambiar →
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               )
             })()}
-
-            {/* Catálogo por categoría */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {BANNER_CATEGORIES.map(cat => {
-                const items = BANNER_CATALOG.filter(b => b.category === cat)
-                if (!items.length) return null
-                return (
-                  <div key={cat}>
-                    <div style={{
-                      fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 700,
-                      color: 'var(--text-muted)', letterSpacing: '2px',
-                      textTransform: 'uppercase', marginBottom: '6px',
-                    }}>
-                      {cat}
-                    </div>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
-                      gap: '6px',
-                    }}>
-                      {items.map(b => {
-                        const isSelected = selectedBanner === b.id
-                        return (
-                          <button
-                            key={b.id}
-                            onClick={() => setSelectedBanner(b.id)}
-                            title={b.name}
-                            style={{
-                              height: '56px', borderRadius: 'var(--radius-md)',
-                              background: b.gradient,
-                              border: `2px solid ${isSelected ? b.accent : 'rgba(255,255,255,0.06)'}`,
-                              cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                              boxShadow: isSelected ? `0 0 14px ${b.accent}55` : 'none',
-                              transition: 'all 0.15s ease',
-                              padding: 0,
-                            }}
-                          >
-                            {/* grid overlay */}
-                            <div style={{
-                              position: 'absolute', inset: 0,
-                              backgroundImage: `linear-gradient(${b.gridColor} 1px,transparent 1px),linear-gradient(90deg,${b.gridColor} 1px,transparent 1px)`,
-                              backgroundSize: '14px 14px',
-                            }} />
-                            {/* content */}
-                            <div style={{
-                              position: 'relative', height: '100%',
-                              display: 'flex', flexDirection: 'column',
-                              alignItems: 'center', justifyContent: 'center', gap: '2px',
-                            }}>
-                              <span style={{ fontSize: '14px', lineHeight: 1 }}>{b.emoji}</span>
-                              <span style={{
-                                fontFamily: 'var(--font-display)', fontSize: '7.5px',
-                                fontWeight: 700, color: b.accent, letterSpacing: '0.5px',
-                                textAlign: 'center', lineHeight: 1.2,
-                                maxWidth: '80px', overflow: 'hidden',
-                                whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                                padding: '0 4px',
-                              }}>{b.name}</span>
-                            </div>
-                            {/* check mark */}
-                            {isSelected && (
-                              <div style={{
-                                position: 'absolute', top: '3px', right: '4px',
-                                width: '14px', height: '14px', borderRadius: '50%',
-                                background: b.accent, display: 'flex',
-                                alignItems: 'center', justifyContent: 'center',
-                                fontSize: '8px', fontWeight: 900, color: '#000',
-                              }}>✓</div>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
 
           <div>
@@ -615,6 +560,150 @@ export default function SettingsPage() {
             </div>
           )}
           {saveBtn(handleSaveProfile, saving, 'GUARDAR CAMBIOS')}
+        </div>
+      )}
+
+      {/* ── BANNERS ── */}
+      {section === 'banners' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Wide preview of selected banner */}
+          {(() => {
+            const current = getBanner(selectedBanner)
+            return (
+              <div style={{
+                height: '120px', borderRadius: 'var(--radius-md)', position: 'relative', overflow: 'hidden',
+                background: current.image ? '#000' : current.gradient,
+                backgroundImage: current.image ? `url(${current.image})` : undefined,
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                border: `1px solid ${current.accent}44`,
+                boxShadow: `0 0 24px ${current.accent}22`,
+              }}>
+                {!current.image && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    backgroundImage: `linear-gradient(${current.gridColor} 1px,transparent 1px),linear-gradient(90deg,${current.gridColor} 1px,transparent 1px)`,
+                    backgroundSize: '24px 24px',
+                    maskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+                  }} />
+                )}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(7,7,15,0.75) 100%)',
+                }} />
+                <div style={{
+                  position: 'absolute', bottom: '14px', left: '16px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <span style={{ fontSize: '20px' }}>{current.emoji}</span>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: current.accent, letterSpacing: '1.5px' }}>
+                      {current.name.toUpperCase()}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+                      {current.category}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {saveMsg && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: saveMsg.startsWith('✓') ? 'var(--cyan)' : 'var(--pink)' }}>
+              {saveMsg}
+            </div>
+          )}
+
+          {/* Catalog by category */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {BANNER_CATEGORIES.map(cat => {
+              const items = BANNER_CATALOG.filter(b => b.category === cat)
+              if (!items.length) return null
+              return (
+                <div key={cat}>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 700,
+                    color: 'var(--text-muted)', letterSpacing: '2px',
+                    textTransform: 'uppercase', marginBottom: '8px',
+                  }}>
+                    {cat}
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '6px',
+                  }}>
+                    {items.map(b => {
+                      const isSelected = selectedBanner === b.id
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => handleSaveBanner(b.id)}
+                          title={b.name}
+                          style={{
+                            height: '68px', borderRadius: 'var(--radius-md)',
+                            background: b.image ? '#000' : b.gradient,
+                            backgroundImage: b.image ? `url(${b.image})` : undefined,
+                            backgroundSize: 'cover', backgroundPosition: 'center',
+                            border: `2px solid ${isSelected ? b.accent : 'rgba(255,255,255,0.06)'}`,
+                            cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                            boxShadow: isSelected ? `0 0 14px ${b.accent}55` : 'none',
+                            transition: 'all 0.15s ease',
+                            padding: 0,
+                          }}
+                        >
+                          {/* dark overlay for readability */}
+                          <div style={{
+                            position: 'absolute', inset: 0,
+                            background: b.image
+                              ? 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.65) 100%)'
+                              : undefined,
+                          }} />
+                          {/* grid overlay — gradient banners only */}
+                          {!b.image && (
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              backgroundImage: `linear-gradient(${b.gridColor} 1px,transparent 1px),linear-gradient(90deg,${b.gridColor} 1px,transparent 1px)`,
+                              backgroundSize: '14px 14px',
+                            }} />
+                          )}
+                          {/* content */}
+                          <div style={{
+                            position: 'relative', height: '100%',
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center', gap: '2px',
+                          }}>
+                            <span style={{ fontSize: '14px', lineHeight: 1 }}>{b.emoji}</span>
+                            <span style={{
+                              fontFamily: 'var(--font-display)', fontSize: '7.5px',
+                              fontWeight: 700, color: b.image ? '#fff' : b.accent, letterSpacing: '0.5px',
+                              textAlign: 'center', lineHeight: 1.2,
+                              maxWidth: '88px', overflow: 'hidden',
+                              whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                              padding: '0 4px',
+                              textShadow: b.image ? '0 1px 3px rgba(0,0,0,0.8)' : 'none',
+                            }}>{b.name}</span>
+                          </div>
+                          {/* check mark */}
+                          {isSelected && (
+                            <div style={{
+                              position: 'absolute', top: '3px', right: '4px',
+                              width: '14px', height: '14px', borderRadius: '50%',
+                              background: b.accent, display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              fontSize: '8px', fontWeight: 900, color: '#000',
+                            }}>✓</div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

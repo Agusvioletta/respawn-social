@@ -171,15 +171,36 @@ export default function ProfilePage() {
         return (
           <div style={{
             height: '168px', position: 'relative', overflow: 'hidden',
-            background: preset.gradient,
+            background: preset.heroImage ? '#000' : preset.gradient,
             borderBottom: '1px solid var(--border)',
           }}>
+            {/* Real game artwork if available */}
+            {preset.heroImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={preset.heroImage}
+                alt={preset.name}
+                style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%',
+                  objectFit: 'cover', objectPosition: 'center 20%',
+                  opacity: 0.7,
+                }}
+              />
+            )}
+            {/* Grid overlay - only for gradient banners */}
+            {!preset.heroImage && (
+              <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: `linear-gradient(${preset.gridColor} 1px,transparent 1px),linear-gradient(90deg,${preset.gridColor} 1px,transparent 1px)`,
+                backgroundSize: '40px 40px',
+                maskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+              }} />
+            )}
+            {/* Always darken bottom for readability */}
             <div style={{
               position: 'absolute', inset: 0,
-              backgroundImage: `linear-gradient(${preset.gridColor} 1px,transparent 1px),linear-gradient(90deg,${preset.gridColor} 1px,transparent 1px)`,
-              backgroundSize: '40px 40px',
-              maskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+              background: 'linear-gradient(180deg, transparent 0%, rgba(7,7,15,0.85) 100%)',
             }} />
             <div style={{
               position: 'absolute', inset: 0,
