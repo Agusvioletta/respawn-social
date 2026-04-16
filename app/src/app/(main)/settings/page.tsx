@@ -79,6 +79,12 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
 
+  const [photoFile,      setPhotoFile]      = useState<File | null>(null)
+  const [photoPreview,   setPhotoPreview]   = useState<string | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedBanner, setSelectedBanner] = useState<string>((user as any)?.banner_preset ?? 'default')
+
   // Privacidad
   const [privacy, setPrivacy] = useState({
     posts: 'public' as 'public' | 'followers' | 'private',
@@ -130,6 +136,8 @@ export default function SettingsPage() {
       messages:    u.notif_messages    ?? true,
       tournaments: u.notif_tournaments ?? true,
     })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSelectedBanner((u as any).banner_preset ?? 'default')
     loadStats()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
@@ -162,6 +170,7 @@ export default function SettingsPage() {
         avatar: selectedAvatar,
         games: form.games.filter(Boolean),
         now_playing: form.nowPlaying.trim() || null,
+        banner_preset: selectedBanner,
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('profiles').update(updates).eq('id', user.id)
@@ -172,6 +181,30 @@ export default function SettingsPage() {
       setSaveMsg('⚠ ' + (e instanceof Error ? e.message : 'Error'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handlePhotoUpload() {
+    if (!photoFile || !user) return
+    setUploadingPhoto(true)
+    try {
+      const ext  = photoFile.name.split('.').pop() ?? 'jpg'
+      const path = `${user.id}/photo.${ext}`
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: uploadErr } = await (supabase.storage as any).from('profile-photos').upload(path, photoFile, { upsert: true, contentType: photoFile.type })
+      if (uploadErr) throw uploadErr
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: urlData } = (supabase.storage as any).from('profile-photos').getPublicUrl(path)
+      const photoUrl = urlData.publicUrl
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from('profiles').update({ photo_url: photoUrl }).eq('id', user.id)
+      setUser({ ...user, ...({ photo_url: photoUrl } as any) } as typeof user)  // eslint-disable-line @typescript-eslint/no-explicit-any
+      setSaveMsg('✓ Foto de perfil actualizada.')
+      setPhotoFile(null)
+    } catch (e) {
+      setSaveMsg('⚠ Error al subir la foto: ' + (e instanceof Error ? e.message : 'Error'))
+    } finally {
+      setUploadingPhoto(false)
     }
   }
 
@@ -348,6 +381,69 @@ export default function SettingsPage() {
       {/* ── PERFIL ── */}
       {section === 'perfil' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* FOTO DE PERFIL */}
+          <div>
+            <span style={labelStyle}>FOTO DE PERFIL</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+              {/* Preview */}
+              <div style={{
+                width: 72, height: 72, borderRadius: 'var(--radius-md)',
+                overflow: 'hidden', border: '2px solid var(--border)',
+                background: 'var(--surface)', flexShrink: 0,
+              }}>
+                {photoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoPreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (u as any).photo_url ? (  // eslint-disable-line @typescript-eslint/no-explicit-any
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={(u as any).photo_url} alt="foto actual" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />  // eslint-disable-line @typescript-eslint/no-explicit-any
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '4px' }}>Sin foto</div>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'inline-block', padding: '8px 16px', cursor: 'pointer',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-display)',
+                  fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)',
+                  letterSpacing: '1px', transition: 'all var(--transition)',
+                }}>
+                  📷 Elegir foto
+                  <input
+                    type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setPhotoFile(f)
+                      setPhotoPreview(URL.createObjectURL(f))
+                    }}
+                  />
+                </label>
+                {photoFile && (
+                  <button
+                    onClick={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                    style={{
+                      marginLeft: '8px', padding: '8px 16px',
+                      background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                      fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                      letterSpacing: '1px', cursor: 'pointer', opacity: uploadingPhoto ? 0.6 : 1,
+                    }}
+                  >
+                    {uploadingPhoto ? 'Subiendo...' : 'Subir'}
+                  </button>
+                )}
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  JPG, PNG o GIF · máx 5 MB · el avatar pixel aparece como badge en tu foto
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AVATAR */}
           <div>
             <span style={labelStyle}>AVATAR</span>
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -360,6 +456,47 @@ export default function SettingsPage() {
                   transition: 'all var(--transition)',
                 }}>
                   <UserAvatar avatar={av.src} username={av.label} size={48} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BANNER */}
+          <div>
+            <span style={labelStyle}>BANNER DEL PERFIL</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
+              {[
+                { id: 'default', label: 'Cyber',   gradient: 'linear-gradient(135deg,#07070F,#0d0a1e,#080814)', accent: '#00FFF7' },
+                { id: 'void',    label: 'Void',    gradient: 'linear-gradient(135deg,#050308,#0a0514)',           accent: '#C084FC' },
+                { id: 'fire',    label: 'Fire',    gradient: 'linear-gradient(135deg,#0f0500,#1a0600,#0a0200)',   accent: '#FF6B00' },
+                { id: 'ocean',   label: 'Ocean',   gradient: 'linear-gradient(135deg,#00080f,#001020)',            accent: '#00B4D8' },
+                { id: 'forest',  label: 'Bosque',  gradient: 'linear-gradient(135deg,#020a02,#040e04)',            accent: '#4ade80' },
+                { id: 'sunset',  label: 'Sunset',  gradient: 'linear-gradient(135deg,#0f0007,#1a0010)',            accent: '#FF4F7B' },
+              ].map(b => (
+                <button
+                  key={b.id}
+                  onClick={() => setSelectedBanner(b.id)}
+                  style={{
+                    height: '52px', borderRadius: 'var(--radius-md)',
+                    background: b.gradient,
+                    border: `2px solid ${selectedBanner === b.id ? b.accent : 'var(--border)'}`,
+                    cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                    boxShadow: selectedBanner === b.id ? `0 0 12px ${b.accent}66` : 'none',
+                    transition: 'all var(--transition)',
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    backgroundImage: `linear-gradient(${b.accent}0d 1px,transparent 1px),linear-gradient(90deg,${b.accent}0d 1px,transparent 1px)`,
+                    backgroundSize: '16px 16px',
+                  }} />
+                  <span style={{
+                    position: 'relative', fontFamily: 'var(--font-display)', fontSize: '9px',
+                    fontWeight: 700, color: b.accent, letterSpacing: '1px',
+                  }}>{b.label.toUpperCase()}</span>
+                  {selectedBanner === b.id && (
+                    <span style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px' }}>✓</span>
+                  )}
                 </button>
               ))}
             </div>

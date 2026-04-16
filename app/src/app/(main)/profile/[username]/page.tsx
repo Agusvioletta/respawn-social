@@ -46,6 +46,15 @@ const ARCADE_GAMES = [
   { id: 'spaceinvaders', emoji: '👾', name: 'Space Invaders', color: '#4ade80' },
 ]
 
+const BANNER_PRESETS: Record<string, { gradient: string; accent: string; gridColor: string }> = {
+  default: { gradient: 'linear-gradient(135deg,#07070F 0%,#0d0a1e 45%,#080814 100%)', accent: '#00FFF7', gridColor: 'rgba(0,255,247,0.05)' },
+  fire:    { gradient: 'linear-gradient(135deg,#0f0500 0%,#1a0600 50%,#0a0200 100%)', accent: '#FF6B00', gridColor: 'rgba(255,107,0,0.05)' },
+  void:    { gradient: 'linear-gradient(135deg,#050308 0%,#0a0514 100%)',              accent: '#C084FC', gridColor: 'rgba(192,132,252,0.05)' },
+  ocean:   { gradient: 'linear-gradient(135deg,#00080f 0%,#001020 100%)',              accent: '#00B4D8', gridColor: 'rgba(0,180,216,0.05)' },
+  forest:  { gradient: 'linear-gradient(135deg,#020a02 0%,#040e04 100%)',              accent: '#4ade80', gridColor: 'rgba(74,222,128,0.05)' },
+  sunset:  { gradient: 'linear-gradient(135deg,#0f0007 0%,#1a0010 100%)',              accent: '#FF4F7B', gridColor: 'rgba(255,79,123,0.05)' },
+}
+
 interface StatsData {
   postCount: number; followersCount: number; followingCount: number
   likesReceived: number; commentsCount: number; maxLevel: number; tournamentsJoined: number
@@ -162,47 +171,50 @@ export default function ProfilePage() {
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingBottom: '24px' }}>
 
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
-      <div style={{
-        height: '168px', position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(135deg,#07070F 0%,#0d0a1e 45%,#080814 100%)',
-        borderBottom: '1px solid var(--border)',
-      }}>
-        {/* Grid pattern */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'linear-gradient(rgba(0,255,247,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,247,0.05) 1px,transparent 1px)',
-          backgroundSize: '40px 40px',
-          maskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
-        }} />
-        {/* Radial glow */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse 70% 120% at 50% 110%,rgba(0,255,247,0.12),transparent 70%)',
-        }} />
-        {/* Rank chip */}
-        <div style={{
-          position: 'absolute', top: '16px', left: '16px',
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background: 'rgba(0,0,0,0.55)', border: '1px solid var(--border)',
-          borderRadius: '20px', padding: '4px 14px',
-          fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
-          color: 'var(--text-secondary)', letterSpacing: '1px',
-        }}>
-          🎮 {(levelName || 'RESPAWN').toUpperCase()}
-        </div>
-        {/* Online indicator */}
-        <div style={{
-          position: 'absolute', top: '16px', right: '16px',
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background: 'rgba(0,0,0,0.55)', border: '1px solid var(--border)',
-          borderRadius: '20px', padding: '4px 12px',
-          fontFamily: 'var(--font-display)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '1px',
-        }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80' }} />
-          ONLINE
-        </div>
-      </div>
+      {(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const presetId = (profile as any).banner_preset ?? 'default'
+        const preset = BANNER_PRESETS[presetId] ?? BANNER_PRESETS.default
+        return (
+          <div style={{
+            height: '168px', position: 'relative', overflow: 'hidden',
+            background: preset.gradient,
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(${preset.gridColor} 1px,transparent 1px),linear-gradient(90deg,${preset.gridColor} 1px,transparent 1px)`,
+              backgroundSize: '40px 40px',
+              maskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(180deg,black 30%,transparent 100%)',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `radial-gradient(ellipse 70% 120% at 50% 110%,${preset.accent}1a,transparent 70%)`,
+            }} />
+            <div style={{
+              position: 'absolute', top: '16px', left: '16px',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: 'rgba(0,0,0,0.55)', border: '1px solid var(--border)',
+              borderRadius: '20px', padding: '4px 14px',
+              fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+              color: 'var(--text-secondary)', letterSpacing: '1px',
+            }}>
+              🎮 {(levelName || 'RESPAWN').toUpperCase()}
+            </div>
+            <div style={{
+              position: 'absolute', top: '16px', right: '16px',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: 'rgba(0,0,0,0.55)', border: '1px solid var(--border)',
+              borderRadius: '20px', padding: '4px 12px',
+              fontFamily: 'var(--font-display)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '1px',
+            }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80' }} />
+              ONLINE
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── MAIN CARD ───────────────────────────────────────────────────────── */}
       <div style={{
@@ -212,16 +224,59 @@ export default function ProfilePage() {
         {/* Avatar row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
           {/* Avatar + level badge */}
-          <div style={{ position: 'relative', marginTop: '-48px' }}>
+          <div style={{ position: 'relative', display: 'inline-block', marginTop: '-52px' }}>
+            {/* Real profile photo — or pixel avatar as fallback */}
             <div style={{
-              borderRadius: 'var(--radius-lg)', border: '3px solid var(--card)',
+              width: 92, height: 92,
+              borderRadius: 'var(--radius-lg)',
+              border: '3px solid var(--card)',
               boxShadow: '0 0 0 2px var(--cyan), 0 0 32px rgba(0,255,247,0.2)',
-              overflow: 'hidden', display: 'inline-block',
+              overflow: 'hidden',
+              background: 'var(--surface)',
+              display: 'block',
             }}>
-              <UserAvatar avatar={profile.avatar} username={profile.username} size={88} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {(profile as any).photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={(profile as any).photo_url}  // eslint-disable-line @typescript-eslint/no-explicit-any
+                  alt={profile.username}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatar ? (profile.avatar.startsWith('http') || profile.avatar.startsWith('/') ? profile.avatar : `/${profile.avatar}`) : '/avatar1.png'}
+                  alt={profile.username}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', display: 'block' }}
+                />
+              )}
             </div>
+
+            {/* Pixel avatar badge — bottom right corner */}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(profile as any).photo_url && (
+              <div style={{
+                position: 'absolute', bottom: -6, right: -6,
+                width: 34, height: 34,
+                borderRadius: '8px',
+                border: '2px solid var(--card)',
+                overflow: 'hidden',
+                background: 'var(--surface)',
+                boxShadow: '0 0 0 1px var(--cyan)',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={profile.avatar ? (profile.avatar.startsWith('http') || profile.avatar.startsWith('/') ? profile.avatar : `/${profile.avatar}`) : '/avatar1.png'}
+                  alt="avatar"
+                  style={{ width: '100%', height: '100%', imageRendering: 'pixelated', display: 'block' }}
+                />
+              </div>
+            )}
+
+            {/* Level badge */}
             <div style={{
-              position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute', bottom: (profile as any).photo_url ? -22 : -16, left: '50%', transform: 'translateX(-50%)',  // eslint-disable-line @typescript-eslint/no-explicit-any
               background: 'var(--deep)', border: '1px solid rgba(0,255,247,0.4)',
               borderRadius: '20px', padding: '2px 10px', whiteSpace: 'nowrap',
               fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 900,
