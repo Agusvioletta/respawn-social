@@ -95,34 +95,47 @@ export default function ChatPage() {
   }
 
   // ── Realtime: new messages + typing ─────────────────────────────────────────
+  // Usamos dos mecanismos en paralelo:
+  // 1. broadcast 'new-message' — entrega inmediata P2P (canal primario)
+  // 2. postgres_changes INSERT  — fallback CDC, también confirma IDs reales
   function setupRealtimeSignaling() {
     const chanId = `chat:${[user!.id, otherId].sort().join('_')}`
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ch = (supabase as any).channel(chanId)
+
+      // ── Broadcast: mensaje enviado por el otro (entrega principal) ──────────
+      .on('broadcast', { event: 'new-message' }, ({ payload }: { payload: { message: Message } }) => {
+        const m = payload.message
+        if (!m || m.from_id !== otherId) return
+        setMessages(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m])
+      })
+
+      // ── Broadcast: typing indicator ─────────────────────────────────────────
+      .on('broadcast', { event: 'typing' }, () => {
+        setIsOtherTyping(true)
+        if (typingTimer.current) clearTimeout(typingTimer.current)
+        typingTimer.current = setTimeout(() => setIsOtherTyping(false), 2500)
+      })
+
+      // ── postgres_changes: fallback + confirmar ID real del mensaje propio ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: { new: Message }) => {
         const m = payload.new
         if (!((m.from_id === user!.id && m.to_id === otherId) || (m.from_id === otherId && m.to_id === user!.id))) return
 
         setMessages(prev => {
-          // Si el mensaje es nuestro, reemplazar el optimista que tiene id Date.now()
-          // (> 1 billón) con el mismo contenido → evita burbuja duplicada
+          // Reemplazar optimista (id = Date.now() ~ > 1e12) con el registro real
           if (m.from_id === user!.id) {
             const idx = prev.findIndex(x => x.id > 1_000_000_000_000 && x.content === m.content)
             if (idx !== -1) {
-              const updated = [...prev]
-              updated[idx] = m
-              return updated
+              const updated = [...prev]; updated[idx] = m; return updated
             }
           }
+          // Mensaje del otro: dedup (puede haber llegado ya por broadcast)
           return prev.some(x => x.id === m.id) ? prev : [...prev, m]
         })
       })
-      .on('broadcast', { event: 'typing' }, () => {
-        setIsOtherTyping(true)
-        if (typingTimer.current) clearTimeout(typingTimer.current)
-        typingTimer.current = setTimeout(() => setIsOtherTyping(false), 2500)
-      })
+
       .subscribe()
     sigChannel.current = ch
   }
@@ -148,8 +161,15 @@ export default function ChatPage() {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: text })
+      const { data: inserted, error } = await (supabase as any)
+        .from('messages').insert({ from_id: user.id, to_id: otherId, content: text }).select().single()
       if (error) throw error
+
+      // Broadcast para entrega inmediata al otro (no espera CDC)
+      sigChannel.current?.send({
+        type: 'broadcast', event: 'new-message',
+        payload: { message: inserted ?? optimistic },
+      })
     } catch {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id))
       setInput(text)
@@ -206,18 +226,27 @@ export default function ChatPage() {
       const audioUrl = urlData.publicUrl
 
       // Try to insert with type+audio_url; fall back to plain text link
+      let inserted: Message | null = null
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: '🎤 Mensaje de voz', type: 'audio', audio_url: audioUrl })
+        const { data, error } = await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: '🎤 Mensaje de voz', type: 'audio', audio_url: audioUrl }).select().single()
         if (error) throw error
+        inserted = data
       } catch {
         // Fallback: SQL migration not run yet — send as text with link
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: `🎤 Mensaje de voz: ${audioUrl}` })
+        const { data } = await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: `🎤 Mensaje de voz: ${audioUrl}` }).select().single()
+        inserted = data
       }
 
-      const optimistic: Message = { id: Date.now(), from_id: user.id, to_id: otherId, content: '🎤 Mensaje de voz', type: 'audio', audio_url: audioUrl, created_at: new Date().toISOString() }
+      const optimistic: Message = inserted ?? { id: Date.now(), from_id: user.id, to_id: otherId, content: '🎤 Mensaje de voz', type: 'audio', audio_url: audioUrl, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, optimistic])
+
+      // Broadcast para entrega inmediata
+      sigChannel.current?.send({
+        type: 'broadcast', event: 'new-message',
+        payload: { message: optimistic },
+      })
       cancelAudio()
     } catch (e) { console.error('[Chat] sendAudio:', e) }
     finally { setSending(false) }
