@@ -480,20 +480,21 @@ interface CallOverlayProps {
 
 function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }: CallOverlayProps) {
   const { callState, callType, isMuted, isCameraOff, isScreenSharing, callDuration, toggleMute, toggleCamera, toggleScreenShare, localVideoRef, remoteVideoRef } = webrtc
-  const isRinging  = callState === 'ringing'
-  const isCalling  = callState === 'calling'
-  const isActive   = callState === 'connected' || callState === 'connecting'
-  const isVideo    = callType === 'video'
+  const isRinging    = callState === 'ringing'
+  const isCalling    = callState === 'calling'
+  const isConnecting = callState === 'connecting'
+  const isConnected  = callState === 'connected'
+  const isVideo      = callType === 'video'
 
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 100,
-      background: isActive && isVideo ? 'transparent' : 'rgba(7,7,15,0.92)',
+      background: isConnected && isVideo ? 'transparent' : 'rgba(7,7,15,0.92)',
       backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {/* Video streams — background when active */}
-      {isActive && isVideo && (
+      {/* Video streams — solo cuando está conectado */}
+      {isConnected && isVideo && (
         <>
           <video ref={remoteVideoRef} autoPlay playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }} />
           <video ref={localVideoRef} autoPlay playsInline muted style={{ position: 'absolute', bottom: '80px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '2px solid var(--cyan)', zIndex: 2 }} />
@@ -526,13 +527,13 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
         </div>
 
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-          {isRinging && (incomingCall ? `📞 ${incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante` : '...')}
-          {isCalling && '📞 Llamando...'}
-          {callState === 'connecting' && '🔗 Conectando...'}
-          {isActive && `${isVideo ? '📹' : '📞'} ${callDuration}`}
+          {isRinging    && (incomingCall ? `📞 ${incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante` : '...')}
+          {isCalling    && '📞 Llamando...'}
+          {isConnecting && '🔗 Conectando...'}
+          {isConnected  && `${isVideo ? '📹' : '📞'} ${callDuration}`}
         </div>
 
-        {/* Incoming call — accept/decline */}
+        {/* Llamada entrante — aceptar/rechazar */}
         {isRinging && (
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
             <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
@@ -540,13 +541,13 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
           </div>
         )}
 
-        {/* Calling / connecting */}
-        {(isCalling || callState === 'connecting') && (
+        {/* Llamando / conectando — solo botón colgar */}
+        {(isCalling || isConnecting) && (
           <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
         )}
 
-        {/* Active call controls */}
-        {isActive && (
+        {/* Llamada activa — controles completos */}
+        {isConnected && (
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <CallCtrlBtn onClick={toggleMute} active={isMuted} label={isMuted ? '🔇' : '🎤'} title={isMuted ? 'Activar mic' : 'Silenciar'} />
             {isVideo && <CallCtrlBtn onClick={toggleCamera} active={isCameraOff} label={isCameraOff ? '📷' : '📸'} title={isCameraOff ? 'Activar cámara' : 'Apagar cámara'} />}
