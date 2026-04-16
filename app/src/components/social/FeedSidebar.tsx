@@ -60,37 +60,44 @@ export function FeedSidebar() {
         .order('max_level', { ascending: false })
         .limit(20)
 
-      if (!profiles) return
+      if (!profiles?.length) return
 
-      // For each profile, count followers and posts to compute XP
-      const withXP = await Promise.all(
-        profiles.map(async (p: { id: string; username: string; avatar: string | null; max_level: number }) => {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const [{ count: posts }, { count: followers }] = await Promise.all([
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (supabase as any).from('posts').select('*', { count: 'exact', head: true }).eq('user_id', p.id),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (supabase as any).from('follows').select('*', { count: 'exact', head: true }).eq('following_id', p.id),
-            ])
-            const xp = calculateXP({
-              posts: posts ?? 0,
-              followers: followers ?? 0,
-              following: 0,
-              likes: 0,
-              gameLevels: p.max_level ?? 1,
-            })
-            return { ...p, xp }
-          } catch {
-            return { ...p, xp: (p.max_level ?? 1) * 50 }
-          }
-        })
-      )
+      const userIds = profiles.map((p: { id: string }) => p.id)
+
+      // 2 queries batch en vez de 40 queries individuales (N+1)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [{ data: postRows }, { data: followRows }] = await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from('posts').select('user_id').in('user_id', userIds),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from('follows').select('following_id').in('following_id', userIds),
+      ])
+
+      // Contar en JS — más rápido que múltiples round-trips a la DB
+      const postCounts = new Map<string, number>()
+      for (const row of (postRows ?? [])) {
+        postCounts.set(row.user_id, (postCounts.get(row.user_id) ?? 0) + 1)
+      }
+      const followCounts = new Map<string, number>()
+      for (const row of (followRows ?? [])) {
+        followCounts.set(row.following_id, (followCounts.get(row.following_id) ?? 0) + 1)
+      }
+
+      const withXP = profiles.map((p: { id: string; username: string; avatar: string | null; max_level: number }) => ({
+        ...p,
+        xp: calculateXP({
+          posts: postCounts.get(p.id) ?? 0,
+          followers: followCounts.get(p.id) ?? 0,
+          following: 0,
+          likes: 0,
+          gameLevels: p.max_level ?? 1,
+        }),
+      }))
 
       const sorted = withXP
-        .sort((a, b) => b.xp - a.xp)
+        .sort((a: { xp: number }, b: { xp: number }) => b.xp - a.xp)
         .slice(0, 5)
-        .map((p, i) => ({ ...p, rank: i + 1 }))
+        .map((p: typeof withXP[0], i: number) => ({ ...p, rank: i + 1 }))
 
       setTopGamers(sorted)
     } catch { /* silently skip */ }

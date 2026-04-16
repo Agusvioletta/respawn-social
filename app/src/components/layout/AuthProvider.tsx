@@ -20,12 +20,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // TOKEN_REFRESHED con el mismo usuario → no refetchear perfil, evita
-      // re-renders innecesarios que causan "Cargando..." intermitente
-      if (event === 'TOKEN_REFRESHED') {
-        const currentUser = useAuthStore.getState().user
-        if (currentUser?.id === session.user.id) return
-      }
+      // Si el mismo usuario ya está cargado en el store, no volver a fetchear
+      // el perfil. Cubre TOKEN_REFRESHED, SIGNED_IN por reconexión de Realtime,
+      // INITIAL_SESSION duplicado, USER_UPDATED, etc. — todos causaban re-renders
+      // innecesarios que reseteaban el loading state de todas las páginas.
+      const currentUser = useAuthStore.getState().user
+      if (currentUser?.id === session.user.id) return
 
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

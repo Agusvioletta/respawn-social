@@ -43,7 +43,8 @@ export function FeedList({ initialPosts }: FeedListProps) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [supabase])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handlePost(newPost: PostWithMeta) {
     setPosts((prev) => {
