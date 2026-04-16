@@ -521,61 +521,88 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
         />
       )}
 
-      {/* Card */}
-      <div style={{
-        background: 'var(--card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-xl)', padding: '32px 28px',
-        textAlign: 'center', minWidth: '280px', maxWidth: '340px', width: '100%',
-        position: 'relative', zIndex: 3,
-        boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-      }}>
-        {/* Glow ring around avatar */}
-        <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+      {/* En videollamada conectada: controles flotantes abajo, sin card */}
+      {isConnected && isVideo ? (
+        <>
+          {/* Nombre + duración arriba */}
           <div style={{
-            position: 'absolute', inset: '-6px', borderRadius: '50%',
-            background: isRinging ? 'conic-gradient(var(--purple), var(--pink), var(--purple))' : 'conic-gradient(var(--cyan), var(--purple), var(--cyan))',
-            animation: 'spin-ring 3s linear infinite',
-            opacity: 0.7,
-          }} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            {otherProfile && <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={72} />}
+            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 4, background: 'rgba(7,7,15,0.55)', backdropFilter: 'blur(8px)',
+            borderRadius: '999px', padding: '6px 16px',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px' }}>@{otherProfile?.username ?? '...'}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)' }}>{callDuration}</span>
           </div>
-        </div>
 
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '1px' }}>
-          @{otherProfile?.username ?? '...'}
-        </div>
+          {/* Controles flotantes abajo */}
+          <div style={{
+            position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 4, display: 'flex', gap: '12px', alignItems: 'center',
+            background: 'rgba(7,7,15,0.55)', backdropFilter: 'blur(8px)',
+            borderRadius: '999px', padding: '10px 20px',
+          }}>
+            <CallCtrlBtn onClick={toggleMute}        active={isMuted}         label={isMuted ? '🔇' : '🎤'}  title={isMuted ? 'Activar mic' : 'Silenciar'} />
+            <CallCtrlBtn onClick={toggleCamera}      active={isCameraOff}     label={isCameraOff ? '📷' : '📸'} title={isCameraOff ? 'Activar cámara' : 'Apagar cámara'} />
+            <CallCtrlBtn onClick={toggleScreenShare} active={isScreenSharing} label="🖥️"                       title={isScreenSharing ? 'Dejar de compartir' : 'Compartir pantalla'} accent="var(--purple)" />
+            <button onClick={onDismiss} title="Colgar" style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,79,123,0.25)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '20px', cursor: 'pointer', outline: 'none' }}>📵</button>
+          </div>
+        </>
+      ) : (
+        /* Card — para ringing / calling / connecting / audio conectado */
+        <div style={{
+          background: 'var(--card)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-xl)', padding: '32px 28px',
+          textAlign: 'center', minWidth: '280px', maxWidth: '340px', width: '100%',
+          position: 'relative', zIndex: 3,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        }}>
+          {/* Glow ring around avatar */}
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+            <div style={{
+              position: 'absolute', inset: '-6px', borderRadius: '50%',
+              background: isRinging ? 'conic-gradient(var(--purple), var(--pink), var(--purple))' : 'conic-gradient(var(--cyan), var(--purple), var(--cyan))',
+              animation: 'spin-ring 3s linear infinite',
+              opacity: 0.7,
+            }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              {otherProfile && <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={72} />}
+            </div>
+          </div>
 
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-          {isRinging    && (incomingCall ? `📞 ${incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante` : '...')}
-          {isCalling    && '📞 Llamando...'}
-          {isConnecting && '🔗 Conectando...'}
-          {isConnected  && `${isVideo ? '📹' : '📞'} ${callDuration}`}
-        </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '1px' }}>
+            @{otherProfile?.username ?? '...'}
+          </div>
 
-        {/* Llamada entrante — aceptar/rechazar */}
-        {isRinging && (
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+            {isRinging    && (incomingCall ? `📞 ${incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante` : '...')}
+            {isCalling    && '📞 Llamando...'}
+            {isConnecting && '🔗 Conectando...'}
+            {isConnected  && `📞 ${callDuration}`}
+          </div>
+
+          {/* Llamada entrante — aceptar/rechazar */}
+          {isRinging && (
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
+              <button onClick={onAccept}  style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(74,222,128,0.15)', border: '2px solid #4ade80', color: '#4ade80', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✓</button>
+            </div>
+          )}
+
+          {/* Llamando / conectando — solo botón colgar */}
+          {(isCalling || isConnecting) && (
             <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
-            <button onClick={onAccept}  style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(74,222,128,0.15)', border: '2px solid #4ade80', color: '#4ade80', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✓</button>
-          </div>
-        )}
+          )}
 
-        {/* Llamando / conectando — solo botón colgar */}
-        {(isCalling || isConnecting) && (
-          <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
-        )}
-
-        {/* Llamada activa — controles completos */}
-        {isConnected && (
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <CallCtrlBtn onClick={toggleMute} active={isMuted} label={isMuted ? '🔇' : '🎤'} title={isMuted ? 'Activar mic' : 'Silenciar'} />
-            {isVideo && <CallCtrlBtn onClick={toggleCamera} active={isCameraOff} label={isCameraOff ? '📷' : '📸'} title={isCameraOff ? 'Activar cámara' : 'Apagar cámara'} />}
-            {isVideo && <CallCtrlBtn onClick={toggleScreenShare} active={isScreenSharing} label="🖥️" title={isScreenSharing ? 'Dejar de compartir' : 'Compartir pantalla'} accent="var(--purple)" />}
-            <button onClick={onDismiss} title="Colgar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '20px', cursor: 'pointer', outline: 'none' }}>📵</button>
-          </div>
-        )}
-      </div>
+          {/* Llamada de audio activa — controles completos */}
+          {isConnected && (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <CallCtrlBtn onClick={toggleMute} active={isMuted} label={isMuted ? '🔇' : '🎤'} title={isMuted ? 'Activar mic' : 'Silenciar'} />
+              <button onClick={onDismiss} title="Colgar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '20px', cursor: 'pointer', outline: 'none' }}>📵</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
