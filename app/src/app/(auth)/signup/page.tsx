@@ -23,7 +23,6 @@ function getPasswordStrength(password: string) {
 
 export default function SignupPage() {
   const router = useRouter()
-  const setUser = useAuthStore((s) => s.setUser)
   const supabase = createClient()
 
   const [username, setUsername] = useState('')
@@ -73,10 +72,9 @@ export default function SignupPage() {
       })
       if (profileError) throw profileError
 
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
       if (loginError) throw loginError
 
-      setUser({ id: data.user!.id, username, avatar: selectedAvatar, bio: '', games: [], max_level: 1, created_at: new Date().toISOString(), email })
       router.push('/feed')
 
     } catch (err: unknown) {
