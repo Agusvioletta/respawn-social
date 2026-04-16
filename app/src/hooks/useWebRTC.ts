@@ -20,20 +20,25 @@ interface UseWebRTCOptions {
 }
 
 export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) {
-  const [callState,      setCallState]      = useState<CallState>('idle')
-  const [callType,       setCallType]       = useState<CallType>('audio')
-  const [isMuted,        setIsMuted]        = useState(false)
-  const [isCameraOff,    setIsCameraOff]    = useState(false)
-  const [isScreenSharing,setIsScreenSharing]= useState(false)
-  const [callDuration,   setCallDuration]   = useState(0)
+  const [callState,       setCallState]       = useState<CallState>('idle')
+  const [callType,        setCallType]        = useState<CallType>('audio')
+  const [isMuted,         setIsMuted]         = useState(false)
+  const [isCameraOff,     setIsCameraOff]     = useState(false)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [callDuration,    setCallDuration]    = useState(0)
 
-  const pcRef           = useRef<RTCPeerConnection | null>(null)
-  const localStreamRef  = useRef<MediaStream | null>(null)
-  const localVideoRef   = useRef<HTMLVideoElement | null>(null)
-  const remoteVideoRef  = useRef<HTMLVideoElement | null>(null)
-  const channelRef      = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
-  const durationTimer   = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pendingOffer    = useRef<RTCSessionDescriptionInit | null>(null)
+  const pcRef              = useRef<RTCPeerConnection | null>(null)
+  const localStreamRef     = useRef<MediaStream | null>(null)
+  const localVideoRef      = useRef<HTMLVideoElement | null>(null)
+  const remoteVideoRef     = useRef<HTMLVideoElement | null>(null)
+  const channelRef         = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+  const durationTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pendingOffer       = useRef<RTCSessionDescriptionInit | null>(null)
+
+  // Buffer para ICE candidates que llegan antes de que exista el RTCPeerConnection.
+  // Esto pasa cuando el caller envía sus candidates mientras el callee todavía
+  // está viendo la pantalla de llamada entrante (pcRef.current === null).
+  const pendingCandidates  = useRef<RTCIceCandidateInit[]>([])
 
   const channelId = [userId, peerId].sort().join('_')
 
@@ -48,19 +53,32 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
       .on('broadcast', { event: 'call-offer' }, ({ payload }: { payload: { from: string; offer: RTCSessionDescriptionInit; callType: CallType } }) => {
         if (payload.from !== peerId) return
         pendingOffer.current = payload.offer
+        pendingCandidates.current = []   // limpiar buffer al recibir nueva oferta
         setCallType(payload.callType)
         setCallState('ringing')
         onIncomingCall?.(payload.from, payload.callType)
       })
       .on('broadcast', { event: 'call-answer' }, ({ payload }: { payload: { from: string; answer: RTCSessionDescriptionInit } }) => {
         if (payload.from !== peerId) return
-        pcRef.current?.setRemoteDescription(new RTCSessionDescription(payload.answer))
-          .then(() => { setCallState('connected'); startTimer() })
+        const pc = pcRef.current
+        if (!pc) return
+        pc.setRemoteDescription(new RTCSessionDescription(payload.answer))
+          .then(async () => {
+            // Drenar candidates bufferizados (poco probable en el caller pero por las dudas)
+            await drainPendingCandidates(pc)
+          })
           .catch(console.error)
+        // No tocar callState aquí: onconnectionstatechange se encarga
       })
       .on('broadcast', { event: 'ice-candidate' }, ({ payload }: { payload: { from: string; candidate: RTCIceCandidateInit } }) => {
         if (payload.from !== peerId) return
-        pcRef.current?.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {})
+        if (pcRef.current) {
+          // PC lista: agregar inmediatamente
+          pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {})
+        } else {
+          // PC no lista todavía (callee esperando aceptar): bufferizar
+          pendingCandidates.current.push(payload.candidate)
+        }
       })
       .on('broadcast', { event: 'call-end' }, ({ payload }: { payload: { from: string } }) => {
         if (payload.from !== peerId) return
@@ -73,8 +91,17 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, peerId])
 
+  // ── Drenar ICE candidates bufferizados ──────────────────────────────────────
+  async function drainPendingCandidates(pc: RTCPeerConnection) {
+    for (const c of pendingCandidates.current) {
+      await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+    }
+    pendingCandidates.current = []
+  }
+
   // ── Timer ───────────────────────────────────────────────────────────────────
   function startTimer() {
+    if (durationTimer.current) return   // evitar doble timer
     setCallDuration(0)
     durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000)
   }
@@ -97,8 +124,9 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
     }
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected')  { setCallState('connected'); startTimer() }
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') _cleanupCall(false)
+      const state = pc.connectionState
+      if (state === 'connected')                           { setCallState('connected'); startTimer() }
+      if (state === 'disconnected' || state === 'failed') { _cleanupCall(false) }
     }
 
     return pc
@@ -109,6 +137,7 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
     try {
       setCallType(type)
       setCallState('calling')
+      pendingCandidates.current = []
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' })
       localStreamRef.current = stream
@@ -147,6 +176,11 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
       stream.getTracks().forEach(t => pc.addTrack(t, stream))
 
       await pc.setRemoteDescription(new RTCSessionDescription(pendingOffer.current))
+
+      // Aplicar todos los ICE candidates que llegaron mientras esperábamos
+      // que el usuario aceptara la llamada (pcRef era null)
+      await drainPendingCandidates(pc)
+
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
@@ -171,14 +205,14 @@ export function useWebRTC({ userId, peerId, onIncomingCall }: UseWebRTCOptions) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
-  function _cleanupCall(notify: boolean) {
-    if (!notify) { /* already sent end signal */ }
+  function _cleanupCall(_notify: boolean) {
     if (durationTimer.current) { clearInterval(durationTimer.current); durationTimer.current = null }
     pcRef.current?.close()
     pcRef.current = null
     localStreamRef.current?.getTracks().forEach(t => t.stop())
     localStreamRef.current = null
     pendingOffer.current = null
+    pendingCandidates.current = []
     setCallState('ended')
     setIsMuted(false)
     setIsCameraOff(false)

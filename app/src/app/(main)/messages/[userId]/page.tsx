@@ -102,9 +102,21 @@ export default function ChatPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: { new: Message }) => {
         const m = payload.new
-        if ((m.from_id === user!.id && m.to_id === otherId) || (m.from_id === otherId && m.to_id === user!.id)) {
-          setMessages(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m])
-        }
+        if (!((m.from_id === user!.id && m.to_id === otherId) || (m.from_id === otherId && m.to_id === user!.id))) return
+
+        setMessages(prev => {
+          // Si el mensaje es nuestro, reemplazar el optimista que tiene id Date.now()
+          // (> 1 billón) con el mismo contenido → evita burbuja duplicada
+          if (m.from_id === user!.id) {
+            const idx = prev.findIndex(x => x.id > 1_000_000_000_000 && x.content === m.content)
+            if (idx !== -1) {
+              const updated = [...prev]
+              updated[idx] = m
+              return updated
+            }
+          }
+          return prev.some(x => x.id === m.id) ? prev : [...prev, m]
+        })
       })
       .on('broadcast', { event: 'typing' }, () => {
         setIsOtherTyping(true)
