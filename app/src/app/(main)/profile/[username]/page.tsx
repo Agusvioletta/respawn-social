@@ -10,6 +10,7 @@ import { PostCard } from '@/components/social/PostCard'
 import { calculateXP, xpLevel, getLevelName } from '@/lib/utils/xp'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 import type { Profile } from '@/lib/types/database'
+import { getBanner } from '@/lib/banners'
 
 // ── Logros ────────────────────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
@@ -46,14 +47,7 @@ const ARCADE_GAMES = [
   { id: 'spaceinvaders', emoji: '👾', name: 'Space Invaders', color: '#4ade80' },
 ]
 
-const BANNER_PRESETS: Record<string, { gradient: string; accent: string; gridColor: string }> = {
-  default: { gradient: 'linear-gradient(135deg,#07070F 0%,#0d0a1e 45%,#080814 100%)', accent: '#00FFF7', gridColor: 'rgba(0,255,247,0.05)' },
-  fire:    { gradient: 'linear-gradient(135deg,#0f0500 0%,#1a0600 50%,#0a0200 100%)', accent: '#FF6B00', gridColor: 'rgba(255,107,0,0.05)' },
-  void:    { gradient: 'linear-gradient(135deg,#050308 0%,#0a0514 100%)',              accent: '#C084FC', gridColor: 'rgba(192,132,252,0.05)' },
-  ocean:   { gradient: 'linear-gradient(135deg,#00080f 0%,#001020 100%)',              accent: '#00B4D8', gridColor: 'rgba(0,180,216,0.05)' },
-  forest:  { gradient: 'linear-gradient(135deg,#020a02 0%,#040e04 100%)',              accent: '#4ade80', gridColor: 'rgba(74,222,128,0.05)' },
-  sunset:  { gradient: 'linear-gradient(135deg,#0f0007 0%,#1a0010 100%)',              accent: '#FF4F7B', gridColor: 'rgba(255,79,123,0.05)' },
-}
+// Banner presets now come from the shared catalog (lib/banners.ts)
 
 interface StatsData {
   postCount: number; followersCount: number; followingCount: number
@@ -173,8 +167,7 @@ export default function ProfilePage() {
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const presetId = (profile as any).banner_preset ?? 'default'
-        const preset = BANNER_PRESETS[presetId] ?? BANNER_PRESETS.default
+        const preset = getBanner((profile as any).banner_preset)
         return (
           <div style={{
             height: '168px', position: 'relative', overflow: 'hidden',

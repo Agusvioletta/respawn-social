@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { calculateXP, xpLevel, getLevelName } from '@/lib/utils/xp'
+import { BANNER_CATALOG, BANNER_CATEGORIES, getBanner } from '@/lib/banners'
 
 const AVATARS = [
   { id: 'avatar1', src: '/avatar1.png', label: 'Avatar 1' },
@@ -464,41 +465,115 @@ export default function SettingsPage() {
           {/* BANNER */}
           <div>
             <span style={labelStyle}>BANNER DEL PERFIL</span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
-              {[
-                { id: 'default', label: 'Cyber',   gradient: 'linear-gradient(135deg,#07070F,#0d0a1e,#080814)', accent: '#00FFF7' },
-                { id: 'void',    label: 'Void',    gradient: 'linear-gradient(135deg,#050308,#0a0514)',           accent: '#C084FC' },
-                { id: 'fire',    label: 'Fire',    gradient: 'linear-gradient(135deg,#0f0500,#1a0600,#0a0200)',   accent: '#FF6B00' },
-                { id: 'ocean',   label: 'Ocean',   gradient: 'linear-gradient(135deg,#00080f,#001020)',            accent: '#00B4D8' },
-                { id: 'forest',  label: 'Bosque',  gradient: 'linear-gradient(135deg,#020a02,#040e04)',            accent: '#4ade80' },
-                { id: 'sunset',  label: 'Sunset',  gradient: 'linear-gradient(135deg,#0f0007,#1a0010)',            accent: '#FF4F7B' },
-              ].map(b => (
-                <button
-                  key={b.id}
-                  onClick={() => setSelectedBanner(b.id)}
-                  style={{
-                    height: '52px', borderRadius: 'var(--radius-md)',
-                    background: b.gradient,
-                    border: `2px solid ${selectedBanner === b.id ? b.accent : 'var(--border)'}`,
-                    cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                    boxShadow: selectedBanner === b.id ? `0 0 12px ${b.accent}66` : 'none',
-                    transition: 'all var(--transition)',
-                  }}
-                >
+
+            {/* Preview del banner seleccionado */}
+            {(() => {
+              const current = getBanner(selectedBanner)
+              return (
+                <div style={{
+                  height: '64px', borderRadius: 'var(--radius-md)', marginBottom: '12px',
+                  background: current.gradient, position: 'relative', overflow: 'hidden',
+                  border: `1px solid ${current.accent}44`,
+                  boxShadow: `0 0 20px ${current.accent}22`,
+                }}>
                   <div style={{
                     position: 'absolute', inset: 0,
-                    backgroundImage: `linear-gradient(${b.accent}0d 1px,transparent 1px),linear-gradient(90deg,${b.accent}0d 1px,transparent 1px)`,
-                    backgroundSize: '16px 16px',
+                    backgroundImage: `linear-gradient(${current.gridColor} 1px,transparent 1px),linear-gradient(90deg,${current.gridColor} 1px,transparent 1px)`,
+                    backgroundSize: '20px 20px',
                   }} />
-                  <span style={{
-                    position: 'relative', fontFamily: 'var(--font-display)', fontSize: '9px',
-                    fontWeight: 700, color: b.accent, letterSpacing: '1px',
-                  }}>{b.label.toUpperCase()}</span>
-                  {selectedBanner === b.id && (
-                    <span style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px' }}>✓</span>
-                  )}
-                </button>
-              ))}
+                  <div style={{
+                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
+                    paddingLeft: '14px', gap: '8px',
+                  }}>
+                    <span style={{ fontSize: '18px' }}>{current.emoji}</span>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: current.accent, letterSpacing: '1px' }}>
+                        {current.name.toUpperCase()}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>
+                        {current.category}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Catálogo por categoría */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {BANNER_CATEGORIES.map(cat => {
+                const items = BANNER_CATALOG.filter(b => b.category === cat)
+                if (!items.length) return null
+                return (
+                  <div key={cat}>
+                    <div style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 700,
+                      color: 'var(--text-muted)', letterSpacing: '2px',
+                      textTransform: 'uppercase', marginBottom: '6px',
+                    }}>
+                      {cat}
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+                      gap: '6px',
+                    }}>
+                      {items.map(b => {
+                        const isSelected = selectedBanner === b.id
+                        return (
+                          <button
+                            key={b.id}
+                            onClick={() => setSelectedBanner(b.id)}
+                            title={b.name}
+                            style={{
+                              height: '56px', borderRadius: 'var(--radius-md)',
+                              background: b.gradient,
+                              border: `2px solid ${isSelected ? b.accent : 'rgba(255,255,255,0.06)'}`,
+                              cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                              boxShadow: isSelected ? `0 0 14px ${b.accent}55` : 'none',
+                              transition: 'all 0.15s ease',
+                              padding: 0,
+                            }}
+                          >
+                            {/* grid overlay */}
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              backgroundImage: `linear-gradient(${b.gridColor} 1px,transparent 1px),linear-gradient(90deg,${b.gridColor} 1px,transparent 1px)`,
+                              backgroundSize: '14px 14px',
+                            }} />
+                            {/* content */}
+                            <div style={{
+                              position: 'relative', height: '100%',
+                              display: 'flex', flexDirection: 'column',
+                              alignItems: 'center', justifyContent: 'center', gap: '2px',
+                            }}>
+                              <span style={{ fontSize: '14px', lineHeight: 1 }}>{b.emoji}</span>
+                              <span style={{
+                                fontFamily: 'var(--font-display)', fontSize: '7.5px',
+                                fontWeight: 700, color: b.accent, letterSpacing: '0.5px',
+                                textAlign: 'center', lineHeight: 1.2,
+                                maxWidth: '80px', overflow: 'hidden',
+                                whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                                padding: '0 4px',
+                              }}>{b.name}</span>
+                            </div>
+                            {/* check mark */}
+                            {isSelected && (
+                              <div style={{
+                                position: 'absolute', top: '3px', right: '4px',
+                                width: '14px', height: '14px', borderRadius: '50%',
+                                background: b.accent, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                fontSize: '8px', fontWeight: 900, color: '#000',
+                              }}>✓</div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
