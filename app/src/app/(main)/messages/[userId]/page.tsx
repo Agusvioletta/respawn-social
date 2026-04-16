@@ -493,12 +493,32 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
       backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {/* Video streams — solo cuando está conectado */}
-      {isConnected && isVideo && (
-        <>
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }} />
-          <video ref={localVideoRef} autoPlay playsInline muted style={{ position: 'absolute', bottom: '80px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '2px solid var(--cyan)', zIndex: 2 }} />
-        </>
+      {/* Remote stream — siempre montado para que el ref esté disponible cuando ontrack dispare.
+          El <video> también reproduce audio-only streams, por eso sirve tanto para audio como video. */}
+      <video
+        ref={remoteVideoRef}
+        autoPlay
+        playsInline
+        style={
+          isConnected && isVideo
+            ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }
+            : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+        }
+      />
+
+      {/* Local preview — montado en videollamada (oculto hasta conectar) */}
+      {isVideo && (
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={
+            isConnected
+              ? { position: 'absolute', bottom: '80px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '2px solid var(--cyan)', zIndex: 2 }
+              : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+          }
+        />
       )}
 
       {/* Card */}
