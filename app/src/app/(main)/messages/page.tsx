@@ -1,21 +1,31 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 
 interface Profile {
-  id: string; username: string; avatar: string | null; bio: string | null; now_playing?: string | null
+  id: string; username: string; avatar: string | null; bio: string | null
+  now_playing?: string | null; status?: string | null
 }
+
+type StatusId = 'online' | 'away' | 'dnd' | 'invisible'
+
+const STATUSES: { id: StatusId; label: string; color: string; dot: string }[] = [
+  { id: 'online',    label: 'En línea',     color: '#4ade80', dot: '#4ade80' },
+  { id: 'away',      label: 'Ausente',      color: '#FBB040', dot: '#FBB040' },
+  { id: 'dnd',       label: 'No molestar',  color: '#FF4F7B', dot: '#FF4F7B' },
+  { id: 'invisible', label: 'Invisible',    color: '#555570', dot: '#555570' },
+]
 interface Conversation {
   otherId: string; otherProfile: Profile
   lastMessage: string; lastTime: string; isMine: boolean; unread: boolean
 }
 
 export default function MessagesPage() {
-  const user    = useAuthStore((s) => s.user)
+  const { user, setUser } = useAuthStore()
   const supabase = createClient()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -24,6 +34,29 @@ export default function MessagesPage() {
   const [loading,       setLoading]       = useState(true)
   const [showNew,       setShowNew]       = useState(false)
   const [newSearch,     setNewSearch]     = useState('')
+  const [showStatus,    setShowStatus]    = useState(false)
+  const statusRef = useRef<HTMLDivElement>(null)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currentStatus: StatusId = ((user as any)?.status as StatusId) ?? 'online'
+  const statusInfo = STATUSES.find(s => s.id === currentStatus) ?? STATUSES[0]
+
+  async function handleSetStatus(id: StatusId) {
+    setShowStatus(false)
+    if (!user) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('profiles').update({ status: id }).eq('id', user.id)
+    setUser({ ...user, ...({ status: id } as any) } as typeof user)  // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
+
+  // Cerrar dropdown al click fuera
+  useEffect(() => {
+    function onClickOut(e: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setShowStatus(false)
+    }
+    document.addEventListener('mousedown', onClickOut)
+    return () => document.removeEventListener('mousedown', onClickOut)
+  }, [])
 
   useEffect(() => { loadConversations() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -35,7 +68,7 @@ export default function MessagesPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from('messages').select('*').or(`from_id.eq.${user.id},to_id.eq.${user.id}`).order('created_at', { ascending: false }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('profiles').select('id, username, avatar, bio, now_playing'),
+        (supabase as any).from('profiles').select('id, username, avatar, bio, now_playing, status'),
       ])
       setProfiles(allProfiles ?? [])
       if (!msgs?.length) return
@@ -83,9 +116,71 @@ export default function MessagesPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 800, letterSpacing: '3px', color: 'var(--text-primary)', margin: 0 }}>MENSAJES</h1>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-              {conversations.length} conversación{conversations.length !== 1 ? 'es' : ''}
-            </p>
+            {/* Status selector */}
+            <div ref={statusRef} style={{ position: 'relative', display: 'inline-block', marginTop: '6px' }}>
+              <button
+                onClick={() => setShowStatus(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '20px', padding: '4px 10px 4px 8px',
+                  cursor: 'pointer', outline: 'none', transition: 'all 0.15s',
+                }}
+              >
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: statusInfo.color,
+                  boxShadow: `0 0 6px ${statusInfo.color}`,
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '10px',
+                  color: statusInfo.color, letterSpacing: '0.5px',
+                }}>
+                  {statusInfo.label}
+                </span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '8px', marginLeft: '2px' }}>▾</span>
+              </button>
+
+              {/* Dropdown */}
+              {showStatus && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50,
+                  background: 'var(--card)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  minWidth: '150px',
+                }}>
+                  {STATUSES.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => handleSetStatus(s.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        width: '100%', padding: '10px 14px',
+                        background: currentStatus === s.id ? 'rgba(255,255,255,0.04)' : 'transparent',
+                        border: 'none', cursor: 'pointer',
+                        transition: 'background 0.1s',
+                        borderLeft: currentStatus === s.id ? `2px solid ${s.color}` : '2px solid transparent',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = currentStatus === s.id ? 'rgba(255,255,255,0.04)' : 'transparent')}
+                    >
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: s.color, boxShadow: `0 0 6px ${s.color}55`, flexShrink: 0,
+                      }} />
+                      <span style={{
+                        fontFamily: 'var(--font-mono)', fontSize: '11px',
+                        color: currentStatus === s.id ? s.color : 'var(--text-secondary)',
+                      }}>
+                        {s.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <button onClick={() => setShowNew(true)} style={{
             background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)',
@@ -144,15 +239,25 @@ export default function MessagesPage() {
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  {/* Avatar + online dot */}
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <UserAvatar avatar={conv.otherProfile.avatar} username={conv.otherProfile.username} size={46} />
-                    {conv.otherProfile.now_playing ? (
-                      <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '12px', height: '12px', borderRadius: '50%', background: '#4ade80', border: '2px solid var(--void)', boxShadow: '0 0 6px #4ade80' }} />
-                    ) : (
-                      <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '12px', height: '12px', borderRadius: '50%', background: 'var(--text-muted)', border: '2px solid var(--void)' }} />
-                    )}
-                  </div>
+                  {/* Avatar + status dot */}
+                  {(() => {
+                    const st = (conv.otherProfile.status ?? 'online') as StatusId
+                    const si = STATUSES.find(s => s.id === st) ?? STATUSES[0]
+                    const visible = st !== 'invisible'
+                    return (
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <UserAvatar avatar={conv.otherProfile.avatar} username={conv.otherProfile.username} size={46} />
+                        {visible && (
+                          <div style={{
+                            position: 'absolute', bottom: '-2px', right: '-2px',
+                            width: '12px', height: '12px', borderRadius: '50%',
+                            background: si.color, border: '2px solid var(--void)',
+                            boxShadow: `0 0 6px ${si.color}`,
+                          }} />
+                        )}
+                      </div>
+                    )
+                  })()}
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
