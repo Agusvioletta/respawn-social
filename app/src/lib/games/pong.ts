@@ -67,13 +67,13 @@ export const pongEngine: GameEngine = {
       }
       if (ball.x - ball.r < 0) {
         cpu.score++
-        if (cpu.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(player.score * 20); return }
+        if (cpu.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(player.score * 20, false); return }
         resetBall()
       } else if (ball.x + ball.r > W) {
         player.score++
         const pts = player.score * 20
         onScore(pts)
-        if (player.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(pts + 200); return }
+        if (player.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(pts + 200, true); return }
         resetBall()
       }
     }

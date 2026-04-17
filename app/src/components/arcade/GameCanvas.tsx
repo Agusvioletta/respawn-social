@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import type { GameDef } from '@/lib/games/types'
+import { GAMES } from '@/lib/games/types'
 
 const WIN_THRESHOLDS: Record<string, number> = {
   snake: 100, pong: 100, breakout: 200, asteroids: 500,
@@ -14,7 +15,7 @@ const WIN_THRESHOLDS: Record<string, number> = {
 export type GameState = 'idle' | 'playing' | 'gameover'
 
 export interface GameEngine {
-  init: (canvas: HTMLCanvasElement, onScore: (s: number) => void, onGameOver: (s: number) => void) => () => void
+  init: (canvas: HTMLCanvasElement, onScore: (s: number) => void, onGameOver: (s: number, won?: boolean) => void) => () => void
 }
 
 interface GameCanvasProps {
@@ -202,6 +203,7 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
   const [finalScore, setFinalScore] = useState(0)
   const [bestScore,  setBestScore]  = useState<number | null>(null)
   const [saving,     setSaving]     = useState(false)
+  const [won,        setWon]        = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -217,8 +219,9 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, game.id])
 
-  const handleGameOver = useCallback(async (s: number) => {
+  const handleGameOver = useCallback(async (s: number, didWin?: boolean) => {
     setState('gameover')
+    setWon(!!didWin)
     setFinalScore(s)
     if (!user) return
     setSaving(true)
@@ -243,11 +246,23 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
     if (!canvasRef.current) return
     cleanupRef.current?.()
     setScore(0)
+    setWon(false)
     setState('playing')
     cleanupRef.current = engine.init(canvasRef.current, (s) => setScore(s), handleGameOver)
   }
 
+  function stopGame() {
+    cleanupRef.current?.()
+    cleanupRef.current = null
+    setState('idle')
+    setScore(0)
+  }
+
   useEffect(() => () => { cleanupRef.current?.() }, [])
+
+  // Juego siguiente (para mostrar qué se desbloquea)
+  const nextGame = GAMES.find(g => g.minLevel === game.minLevel + 1)
+  const threshold = WIN_THRESHOLDS[game.id] ?? 100
 
   const controlType  = CONTROL_TYPES[game.id] ?? 'none'
   const hasTouchCtrl = controlType !== 'none'
@@ -270,17 +285,42 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <Link href="/arcade" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '18px' }}>←</Link>
         <span style={{ fontSize: '22px' }}>{game.emoji}</span>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', letterSpacing: '2px', color: game.color, fontWeight: 700, margin: 0 }}>
             {game.name.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>{game.description}</p>
+          {/* Unlock info */}
+          {nextGame ? (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', margin: '2px 0 0', letterSpacing: '0.3px' }}>
+              🔓 {threshold} pts → desbloquea {nextGame.emoji} {nextGame.name}
+            </p>
+          ) : (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+              {game.description}
+            </p>
+          )}
         </div>
-        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>SCORE</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: game.color }}>
-            {score.toLocaleString('es-AR')}
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>SCORE</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: game.color, lineHeight: 1 }}>
+              {score.toLocaleString('es-AR')}
+            </div>
           </div>
+          {/* Stop button — solo durante partida */}
+          {state === 'playing' && (
+            <button
+              onClick={stopGame}
+              style={{
+                background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.3)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--pink)',
+                fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700,
+                letterSpacing: '1px', padding: '4px 10px', cursor: 'pointer', outline: 'none',
+              }}
+            >
+              ■ PARAR
+            </button>
+          )}
         </div>
       </div>
 
@@ -314,6 +354,17 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
                 Tu mejor: <span style={{ color: game.color }}>{bestScore.toLocaleString('es-AR')}</span>
               </div>
             )}
+            {/* Unlock info en idle */}
+            {nextGame && (
+              <div style={{
+                background: `${game.color}11`, border: `1px solid ${game.color}33`,
+                borderRadius: 'var(--radius-sm)', padding: '6px 14px',
+                fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)',
+                textAlign: 'center',
+              }}>
+                🔓 Llegá a <span style={{ color: game.color, fontWeight: 700 }}>{threshold} pts</span> para desbloquear {nextGame.emoji} {nextGame.name}
+              </div>
+            )}
             <button onClick={startGame} style={{
               background: `${game.color}22`, border: `1px solid ${game.color}66`,
               borderRadius: 'var(--radius-md)', color: game.color,
@@ -335,9 +386,21 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
             alignItems: 'center', justifyContent: 'center',
             background: 'rgba(7,7,15,0.9)', borderRadius: 'var(--radius-lg)', gap: '14px',
           }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--pink)', letterSpacing: '2px' }}>
-              GAME OVER
-            </div>
+            {won ? (
+              <>
+                <span style={{ fontSize: '36px' }}>🏆</span>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '2px' }}>
+                  ¡VICTORIA!
+                </div>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '36px' }}>💀</span>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--pink)', letterSpacing: '2px' }}>
+                  GAME OVER
+                </div>
+              </>
+            )}
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
               Score: <span style={{ color: game.color, fontWeight: 700 }}>{finalScore.toLocaleString('es-AR')}</span>
             </div>
@@ -353,6 +416,28 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
                 Guardando score...
               </div>
+            )}
+            {/* Unlock feedback en gameover */}
+            {nextGame && !saving && (
+              won && finalScore >= threshold ? (
+                <div style={{
+                  background: 'rgba(0,255,247,0.08)', border: '1px solid rgba(0,255,247,0.3)',
+                  borderRadius: 'var(--radius-sm)', padding: '6px 14px',
+                  fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)',
+                  textAlign: 'center',
+                }}>
+                  🎉 ¡Desbloqueaste {nextGame.emoji} {nextGame.name}!
+                </div>
+              ) : finalScore < threshold ? (
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', padding: '6px 14px',
+                  fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)',
+                  textAlign: 'center',
+                }}>
+                  🔓 Necesitás <span style={{ color: game.color }}>{threshold} pts</span> para desbloquear {nextGame.emoji} {nextGame.name}
+                </div>
+              ) : null
             )}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={startGame} style={{
