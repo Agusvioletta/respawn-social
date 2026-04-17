@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
-import { UserAvatar } from '@/components/ui/UserAvatar'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 const MAX_CHARS = 280
@@ -181,8 +180,34 @@ export function PostComposer({ onPost }: PostComposerProps) {
       )}
 
       <div style={{ display: 'flex', gap: '12px' }}>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <UserAvatar avatar={(user as any).photo_url ?? user.avatar} username={user.username} size={38} />
+        {/* Avatar del composer — foto real o pixel avatar */}
+        {(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const src = (user as any).photo_url ?? (user.avatar?.startsWith('/') ? user.avatar : `/${user.avatar ?? 'avatar1.png'}`)
+          const isPhoto = src.startsWith('http')
+          return (
+            <div style={{
+              width: 42, height: 42, flexShrink: 0,
+              borderRadius: isPhoto ? '50%' : '10px',
+              border: '2px solid var(--cyan)',
+              boxShadow: '0 0 10px rgba(0,255,247,0.25)',
+              overflow: 'hidden',
+              background: 'var(--surface)',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={user.username}
+                style={{
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  imageRendering: isPhoto ? 'auto' : 'pixelated',
+                  display: 'block',
+                }}
+              />
+            </div>
+          )
+        })()}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <textarea
