@@ -1,23 +1,72 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
-import { UserAvatar } from '@/components/ui/UserAvatar'
-import { useWebRTC, type CallState, type CallType } from '@/hooks/useWebRTC'
+import { useWebRTC, type CallType } from '@/hooks/useWebRTC'
+
+// ── CSS Animations ────────────────────────────────────────────────────────────
+const animations = `
+@keyframes radar-ring {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes waveform-bar {
+  0%, 100% { height: 4px; }
+  50% { height: 20px; }
+}
+@keyframes neon-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--cyan), 0 0 24px rgba(0,255,247,0.2); }
+  50% { box-shadow: 0 0 16px var(--cyan), 0 0 48px rgba(0,255,247,0.4); }
+}
+@keyframes float-up {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1.4); opacity: 0; }
+}
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(400%); }
+}
+@keyframes typing-dot {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+`
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface OtherProfile {
-  id: string; username: string; avatar: string | null; bio: string | null; now_playing?: string | null
+  id: string
+  username: string
+  avatar: string | null
+  bio: string | null
+  now_playing?: string | null
+  photo_url?: string | null
+  max_level?: number
+  status?: string | null
+  banner_preset?: string | null
 }
 interface Message {
-  id: number; from_id: string; to_id: string; content: string; created_at: string
+  id: number
+  from_id: string
+  to_id: string
+  content: string
+  created_at: string
   type?: 'text' | 'audio' | 'image'
   audio_url?: string | null
   image_url?: string | null
+  challenge_game?: string | null
 }
+interface FloatingReaction { id: number; emoji: string; x: number }
 type MsgGroup = { sender: string; msgs: Message[]; date: string }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -38,13 +87,15 @@ export default function ChatPage() {
   const user    = useAuthStore((s) => s.user)
   const supabase = createClient()
 
-  const [otherProfile,   setOtherProfile]   = useState<OtherProfile | null>(null)
-  const [messages,       setMessages]       = useState<Message[]>([])
-  const [input,          setInput]          = useState('')
-  const [loading,        setLoading]        = useState(true)
-  const [sending,        setSending]        = useState(false)
-  const [isOtherTyping,  setIsOtherTyping]  = useState(false)
-  const [incomingCall,   setIncomingCall]   = useState<{ from: string; type: CallType } | null>(null)
+  const [otherProfile,     setOtherProfile]     = useState<OtherProfile | null>(null)
+  const [messages,         setMessages]         = useState<Message[]>([])
+  const [input,            setInput]            = useState('')
+  const [loading,          setLoading]          = useState(true)
+  const [sending,          setSending]          = useState(false)
+  const [isOtherTyping,    setIsOtherTyping]    = useState(false)
+  const [incomingCall,     setIncomingCall]     = useState<{ from: string; type: CallType } | null>(null)
+  const [floatingReactions,setFloatingReactions]= useState<FloatingReaction[]>([])
+  const [showChallengeMenu,setShowChallengeMenu]= useState(false)
 
   // Voice recording
   const [recState,    setRecState]    = useState<'idle' | 'recording' | 'preview'>('idle')
@@ -59,6 +110,7 @@ export default function ChatPage() {
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
   const typingTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sigChannel   = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const challengeMenuRef = useRef<HTMLDivElement>(null)
 
   // WebRTC
   const webrtc = useWebRTC({
@@ -66,6 +118,17 @@ export default function ChatPage() {
     peerId: otherId,
     onIncomingCall: (from, type) => { setIncomingCall({ from, type }) },
   })
+
+  // ── Close challenge menu on outside click ──────────────────────────────────
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (challengeMenuRef.current && !challengeMenuRef.current.contains(e.target as Node)) {
+        setShowChallengeMenu(false)
+      }
+    }
+    if (showChallengeMenu) document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [showChallengeMenu])
 
   // ── Load data ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -81,7 +144,7 @@ export default function ChatPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [{ data: profile }, { data: msgs }] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('profiles').select('id, username, avatar, bio, now_playing').eq('id', otherId).single(),
+        (supabase as any).from('profiles').select('id, username, avatar, photo_url, bio, now_playing, max_level, status, banner_preset').eq('id', otherId).single(),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from('messages').select('*')
           .or(`and(from_id.eq.${user!.id},to_id.eq.${otherId}),and(from_id.eq.${otherId},to_id.eq.${user!.id})`)
@@ -95,43 +158,35 @@ export default function ChatPage() {
   }
 
   // ── Realtime: new messages + typing ─────────────────────────────────────────
-  // Usamos dos mecanismos en paralelo:
-  // 1. broadcast 'new-message' — entrega inmediata P2P (canal primario)
-  // 2. postgres_changes INSERT  — fallback CDC, también confirma IDs reales
   function setupRealtimeSignaling() {
     const chanId = `chat:${[user!.id, otherId].sort().join('_')}`
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ch = (supabase as any).channel(chanId)
 
-      // ── Broadcast: mensaje enviado por el otro (entrega principal) ──────────
       .on('broadcast', { event: 'new-message' }, ({ payload }: { payload: { message: Message } }) => {
         const m = payload.message
         if (!m || m.from_id !== otherId) return
         setMessages(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m])
       })
 
-      // ── Broadcast: typing indicator ─────────────────────────────────────────
       .on('broadcast', { event: 'typing' }, () => {
         setIsOtherTyping(true)
         if (typingTimer.current) clearTimeout(typingTimer.current)
         typingTimer.current = setTimeout(() => setIsOtherTyping(false), 2500)
       })
 
-      // ── postgres_changes: fallback + confirmar ID real del mensaje propio ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: { new: Message }) => {
         const m = payload.new
         if (!((m.from_id === user!.id && m.to_id === otherId) || (m.from_id === otherId && m.to_id === user!.id))) return
 
         setMessages(prev => {
-          // Reemplazar optimista (id = Date.now() ~ > 1e12) con el registro real
           if (m.from_id === user!.id) {
             const idx = prev.findIndex(x => x.id > 1_000_000_000_000 && x.content === m.content)
             if (idx !== -1) {
               const updated = [...prev]; updated[idx] = m; return updated
             }
           }
-          // Mensaje del otro: dedup (puede haber llegado ya por broadcast)
           return prev.some(x => x.id === m.id) ? prev : [...prev, m]
         })
       })
@@ -165,7 +220,6 @@ export default function ChatPage() {
         .from('messages').insert({ from_id: user.id, to_id: otherId, content: text }).select().single()
       if (error) throw error
 
-      // Broadcast para entrega inmediata al otro (no espera CDC)
       sigChannel.current?.send({
         type: 'broadcast', event: 'new-message',
         payload: { message: inserted ?? optimistic },
@@ -225,7 +279,6 @@ export default function ChatPage() {
       const { data: urlData } = (supabase.storage as any).from('message-audio').getPublicUrl(path)
       const audioUrl = urlData.publicUrl
 
-      // Try to insert with type+audio_url; fall back to plain text link
       let inserted: Message | null = null
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -233,7 +286,6 @@ export default function ChatPage() {
         if (error) throw error
         inserted = data
       } catch {
-        // Fallback: SQL migration not run yet — send as text with link
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data } = await (supabase as any).from('messages').insert({ from_id: user.id, to_id: otherId, content: `🎤 Mensaje de voz: ${audioUrl}` }).select().single()
         inserted = data
@@ -242,7 +294,6 @@ export default function ChatPage() {
       const optimistic: Message = inserted ?? { id: Date.now(), from_id: user.id, to_id: otherId, content: '🎤 Mensaje de voz', type: 'audio', audio_url: audioUrl, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, optimistic])
 
-      // Broadcast para entrega inmediata
       sigChannel.current?.send({
         type: 'broadcast', event: 'new-message',
         payload: { message: optimistic },
@@ -250,6 +301,35 @@ export default function ChatPage() {
       cancelAudio()
     } catch (e) { console.error('[Chat] sendAudio:', e) }
     finally { setSending(false) }
+  }
+
+  // ── Send game challenge ───────────────────────────────────────────────────────
+  async function sendGameChallenge(gameId: string) {
+    setShowChallengeMenu(false)
+    if (!user) return
+    const gameNames: Record<string, string> = {
+      snake: 'Snake', pong: 'Pong', breakout: 'Breakout',
+      asteroids: 'Asteroids', flappy: 'Flappy Bird', tetris: 'Tetris',
+      dino: 'Dino Run', spaceinvaders: 'Space Invaders',
+    }
+    const content = `⚔️ ¡Desafío de ${gameNames[gameId] ?? gameId}! ¿Te animás?`
+    const optimistic: Message = {
+      id: Date.now(), from_id: user.id, to_id: otherId,
+      content, created_at: new Date().toISOString(),
+      challenge_game: gameId,
+    }
+    setMessages(prev => [...prev, optimistic])
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: inserted } = await (supabase as any)
+        .from('messages')
+        .insert({ from_id: user.id, to_id: otherId, content, challenge_game: gameId })
+        .select().single()
+      sigChannel.current?.send({
+        type: 'broadcast', event: 'new-message',
+        payload: { message: inserted ?? optimistic },
+      })
+    } catch { setMessages(prev => prev.filter(m => m.id !== optimistic.id)) }
   }
 
   // ── Group messages ────────────────────────────────────────────────────────────
@@ -264,47 +344,134 @@ export default function ChatPage() {
   const isMe = (id: string) => id === user?.id
   const showCallUI = webrtc.callState !== 'idle'
 
+  // ── Status helpers ────────────────────────────────────────────────────────────
+  function statusColor(s?: string | null) {
+    if (s === 'away') return '#FBB040'
+    if (s === 'dnd')  return '#FF4F7B'
+    if (s === 'invisible') return '#555570'
+    return '#4ade80'
+  }
+  function statusLabel(s?: string | null) {
+    if (s === 'away') return 'Ausente'
+    if (s === 'dnd')  return 'No molestar'
+    if (s === 'invisible') return 'Invisible'
+    return 'En línea'
+  }
+
+  function getAvatarSrc(profile: OtherProfile | null | undefined) {
+    if (!profile) return '/avatar1.png'
+    return profile.photo_url ?? (profile.avatar?.startsWith('/') ? profile.avatar : `/${profile.avatar ?? 'avatar1.png'}`)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', background: 'var(--void)', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
+      <style>{animations}</style>
 
-      {/* ── Header ───────────────────────────────────────────────────────────── */}
+      {/* ── HEADER: Squad Room ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '12px',
-        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-        background: 'var(--deep)', flexShrink: 0,
-        backdropFilter: 'blur(8px)', zIndex: 10,
+        background: 'var(--deep)',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0, position: 'relative', overflow: 'hidden',
       }}>
-        <button onClick={() => router.push('/messages')} style={{
-          background: 'transparent', border: 'none', color: 'var(--text-muted)',
-          cursor: 'pointer', fontSize: '20px', padding: '0', lineHeight: 1, outline: 'none',
-        }}>←</button>
+        {/* Top accent line */}
+        <div style={{
+          height: '2px',
+          background: 'linear-gradient(90deg, rgba(0,255,247,0.3), rgba(192,132,252,0.4), rgba(255,79,123,0.3))',
+        }} />
 
-        {otherProfile ? (
-          <Link href={`/profile/${otherProfile.username}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1 }}>
-            <div style={{ position: 'relative' }}>
-              <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={36} />
-              <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', border: '2px solid var(--deep)', boxShadow: '0 0 6px #4ade80' }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>@{otherProfile.username}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: otherProfile.now_playing ? '#4ade80' : 'var(--text-muted)' }}>
-                {otherProfile.now_playing ? `🎮 ${otherProfile.now_playing}` : 'En línea'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px' }}>
+          <button onClick={() => router.push('/messages')} style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', fontSize: '18px', padding: '4px', lineHeight: 1, outline: 'none', flexShrink: 0,
+          }}>←</button>
+
+          {otherProfile ? (
+            <>
+              {/* Avatar with status ring */}
+              <Link href={`/profile/${otherProfile.username}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%',
+                    border: `2px solid ${statusColor(otherProfile.status)}`,
+                    boxShadow: `0 0 10px ${statusColor(otherProfile.status)}55`,
+                    overflow: 'hidden', background: 'var(--surface)',
+                    animation: otherProfile.status === 'online' || !otherProfile.status ? 'neon-pulse 3s ease-in-out infinite' : 'none',
+                  }}>
+                    <img
+                      src={getAvatarSrc(otherProfile)}
+                      alt={otherProfile.username}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile.photo_url ? 'auto' : 'pixelated' }}
+                    />
+                  </div>
+                  {/* Status dot */}
+                  <div style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 11, height: 11, borderRadius: '50%',
+                    background: statusColor(otherProfile.status),
+                    border: '2px solid var(--deep)',
+                    boxShadow: `0 0 6px ${statusColor(otherProfile.status)}`,
+                  }} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                      @{otherProfile.username}
+                    </span>
+                    {(otherProfile.max_level ?? 1) > 1 && (
+                      <span style={{
+                        fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: 700,
+                        color: 'var(--cyan)', background: 'rgba(0,255,247,0.1)',
+                        border: '1px solid rgba(0,255,247,0.25)', borderRadius: '4px',
+                        padding: '1px 5px', letterSpacing: '1px',
+                      }}>LVL {otherProfile.max_level}</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: otherProfile.now_playing ? '#4ade80' : statusColor(otherProfile.status), marginTop: '1px' }}>
+                    {otherProfile.now_playing
+                      ? <span>🎮 <span style={{ color: '#4ade80' }}>{otherProfile.now_playing}</span></span>
+                      : <span>{statusLabel(otherProfile.status)}</span>
+                    }
+                  </div>
+                </div>
+              </Link>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                <button onClick={() => webrtc.startCall('audio')} title="Llamada de voz" style={{
+                  background: 'transparent', border: '1px solid var(--border)',
+                  borderRadius: '10px', padding: '7px 10px', cursor: 'pointer',
+                  fontSize: '15px', transition: 'all 0.15s', outline: 'none',
+                  color: 'var(--text-muted)',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#4ade80'; e.currentTarget.style.background = 'rgba(74,222,128,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'transparent' }}
+                >📞</button>
+                <button onClick={() => webrtc.startCall('video')} title="Videollamada" style={{
+                  background: 'transparent', border: '1px solid var(--border)',
+                  borderRadius: '10px', padding: '7px 10px', cursor: 'pointer',
+                  fontSize: '15px', transition: 'all 0.15s', outline: 'none',
+                  color: 'var(--text-muted)',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cyan)'; e.currentTarget.style.background = 'rgba(0,255,247,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'transparent' }}
+                >📹</button>
               </div>
-            </div>
-          </Link>
-        ) : (
-          <div style={{ flex: 1 }} />
-        )}
-
-        {/* Call buttons */}
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button onClick={() => webrtc.startCall('audio')} title="Llamada de voz" style={callBtnStyle}>
-            📞
-          </button>
-          <button onClick={() => webrtc.startCall('video')} title="Videollamada" style={callBtnStyle}>
-            📹
-          </button>
+            </>
+          ) : <div style={{ flex: 1 }} />}
         </div>
+
+        {/* Now playing indicator */}
+        {otherProfile?.now_playing && (
+          <div style={{
+            padding: '6px 16px 8px',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', animation: 'pulse-dot 1.5s ease-in-out infinite', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#4ade80' }}>
+              Jugando {otherProfile.now_playing} ahora mismo
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Messages area ────────────────────────────────────────────────────── */}
@@ -343,7 +510,9 @@ export default function ChatPage() {
                     {/* Sender name + avatar (theirs only) */}
                     {!mine && otherProfile && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', paddingLeft: '4px' }}>
-                        <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={20} />
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                          <img src={getAvatarSrc(otherProfile)} alt={otherProfile.username} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile.photo_url ? 'auto' : 'pixelated' }} />
+                        </div>
                         <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>@{otherProfile.username}</span>
                       </div>
                     )}
@@ -353,26 +522,78 @@ export default function ChatPage() {
                         const br = mine
                           ? `${isFirst ? '18px' : '6px'} 18px ${isLast ? '6px' : '18px'} 18px`
                           : `18px ${isFirst ? '18px' : '6px'} 18px ${isLast ? '6px' : '18px'}`
+
                         return (
                           <div key={m.id}>
-                            {/* Audio message */}
-                            {(m.type === 'audio' && m.audio_url) ? (
-                              <div style={{ background: mine ? 'rgba(0,255,247,0.12)' : 'var(--card)', border: `1px solid ${mine ? 'var(--cyan-border)' : 'var(--border)'}`, borderRadius: br, padding: '10px 14px', minWidth: '220px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                  <span style={{ fontSize: '14px' }}>🎤</span>
-                                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', color: mine ? 'var(--cyan)' : 'var(--text-muted)', letterSpacing: '1px' }}>VOZ</span>
+                            {/* Challenge message */}
+                            {m.challenge_game ? (
+                              <div style={{
+                                background: 'linear-gradient(135deg, rgba(192,132,252,0.12), rgba(0,255,247,0.06))',
+                                border: '1px solid rgba(192,132,252,0.35)',
+                                borderRadius: '16px', padding: '14px 16px', minWidth: '220px',
+                                boxShadow: '0 4px 24px rgba(192,132,252,0.1)',
+                                animation: 'slide-up 0.3s ease',
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                  <span style={{ fontSize: '18px' }}>⚔️</span>
+                                  <div>
+                                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--purple)', letterSpacing: '1px' }}>DESAFÍO ARCADE</div>
+                                    <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', marginTop: '2px' }}>{m.content.replace('⚔️ ', '')}</div>
+                                  </div>
                                 </div>
-                                <audio src={m.audio_url} controls style={{ width: '100%', height: '32px', accentColor: 'var(--cyan)' }} />
+                                {!mine && m.challenge_game && (
+                                  <Link href={`/arcade/${m.challenge_game}`} style={{ textDecoration: 'none' }}>
+                                    <button style={{
+                                      width: '100%', padding: '8px', background: 'rgba(192,132,252,0.15)',
+                                      border: '1px solid rgba(192,132,252,0.4)', borderRadius: '10px',
+                                      color: 'var(--purple)', fontFamily: 'var(--font-display)', fontSize: '11px',
+                                      fontWeight: 700, letterSpacing: '1px', cursor: 'pointer', outline: 'none',
+                                    }}>
+                                      🎮 ACEPTAR DESAFÍO
+                                    </button>
+                                  </Link>
+                                )}
+                                {mine && (
+                                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                    ⏳ Esperando respuesta...
+                                  </div>
+                                )}
+                              </div>
+                            ) : (m.type === 'audio' && m.audio_url) ? (
+                              /* Audio/voice message */
+                              <div style={{
+                                background: mine ? 'linear-gradient(135deg,rgba(0,255,247,0.12),rgba(0,255,247,0.06))' : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${mine ? 'rgba(0,255,247,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                                borderRadius: '16px', padding: '10px 14px', minWidth: '200px',
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{ fontSize: '18px' }}>🎙️</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, height: '24px' }}>
+                                    {[...Array(16)].map((_, i) => (
+                                      <div key={i} style={{
+                                        width: '3px', background: mine ? 'var(--cyan)' : 'var(--text-muted)',
+                                        borderRadius: '2px', height: '4px',
+                                        animation: `waveform-bar ${0.6 + (i % 5) * 0.12}s ease-in-out ${i * 0.04}s infinite`,
+                                        opacity: 0.7,
+                                      }} />
+                                    ))}
+                                  </div>
+                                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: mine ? 'var(--cyan)' : 'var(--text-muted)' }}>VOZ</div>
+                                </div>
+                                <audio src={m.audio_url} controls style={{ width: '100%', height: '28px', marginTop: '6px', accentColor: mine ? 'var(--cyan)' : 'var(--purple)' }} />
                               </div>
                             ) : (
+                              /* Regular text message */
                               <div style={{
-                                background: mine ? 'rgba(0,255,247,0.12)' : 'var(--card)',
-                                border: `1px solid ${mine ? 'rgba(0,255,247,0.25)' : 'var(--border)'}`,
+                                background: mine
+                                  ? 'linear-gradient(135deg, rgba(0,255,247,0.15), rgba(0,255,247,0.08))'
+                                  : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${mine ? 'rgba(0,255,247,0.3)' : 'rgba(255,255,255,0.08)'}`,
                                 borderRadius: br, padding: '9px 13px',
-                                color: mine ? 'var(--text-primary)' : 'var(--text-primary)',
+                                color: 'var(--text-primary)',
                                 fontFamily: 'var(--font-body)', fontSize: '14px', lineHeight: 1.5,
                                 wordBreak: 'break-word',
-                                boxShadow: mine ? '0 2px 12px rgba(0,255,247,0.06)' : 'none',
+                                boxShadow: mine ? '0 2px 16px rgba(0,255,247,0.08), inset 0 0 12px rgba(0,255,247,0.03)' : 'none',
                               }}>
                                 {m.content}
                               </div>
@@ -390,19 +611,36 @@ export default function ChatPage() {
               return items
             })()}
 
-            {/* Typing indicator */}
+            {/* Typing indicator — terminal style */}
             {isOtherTyping && (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '8px', paddingLeft: '4px' }}>
-                {otherProfile && <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={20} />}
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px 18px 18px 4px', padding: '10px 14px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '4px', animation: 'slide-up 0.2s ease' }}>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                  <img src={getAvatarSrc(otherProfile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile?.photo_url ? 'auto' : 'pixelated' }} />
+                </div>
+                <div style={{
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '18px 18px 18px 4px', padding: '10px 16px',
+                  display: 'flex', gap: '5px', alignItems: 'center',
+                }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginRight: '4px', letterSpacing: '1px' }}>escribiendo</span>
                   {[0, 1, 2].map(i => (
-                    <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: `typing-dot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
+                    <div key={i} style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--cyan)', animation: `typing-dot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
                   ))}
                 </div>
               </div>
             )}
           </>
         )}
+
+        {/* Floating reactions */}
+        {floatingReactions.map(r => (
+          <div key={r.id} style={{
+            position: 'fixed', left: `${r.x}px`, bottom: '80px',
+            fontSize: '28px', animation: 'float-up 1.5s ease-out forwards',
+            pointerEvents: 'none', zIndex: 50,
+          }}>{r.emoji}</div>
+        ))}
+
         <div ref={bottomRef} />
       </div>
 
@@ -410,8 +648,8 @@ export default function ChatPage() {
       {recState === 'preview' && audioPreview && (
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--deep)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <audio src={audioPreview} controls style={{ flex: 1, height: '32px', accentColor: 'var(--cyan)' }} />
-          <button onClick={cancelAudio} style={{ ...iconBtnStyle, color: 'var(--pink)' }}>✕</button>
-          <button onClick={sendAudio} disabled={sending} style={{ background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)', borderRadius: 'var(--radius-md)', color: 'var(--cyan)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', letterSpacing: '1px', outline: 'none' }}>
+          <button onClick={cancelAudio} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', color: 'var(--pink)', fontSize: '14px', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+          <button onClick={sendAudio} disabled={sending} style={{ background: 'rgba(0,255,247,0.1)', border: '1px solid rgba(0,255,247,0.3)', borderRadius: '10px', color: 'var(--cyan)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', letterSpacing: '1px', outline: 'none' }}>
             {sending ? '...' : 'ENVIAR'}
           </button>
         </div>
@@ -419,16 +657,81 @@ export default function ChatPage() {
 
       {/* ── Input area ────────────────────────────────────────────────────────── */}
       {recState !== 'preview' && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--deep)', flexShrink: 0 }}>
-          {/* Recording indicator */}
+        <div style={{
+          padding: '12px 16px 16px', borderTop: '1px solid var(--border)',
+          background: 'var(--deep)', flexShrink: 0,
+        }}>
           {recState === 'recording' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.3)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--pink)', animation: 'pulse-dot 0.8s ease-in-out infinite' }} />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)' }}>Grabando... {recSeconds}s</span>
-              <button onClick={stopRecording} style={{ marginLeft: 'auto', background: 'var(--pink)', border: 'none', borderRadius: 'var(--radius-sm)', color: '#fff', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, padding: '3px 10px', cursor: 'pointer', outline: 'none' }}>DETENER</button>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px',
+              padding: '8px 14px', background: 'rgba(255,79,123,0.08)',
+              border: '1px solid rgba(255,79,123,0.25)', borderRadius: '12px',
+            }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--pink)', animation: 'pulse-dot 0.8s ease-in-out infinite', flexShrink: 0 }} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)', flex: 1 }}>
+                REC {recSeconds}s — {recSeconds < 60 ? 'hablá...' : 'enviá el mensaje'}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '16px' }}>
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} style={{ width: '3px', background: 'var(--pink)', borderRadius: '2px', height: '4px', animation: `waveform-bar ${0.4 + i * 0.08}s ease-in-out ${i * 0.05}s infinite` }} />
+                ))}
+              </div>
+              <button onClick={stopRecording} style={{ background: 'var(--pink)', border: 'none', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, padding: '4px 12px', cursor: 'pointer', outline: 'none', letterSpacing: '1px' }}>DETENER</button>
             </div>
           )}
+
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            {/* Challenge button */}
+            <div ref={challengeMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+              <button
+                onClick={() => setShowChallengeMenu(v => !v)}
+                title="Retar a un juego"
+                style={{
+                  background: showChallengeMenu ? 'rgba(192,132,252,0.15)' : 'transparent',
+                  border: `1px solid ${showChallengeMenu ? 'rgba(192,132,252,0.4)' : 'var(--border)'}`,
+                  borderRadius: '12px', width: '40px', height: '40px',
+                  fontSize: '17px', cursor: 'pointer', outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s', color: showChallengeMenu ? 'var(--purple)' : 'var(--text-muted)',
+                }}
+              >⚔️</button>
+              {showChallengeMenu && (
+                <div style={{
+                  position: 'absolute', bottom: '48px', left: 0, zIndex: 50,
+                  background: 'var(--card)', border: '1px solid var(--border)',
+                  borderRadius: '16px', padding: '8px', width: '200px',
+                  boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
+                  animation: 'slide-up 0.2s ease',
+                }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '2px', padding: '4px 8px 8px', borderBottom: '1px solid var(--border)', marginBottom: '6px' }}>
+                    ELEGÍ UN JUEGO
+                  </div>
+                  {[
+                    { id: 'snake', emoji: '🐍', name: 'Snake', color: '#00FFF7' },
+                    { id: 'pong', emoji: '🏓', name: 'Pong', color: '#FF4F7B' },
+                    { id: 'breakout', emoji: '🧱', name: 'Breakout', color: '#C084FC' },
+                    { id: 'tetris', emoji: '🟪', name: 'Tetris', color: '#a78bfa' },
+                    { id: 'asteroids', emoji: '☄️', name: 'Asteroids', color: '#FFB800' },
+                    { id: 'spaceinvaders', emoji: '👾', name: 'Space Invaders', color: '#4ade80' },
+                  ].map(g => (
+                    <button key={g.id} onClick={() => sendGameChallenge(g.id)} style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      width: '100%', padding: '8px 10px', background: 'transparent',
+                      border: 'none', borderRadius: '10px', cursor: 'pointer',
+                      transition: 'background 0.1s', outline: 'none',
+                    }}
+                      onMouseEnter={e => (e.currentTarget.style.background = `${g.color}11`)}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <span style={{ fontSize: '16px' }}>{g.emoji}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: g.color, letterSpacing: '0.5px' }}>{g.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Text input */}
             <textarea
               ref={textareaRef} value={input}
               onChange={e => handleInputChange(e.target.value)}
@@ -437,39 +740,46 @@ export default function ChatPage() {
               rows={1}
               disabled={recState === 'recording'}
               style={{
-                flex: 1, background: 'var(--card)', border: '1px solid var(--border)',
-                borderRadius: '20px', padding: '10px 16px',
+                flex: 1, background: 'rgba(255,255,255,0.04)',
+                border: '1px solid var(--border)',
+                borderRadius: '16px', padding: '10px 16px',
                 color: 'var(--text-primary)', fontFamily: 'var(--font-body)',
                 fontSize: '14px', outline: 'none', resize: 'none',
                 lineHeight: 1.5, maxHeight: '120px', overflowY: 'auto',
-                transition: 'border-color var(--transition)',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,255,247,0.3)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,255,247,0.35)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,255,247,0.06)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
               onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
             />
-            {/* Mic button */}
+
+            {/* Mic */}
             <button
               onClick={recState === 'idle' ? startRecording : stopRecording}
-              title="Mensaje de voz"
               style={{
-                ...iconBtnStyle,
                 background: recState === 'recording' ? 'rgba(255,79,123,0.15)' : 'transparent',
                 border: `1px solid ${recState === 'recording' ? 'var(--pink)' : 'var(--border)'}`,
+                borderRadius: '12px', width: '40px', height: '40px',
+                fontSize: '17px', cursor: 'pointer', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s', outline: 'none',
                 color: recState === 'recording' ? 'var(--pink)' : 'var(--text-muted)',
               }}>
-              🎤
+              🎙️
             </button>
-            {/* Send button */}
+
+            {/* Send */}
             <button onClick={handleSend} disabled={!input.trim() || sending} style={{
-              background: input.trim() ? 'var(--cyan)' : 'var(--card)',
+              background: input.trim() ? 'var(--cyan)' : 'rgba(255,255,255,0.04)',
               border: `1px solid ${input.trim() ? 'var(--cyan)' : 'var(--border)'}`,
-              borderRadius: '50%', width: '40px', height: '40px',
+              borderRadius: '12px', width: '40px', height: '40px',
               color: input.trim() ? '#000' : 'var(--text-muted)',
-              fontSize: '16px', cursor: input.trim() ? 'pointer' : 'default',
-              transition: 'all var(--transition)', flexShrink: 0,
+              fontSize: '16px', fontWeight: 700,
+              cursor: input.trim() ? 'pointer' : 'default',
+              transition: 'all 0.2s', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               outline: 'none',
+              boxShadow: input.trim() ? '0 0 16px rgba(0,255,247,0.3)' : 'none',
             }}>
               {sending ? '···' : '↑'}
             </button>
@@ -478,24 +788,17 @@ export default function ChatPage() {
       )}
 
       {/* ── Call overlay ──────────────────────────────────────────────────────── */}
-      {showCallUI && <CallOverlay webrtc={webrtc} otherProfile={otherProfile} incomingCall={incomingCall} onDismiss={() => { webrtc.endCall() }} onAccept={() => { webrtc.acceptCall(); setIncomingCall(null) }} />}
+      {showCallUI && (
+        <CallOverlay
+          webrtc={webrtc}
+          otherProfile={otherProfile}
+          incomingCall={incomingCall}
+          onDismiss={() => { webrtc.endCall() }}
+          onAccept={() => { webrtc.acceptCall(); setIncomingCall(null) }}
+        />
+      )}
     </div>
   )
-}
-
-// ── Call button style ─────────────────────────────────────────────────────────
-const callBtnStyle: React.CSSProperties = {
-  background: 'transparent', border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-md)', padding: '6px 10px', cursor: 'pointer',
-  fontSize: '16px', transition: 'all var(--transition)', outline: 'none',
-}
-
-const iconBtnStyle: React.CSSProperties = {
-  background: 'transparent', border: '1px solid var(--border)',
-  borderRadius: '50%', width: '40px', height: '40px',
-  fontSize: '16px', cursor: 'pointer', flexShrink: 0,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  transition: 'all var(--transition)', outline: 'none',
 }
 
 // ── Call Overlay component ────────────────────────────────────────────────────
@@ -515,138 +818,251 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
   const isConnected  = callState === 'connected'
   const isVideo      = callType === 'video'
 
+  const [inCallReactions, setInCallReactions] = useState<{ id: number; emoji: string }[]>([])
+
+  function fireInCallReaction(emoji: string) {
+    const id = Date.now()
+    setInCallReactions(prev => [...prev, { id, emoji }])
+    setTimeout(() => setInCallReactions(prev => prev.filter(r => r.id !== id)), 1500)
+  }
+
+  const avatarSrc = otherProfile?.photo_url ??
+    (otherProfile?.avatar?.startsWith('/') ? otherProfile.avatar : `/${otherProfile?.avatar ?? 'avatar1.png'}`)
+
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 100,
-      background: isConnected && isVideo ? 'transparent' : 'rgba(7,7,15,0.92)',
-      backdropFilter: 'blur(12px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isConnected && isVideo ? 'transparent' : 'rgba(7,7,15,0.96)',
+      backdropFilter: isConnected && isVideo ? 'none' : 'blur(16px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
     }}>
-      {/* Remote stream — siempre montado para que el ref esté disponible cuando ontrack dispare.
-          El <video> también reproduce audio-only streams, por eso sirve tanto para audio como video. */}
-      <video
-        ref={remoteVideoRef}
-        autoPlay
-        playsInline
-        style={
-          isConnected && isVideo
-            ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }
-            : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
-        }
-      />
-
-      {/* Local preview — montado en videollamada (oculto hasta conectar) */}
-      {isVideo && (
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          style={
-            isConnected
-              ? { position: 'absolute', bottom: '80px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '2px solid var(--cyan)', zIndex: 2 }
-              : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
-          }
-        />
+      {/* Scan line effect (not during video) */}
+      {!(isConnected && isVideo) && (
+        <div style={{
+          position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
+        }}>
+          <div style={{
+            position: 'absolute', left: 0, right: 0, height: '2px',
+            background: 'linear-gradient(90deg, transparent, rgba(0,255,247,0.15), transparent)',
+            animation: 'scan-line 4s linear infinite',
+          }} />
+        </div>
       )}
 
-      {/* En videollamada conectada: controles flotantes abajo, sin card */}
-      {isConnected && isVideo ? (
-        <>
-          {/* Nombre + duración arriba */}
-          <div style={{
-            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 4, background: 'rgba(7,7,15,0.55)', backdropFilter: 'blur(8px)',
-            borderRadius: '999px', padding: '6px 16px',
-            display: 'flex', alignItems: 'center', gap: '8px',
-          }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px' }}>@{otherProfile?.username ?? '...'}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)' }}>{callDuration}</span>
-          </div>
+      {/* Remote video — always mounted */}
+      <video ref={remoteVideoRef} autoPlay playsInline style={
+        isConnected && isVideo
+          ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }
+          : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+      } />
 
-          {/* Controles flotantes abajo */}
-          <div style={{
-            position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 4, display: 'flex', gap: '12px', alignItems: 'center',
-            background: 'rgba(7,7,15,0.55)', backdropFilter: 'blur(8px)',
-            borderRadius: '999px', padding: '10px 20px',
-          }}>
-            <CallCtrlBtn onClick={toggleMute}        active={isMuted}         label={isMuted ? '🔇' : '🎤'}  title={isMuted ? 'Activar mic' : 'Silenciar'} />
-            <CallCtrlBtn onClick={toggleCamera}      active={isCameraOff}     label={isCameraOff ? '📷' : '📸'} title={isCameraOff ? 'Activar cámara' : 'Apagar cámara'} />
-            <CallCtrlBtn onClick={toggleScreenShare} active={isScreenSharing} label="🖥️"                       title={isScreenSharing ? 'Dejar de compartir' : 'Compartir pantalla'} accent="var(--purple)" />
-            <button onClick={onDismiss} title="Colgar" style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,79,123,0.25)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '20px', cursor: 'pointer', outline: 'none' }}>📵</button>
-          </div>
-        </>
-      ) : (
-        /* Card — para ringing / calling / connecting / audio conectado */
-        <div style={{
-          background: 'var(--card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-xl)', padding: '32px 28px',
-          textAlign: 'center', minWidth: '280px', maxWidth: '340px', width: '100%',
-          position: 'relative', zIndex: 3,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-        }}>
-          {/* Glow ring around avatar */}
-          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+      {/* Local video preview */}
+      {isVideo && (
+        <video ref={localVideoRef} autoPlay playsInline muted style={
+          isConnected
+            ? { position: 'absolute', bottom: '96px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: '12px', border: '2px solid var(--cyan)', zIndex: 2, boxShadow: '0 0 20px rgba(0,255,247,0.3)' }
+            : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+        } />
+      )}
+
+      {/* ── RINGING / CALLING / CONNECTING states ── */}
+      {(isRinging || isCalling || isConnecting) && (
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', zIndex: 1 }}>
+          {/* Animated radar rings */}
+          <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: `2px solid ${isRinging ? 'var(--cyan)' : '#4ade80'}`,
+                animation: `radar-ring 2s ease-out ${i * 0.65}s infinite`,
+              }} />
+            ))}
             <div style={{
-              position: 'absolute', inset: '-6px', borderRadius: '50%',
-              background: isRinging ? 'conic-gradient(var(--purple), var(--pink), var(--purple))' : 'conic-gradient(var(--cyan), var(--purple), var(--cyan))',
-              animation: 'spin-ring 3s linear infinite',
-              opacity: 0.7,
-            }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              {otherProfile && <UserAvatar avatar={otherProfile.avatar} username={otherProfile.username} size={72} />}
+              width: 90, height: 90, borderRadius: '50%',
+              border: `3px solid ${isRinging ? 'var(--cyan)' : '#4ade80'}`,
+              boxShadow: `0 0 30px ${isRinging ? 'rgba(0,255,247,0.4)' : 'rgba(74,222,128,0.4)'}`,
+              overflow: 'hidden', position: 'relative', zIndex: 1, flexShrink: 0,
+            }}>
+              <img src={avatarSrc} alt={otherProfile?.username ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile?.photo_url ? 'auto' : 'pixelated' }} />
             </div>
           </div>
 
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '1px' }}>
-            @{otherProfile?.username ?? '...'}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+              @{otherProfile?.username}
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: isRinging ? 'var(--cyan)' : '#4ade80', marginTop: '6px', letterSpacing: '2px' }}>
+              {isRinging
+                ? `📲 ${callType === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante`
+                : isConnecting ? '⚡ Conectando...'
+                : `📡 Llamando... ${callType === 'video' ? '📹' : '📞'}`}
+            </div>
           </div>
 
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-            {isRinging    && (incomingCall ? `📞 ${incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante` : '...')}
-            {isCalling    && '📞 Llamando...'}
-            {isConnecting && '🔗 Conectando...'}
-            {isConnected  && `📞 ${callDuration}`}
-          </div>
-
-          {/* Llamada entrante — aceptar/rechazar */}
-          {isRinging && (
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
-              <button onClick={onAccept}  style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(74,222,128,0.15)', border: '2px solid #4ade80', color: '#4ade80', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✓</button>
+          {isRinging ? (
+            <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+              <button onClick={onDismiss} style={{
+                width: '60px', height: '60px', borderRadius: '50%',
+                background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)',
+                fontSize: '22px', cursor: 'pointer', outline: 'none',
+                boxShadow: '0 0 24px rgba(255,79,123,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}>📵</button>
+              <button onClick={onAccept} style={{
+                width: '60px', height: '60px', borderRadius: '50%',
+                background: 'rgba(74,222,128,0.2)', border: '2px solid #4ade80',
+                fontSize: '22px', cursor: 'pointer', outline: 'none',
+                boxShadow: '0 0 24px rgba(74,222,128,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}>📞</button>
             </div>
-          )}
-
-          {/* Llamando / conectando — solo botón colgar */}
-          {(isCalling || isConnecting) && (
-            <button onClick={onDismiss} style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,79,123,0.15)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '22px', cursor: 'pointer', outline: 'none' }}>✕</button>
-          )}
-
-          {/* Llamada de audio activa — controles completos */}
-          {isConnected && (
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <CallCtrlBtn onClick={toggleMute} active={isMuted} label={isMuted ? '🔇' : '🎤'} title={isMuted ? 'Activar mic' : 'Silenciar'} />
-              <button onClick={onDismiss} title="Colgar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)', color: 'var(--pink)', fontSize: '20px', cursor: 'pointer', outline: 'none' }}>📵</button>
-            </div>
+          ) : (
+            <button onClick={onDismiss} style={{
+              background: 'rgba(255,79,123,0.15)', border: '1px solid rgba(255,79,123,0.4)',
+              borderRadius: '24px', color: 'var(--pink)',
+              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+              letterSpacing: '2px', padding: '10px 28px', cursor: 'pointer', outline: 'none',
+              marginTop: '8px',
+            }}>CANCELAR</button>
           )}
         </div>
       )}
-    </div>
-  )
-}
 
-function CallCtrlBtn({ onClick, active, label, title, accent = 'var(--cyan)' }: { onClick: () => void; active: boolean; label: string; title: string; accent?: string }) {
-  return (
-    <button onClick={onClick} title={title} style={{
-      width: '52px', height: '52px', borderRadius: '50%',
-      background: active ? `rgba(255,79,123,0.15)` : `rgba(0,0,0,0.3)`,
-      border: `2px solid ${active ? 'var(--pink)' : accent}`,
-      color: active ? 'var(--pink)' : accent,
-      fontSize: '20px', cursor: 'pointer', outline: 'none',
-      transition: 'all var(--transition)',
-    }}>
-      {label}
-    </button>
+      {/* ── CONNECTED state ── */}
+      {isConnected && (
+        <>
+          {/* Top pill — name + duration */}
+          <div style={{
+            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: '10px',
+            background: 'rgba(7,7,15,0.75)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '24px', padding: '6px 16px', zIndex: 3,
+            backdropFilter: 'blur(8px)',
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+              @{otherProfile?.username}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)', letterSpacing: '1px' }}>
+              {callDuration}
+            </span>
+          </div>
+
+          {/* Audio call UI — waveform visualization */}
+          {!isVideo && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 1 }}>
+              <div style={{ position: 'relative', width: 110, height: 110 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid var(--cyan)', animation: 'neon-pulse 2s ease-in-out infinite' }} />
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--card)' }}>
+                  <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile?.photo_url ? 'auto' : 'pixelated' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '40px' }}>
+                {[...Array(20)].map((_, i) => (
+                  <div key={i} style={{
+                    width: '4px', background: 'var(--cyan)', borderRadius: '2px',
+                    animation: `waveform-bar ${0.5 + (i % 7) * 0.1}s ease-in-out ${i * 0.05}s infinite`,
+                    opacity: 0.7 + (i % 3) * 0.1,
+                  }} />
+                ))}
+              </div>
+
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '2px' }}>
+                {isMuted ? '🔇 SILENCIADO' : '🎙️ EN LLAMADA'}
+              </div>
+            </div>
+          )}
+
+          {/* In-call floating reactions */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
+            {inCallReactions.map(r => (
+              <div key={r.id} style={{
+                position: 'absolute', left: '50%', bottom: '100px',
+                fontSize: '32px', animation: 'float-up 1.5s ease-out forwards',
+                pointerEvents: 'none',
+              }}>{r.emoji}</div>
+            ))}
+          </div>
+
+          {/* Bottom controls bar */}
+          <div style={{
+            position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: '10px',
+            background: 'rgba(7,7,15,0.85)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '32px', padding: '10px 16px', zIndex: 3,
+            backdropFilter: 'blur(12px)',
+          }}>
+            {/* In-call reactions */}
+            {(['🏆', '😮', '💀', '😂'] as const).map((emoji, i) => {
+              const labels = ['GG', 'POG', 'RIP', 'KEKW']
+              return (
+                <button key={emoji} onClick={() => fireInCallReaction(emoji)} style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px', padding: '6px 8px', cursor: 'pointer', outline: 'none',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                  transition: 'all 0.15s', minWidth: '36px',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.transform = 'scale(1.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.transform = 'scale(1)' }}
+                >
+                  <span style={{ fontSize: '16px' }}>{emoji}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '7px', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{labels[i]}</span>
+                </button>
+              )
+            })}
+
+            <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
+
+            {/* Mute */}
+            <button onClick={toggleMute} style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: isMuted ? 'rgba(255,79,123,0.2)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${isMuted ? 'var(--pink)' : 'rgba(255,255,255,0.15)'}`,
+              fontSize: '18px', cursor: 'pointer', outline: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}>{isMuted ? '🔇' : '🎙️'}</button>
+
+            {/* Camera (video only) */}
+            {isVideo && (
+              <button onClick={toggleCamera} style={{
+                width: '44px', height: '44px', borderRadius: '50%',
+                background: isCameraOff ? 'rgba(255,79,123,0.2)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${isCameraOff ? 'var(--pink)' : 'rgba(255,255,255,0.15)'}`,
+                fontSize: '18px', cursor: 'pointer', outline: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}>{isCameraOff ? '📷' : '📹'}</button>
+            )}
+
+            {/* Screen share */}
+            <button onClick={toggleScreenShare} style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: isScreenSharing ? 'rgba(0,255,247,0.15)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${isScreenSharing ? 'var(--cyan)' : 'rgba(255,255,255,0.15)'}`,
+              fontSize: '18px', cursor: 'pointer', outline: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}>🖥️</button>
+
+            <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
+
+            {/* Hang up */}
+            <button onClick={onDismiss} style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: 'rgba(255,79,123,0.25)', border: '1px solid var(--pink)',
+              fontSize: '18px', cursor: 'pointer', outline: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 16px rgba(255,79,123,0.3)',
+              transition: 'all 0.15s',
+            }}>📵</button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
