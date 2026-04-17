@@ -26,7 +26,7 @@ export const tetrisEngine: GameEngine = {
     let board: (string | null)[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(null))
     let current: Piece, next: Piece
     let score = 0, lines = 0, level = 1, dropInterval = 600, lastDrop = 0
-    let alive = true, raf: number
+    let alive = true, paused = false, raf: number
 
     function newPiece(): Piece {
       const k = KEYS[Math.floor(Math.random() * KEYS.length)]
@@ -113,15 +113,17 @@ export const tetrisEngine: GameEngine = {
 
     function loop(ts: number) {
       if (!alive) return
-      if (ts - lastDrop >= dropInterval) { drop(); lastDrop = ts }
-      draw()
+      if (!paused) {
+        if (ts - lastDrop >= dropInterval) { drop(); lastDrop = ts }
+        draw()
+      }
       raf = requestAnimationFrame(loop)
     }
     lastDrop = performance.now()
     raf = requestAnimationFrame(loop)
 
     function onKey(e: KeyboardEvent) {
-      if (!alive) return
+      if (!alive || paused) return
       switch (e.key) {
         case 'ArrowLeft':  { const m = { ...current, x: current.x - 1 }; if (!collides(m)) current = m; break }
         case 'ArrowRight': { const m = { ...current, x: current.x + 1 }; if (!collides(m)) current = m; break }
@@ -131,6 +133,10 @@ export const tetrisEngine: GameEngine = {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

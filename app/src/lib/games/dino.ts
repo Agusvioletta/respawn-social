@@ -14,7 +14,7 @@ export const dinoEngine: GameEngine = {
     let obstacles: Obs[] = []
     let clouds: Cloud[] = []
     let score = 0, speed = 5, frameCount = 0
-    let alive = true, raf: number
+    let alive = true, paused = false, raf: number
     const keys: Record<string, boolean> = {}
 
     const OBS_TYPES: Omit<Obs, 'x' | 'y'>[] = [
@@ -112,7 +112,8 @@ export const dinoEngine: GameEngine = {
 
     raf = requestAnimationFrame(function loop() {
       if (!alive) return
-      update(); draw(); raf = requestAnimationFrame(loop)
+      if (!paused) { update(); draw() }
+      raf = requestAnimationFrame(loop)
     })
 
     function onKey(e: KeyboardEvent) {
@@ -122,6 +123,10 @@ export const dinoEngine: GameEngine = {
     function offKey(e: KeyboardEvent) { keys[e.key] = false }
     canvas.addEventListener('click', jump)
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', offKey)
-    return () => { cancelAnimationFrame(raf); canvas.removeEventListener('click', jump); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); canvas.removeEventListener('click', jump); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

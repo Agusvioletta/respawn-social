@@ -1,10 +1,9 @@
 import type { GameEngine } from '@/components/arcade/GameCanvas'
 
 export const pongEngine: GameEngine = {
-  init(canvas, onScore, onGameOver) {
+  init(canvas, onScore, _onGameOver) {
     const ctx = canvas.getContext('2d')!
     const W = canvas.width, H = canvas.height
-    const WIN_SCORE = 7
     const PAD = { w: 10, h: 72, speed: 6 }
     const CPU_MARGIN = 48
 
@@ -14,6 +13,7 @@ export const pongEngine: GameEngine = {
     const keys: Record<string, boolean> = {}
     let raf: number
     let alive = true
+    let paused = false
 
     function rr(x: number, y: number, w: number, h: number, r: number) {
       ctx.beginPath()
@@ -67,18 +67,20 @@ export const pongEngine: GameEngine = {
       }
       if (ball.x - ball.r < 0) {
         cpu.score++
-        if (cpu.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(player.score * 20, false); return }
         resetBall()
       } else if (ball.x + ball.r > W) {
         player.score++
         const pts = player.score * 20
         onScore(pts)
-        if (player.score >= WIN_SCORE) { alive = false; cancelAnimationFrame(raf); onGameOver(pts + 200, true); return }
         resetBall()
       }
     }
 
-    function loop() { if (!alive) return; update(); draw(); raf = requestAnimationFrame(loop) }
+    function loop() {
+      if (!alive) return
+      if (!paused) { update(); draw() }
+      raf = requestAnimationFrame(loop)
+    }
     draw()
     raf = requestAnimationFrame(loop)
 
@@ -86,6 +88,10 @@ export const pongEngine: GameEngine = {
     function offKey(e: KeyboardEvent) { keys[e.key] = false }
     window.addEventListener('keydown', onKey)
     window.addEventListener('keyup', offKey)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

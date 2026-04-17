@@ -11,6 +11,7 @@ export const snakeEngine: GameEngine = {
     let dx = 1, dy = 0
     let score = 0
     let alive = true
+    let paused = false
     let interval: ReturnType<typeof setInterval>
 
     function placeFood() {
@@ -62,7 +63,7 @@ export const snakeEngine: GameEngine = {
 
     placeFood()
     draw()
-    interval = setInterval(() => { update(); draw() }, 140)
+    interval = setInterval(() => { if (!paused) { update(); draw() } }, 140)
 
     function onKey(e: KeyboardEvent) {
       switch (e.key) {
@@ -73,6 +74,10 @@ export const snakeEngine: GameEngine = {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => { clearInterval(interval); window.removeEventListener('keydown', onKey) }
+    return {
+      cleanup: () => { alive = false; clearInterval(interval); window.removeEventListener('keydown', onKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

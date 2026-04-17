@@ -24,7 +24,7 @@ export const spaceInvadersEngine: GameEngine = {
     let score = 0, lives = 3, wave = 1
     let alienDir = 1, alienTimer = 0, alienSpeed = 60
     let ufo: { x: number; y: number; vx: number } | null = null, ufoTimer = 0
-    let lastShot = 0, alive = true, raf: number
+    let lastShot = 0, alive = true, paused = false, raf: number
     const keys: Record<string, boolean> = {}
 
     function buildAliens() {
@@ -168,7 +168,9 @@ export const spaceInvadersEngine: GameEngine = {
 
     aliens = buildAliens(); shields = buildShields(); draw()
     raf = requestAnimationFrame(function loop() {
-      if (!alive) return; update(); draw(); raf = requestAnimationFrame(loop)
+      if (!alive) return
+      if (!paused) { update(); draw() }
+      raf = requestAnimationFrame(loop)
     })
 
     function onKey(e: KeyboardEvent) {
@@ -180,6 +182,10 @@ export const spaceInvadersEngine: GameEngine = {
     }
     function offKey(e: KeyboardEvent) { keys[e.key] = false }
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', offKey)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

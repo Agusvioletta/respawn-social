@@ -19,6 +19,7 @@ export const asteroidsEngine: GameEngine = {
     const keys: Record<string, boolean> = {}
     let raf: number
     let alive = true
+    let paused = false
 
     function mkAsteroid(size: number, pos: Vec | null): Asteroid {
       let x = 0, y = 0
@@ -158,7 +159,8 @@ export const asteroidsEngine: GameEngine = {
     asteroids = spawnWave(wave)
     raf = requestAnimationFrame(function loop() {
       if (!alive) return
-      update(); draw(); raf = requestAnimationFrame(loop)
+      if (!paused) { update(); draw() }
+      raf = requestAnimationFrame(loop)
     })
 
     function onKey(e: KeyboardEvent) {
@@ -167,6 +169,10 @@ export const asteroidsEngine: GameEngine = {
     }
     function offKey(e: KeyboardEvent) { keys[e.key] = false }
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', offKey)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

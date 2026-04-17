@@ -17,6 +17,7 @@ export const breakoutEngine: GameEngine = {
     const keys: Record<string, boolean> = {}
     let raf: number
     let alive = true
+    let paused = false
 
     interface Brick { x: number; y: number; alive: boolean; color: string }
     let bricks: Brick[] = []
@@ -88,11 +89,19 @@ export const breakoutEngine: GameEngine = {
     }
 
     makeBricks(); draw()
-    raf = requestAnimationFrame(function loop() { if (!alive) return; update(); draw(); raf = requestAnimationFrame(loop) })
+    raf = requestAnimationFrame(function loop() {
+      if (!alive) return
+      if (!paused) { update(); draw() }
+      raf = requestAnimationFrame(loop)
+    })
 
     function onKey(e: KeyboardEvent) { keys[e.key] = true }
     function offKey(e: KeyboardEvent) { keys[e.key] = false }
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', offKey)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', offKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }

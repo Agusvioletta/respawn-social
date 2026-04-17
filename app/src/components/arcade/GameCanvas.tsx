@@ -14,8 +14,14 @@ const WIN_THRESHOLDS: Record<string, number> = {
 
 export type GameState = 'idle' | 'playing' | 'gameover'
 
+export interface GameEngineControls {
+  cleanup: () => void
+  pause:   () => void
+  resume:  () => void
+}
+
 export interface GameEngine {
-  init: (canvas: HTMLCanvasElement, onScore: (s: number) => void, onGameOver: (s: number, won?: boolean) => void) => () => void
+  init: (canvas: HTMLCanvasElement, onScore: (s: number) => void, onGameOver: (s: number, won?: boolean) => void) => GameEngineControls
 }
 
 interface GameCanvasProps {
@@ -196,7 +202,7 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
   const supabase = createClient()
 
   const canvasRef    = useRef<HTMLCanvasElement>(null)
-  const cleanupRef   = useRef<(() => void) | null>(null)
+  const controlsRef  = useRef<GameEngineControls | null>(null)
 
   const [state,      setState]      = useState<GameState>('idle')
   const [score,      setScore]      = useState(0)
@@ -204,6 +210,15 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
   const [bestScore,  setBestScore]  = useState<number | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [won,        setWon]        = useState(false)
+  const [paused,     setPaused]     = useState(false)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+
+  useEffect(() => {
+    setIsTouchDevice(
+      window.matchMedia('(pointer: coarse)').matches ||
+      ('ontouchstart' in window)
+    )
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -244,28 +259,39 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
 
   function startGame() {
     if (!canvasRef.current) return
-    cleanupRef.current?.()
+    controlsRef.current?.cleanup()
     setScore(0)
     setWon(false)
+    setPaused(false)
     setState('playing')
-    cleanupRef.current = engine.init(canvasRef.current, (s) => setScore(s), handleGameOver)
+    controlsRef.current = engine.init(canvasRef.current, (s) => setScore(s), handleGameOver)
   }
 
   function stopGame() {
-    cleanupRef.current?.()
-    cleanupRef.current = null
-    setState('idle')
-    setScore(0)
+    controlsRef.current?.cleanup()
+    controlsRef.current = null
+    handleGameOver(score, false)
   }
 
-  useEffect(() => () => { cleanupRef.current?.() }, [])
+  function togglePause() {
+    if (!controlsRef.current) return
+    if (paused) {
+      controlsRef.current.resume()
+      setPaused(false)
+    } else {
+      controlsRef.current.pause()
+      setPaused(true)
+    }
+  }
+
+  useEffect(() => () => { controlsRef.current?.cleanup() }, [])
 
   // Juego siguiente (para mostrar qué se desbloquea)
   const nextGame = GAMES.find(g => g.minLevel === game.minLevel + 1)
   const threshold = WIN_THRESHOLDS[game.id] ?? 100
 
   const controlType  = CONTROL_TYPES[game.id] ?? 'none'
-  const hasTouchCtrl = controlType !== 'none'
+  const hasTouchCtrl = controlType !== 'none' && isTouchDevice
 
   // Hint de controles según plataforma
   const hintText: Record<ControlType, string> = {
@@ -307,19 +333,27 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
               {score.toLocaleString('es-AR')}
             </div>
           </div>
-          {/* Stop button — solo durante partida */}
+          {/* Pause + Stop buttons — solo durante partida */}
           {state === 'playing' && (
-            <button
-              onClick={stopGame}
-              style={{
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={togglePause} style={{
+                background: paused ? 'rgba(0,255,247,0.1)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${paused ? 'rgba(0,255,247,0.4)' : 'rgba(255,255,255,0.15)'}`,
+                borderRadius: 'var(--radius-sm)', color: paused ? 'var(--cyan)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700,
+                letterSpacing: '1px', padding: '4px 10px', cursor: 'pointer', outline: 'none',
+              }}>
+                {paused ? '▶ REANUDAR' : '⏸ PAUSAR'}
+              </button>
+              <button onClick={stopGame} style={{
                 background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.3)',
                 borderRadius: 'var(--radius-sm)', color: 'var(--pink)',
                 fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700,
                 letterSpacing: '1px', padding: '4px 10px', cursor: 'pointer', outline: 'none',
-              }}
-            >
-              ■ PARAR
-            </button>
+              }}>
+                ■ GUARDAR Y SALIR
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -461,13 +495,49 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
             </div>
           </div>
         )}
+
+        {/* Overlay: pausa */}
+        {state === 'playing' && paused && (
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(7,7,15,0.8)', borderRadius: 'var(--radius-lg)', gap: '16px',
+            backdropFilter: 'blur(2px)',
+          }}>
+            <span style={{ fontSize: '40px' }}>⏸</span>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '3px' }}>
+              PAUSA
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+              Score: <span style={{ color: game.color }}>{score.toLocaleString('es-AR')}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={togglePause} style={{
+                background: 'rgba(0,255,247,0.15)', border: '1px solid rgba(0,255,247,0.4)',
+                borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700,
+                letterSpacing: '2px', padding: '10px 24px', cursor: 'pointer', outline: 'none',
+              }}>
+                ▶ REANUDAR
+              </button>
+              <button onClick={stopGame} style={{
+                background: 'transparent', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)', fontSize: '11px',
+                padding: '10px 16px', cursor: 'pointer', outline: 'none',
+              }}>
+                Guardar y salir
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Controles táctiles ── */}
+      {/* ── Controles táctiles (solo en dispositivos táctiles) ── */}
       {hasTouchCtrl && <TouchControls game={game} state={state} />}
 
-      {/* Hint desktop (solo en playing + hay controles táctiles) */}
-      {hasTouchCtrl && state === 'playing' && (
+      {/* Hint desktop (solo en playing + hay controles para ese juego) */}
+      {controlType !== 'none' && state === 'playing' && (
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px', letterSpacing: '0.5px' }}>
           desktop: {hintText[controlType]}
         </p>

@@ -14,6 +14,7 @@ export const flappyEngine: GameEngine = {
     let score = 0, pipeTimer = 0
     let raf: number
     let alive = true
+    let paused = false
 
     function spawnPipe() {
       const top = 60 + Math.random() * (GROUND - PIPE_GAP - 80 - 60)
@@ -80,11 +81,14 @@ export const flappyEngine: GameEngine = {
 
     function loop() {
       if (!alive) return
-      drawBg(); pipes.forEach(drawPipe); drawBird()
-      ctx.fillStyle = '#00FFF7'; ctx.font = "bold 28px 'Orbitron',monospace"; ctx.textAlign = 'center'
-      ctx.shadowColor = '#00FFF7'; ctx.shadowBlur = 10
-      ctx.fillText(String(score), W / 2, 50); ctx.shadowBlur = 0
-      update(); raf = requestAnimationFrame(loop)
+      if (!paused) {
+        drawBg(); pipes.forEach(drawPipe); drawBird()
+        ctx.fillStyle = '#00FFF7'; ctx.font = "bold 28px 'Orbitron',monospace"; ctx.textAlign = 'center'
+        ctx.shadowColor = '#00FFF7'; ctx.shadowBlur = 10
+        ctx.fillText(String(score), W / 2, 50); ctx.shadowBlur = 0
+        update()
+      }
+      raf = requestAnimationFrame(loop)
     }
 
     drawBg(); drawBird()
@@ -94,6 +98,10 @@ export const flappyEngine: GameEngine = {
     function onKey(e: KeyboardEvent) { if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); flap() } }
     canvas.addEventListener('click', flap)
     window.addEventListener('keydown', onKey)
-    return () => { cancelAnimationFrame(raf); canvas.removeEventListener('click', flap); window.removeEventListener('keydown', onKey) }
+    return {
+      cleanup: () => { alive = false; cancelAnimationFrame(raf); canvas.removeEventListener('click', flap); window.removeEventListener('keydown', onKey) },
+      pause:   () => { paused = true },
+      resume:  () => { paused = false },
+    }
   }
 }
