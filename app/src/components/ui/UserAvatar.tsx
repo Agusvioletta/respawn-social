@@ -14,6 +14,10 @@ export function UserAvatar({ avatar, username, size = 38 }: UserAvatarProps) {
       ? avatar
       : `/${avatar}`
 
+  // Foto real (URL https = Supabase Storage) → círculo, sin pixelado
+  // Pixel avatar (path local /avatar*.png)   → cuadrado redondeado, pixelado
+  const isRealPhoto = src.startsWith('http')
+
   return (
     <Image
       src={src}
@@ -21,10 +25,10 @@ export function UserAvatar({ avatar, username, size = 38 }: UserAvatarProps) {
       width={size}
       height={size}
       style={{
-        borderRadius: '50%',
+        borderRadius: isRealPhoto ? '50%' : '8px',
         border: '1px solid var(--border)',
         objectFit: 'cover',
-        imageRendering: 'pixelated',
+        imageRendering: isRealPhoto ? 'auto' : 'pixelated',
         flexShrink: 0,
       }}
     />

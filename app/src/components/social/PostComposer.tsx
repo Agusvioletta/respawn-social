@@ -80,10 +80,14 @@ export function PostComposer({ onPost }: PostComposerProps) {
         imageUrl = urlData.publicUrl
       }
 
+      // Usar foto real si existe, sino pixel avatar
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const postAvatar = (user as any).photo_url ?? user.avatar
+
       const payload: Record<string, unknown> = {
         user_id: user.id,
         username: user.username,
-        avatar: user.avatar,
+        avatar: postAvatar,
         content: content.trim(),
         image_url: imageUrl,
       }
@@ -177,7 +181,8 @@ export function PostComposer({ onPost }: PostComposerProps) {
       )}
 
       <div style={{ display: 'flex', gap: '12px' }}>
-        <UserAvatar avatar={user.avatar} username={user.username} size={38} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <UserAvatar avatar={(user as any).photo_url ?? user.avatar} username={user.username} size={38} />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <textarea
