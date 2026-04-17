@@ -818,11 +818,12 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
   const isConnected  = callState === 'connected'
   const isVideo      = callType === 'video'
 
-  const [inCallReactions, setInCallReactions] = useState<{ id: number; emoji: string }[]>([])
+  const [inCallReactions, setInCallReactions] = useState<{ id: number; emoji: string; x: number }[]>([])
 
   function fireInCallReaction(emoji: string) {
     const id = Date.now()
-    setInCallReactions(prev => [...prev, { id, emoji }])
+    const x = 30 + Math.random() * 40 // % across screen
+    setInCallReactions(prev => [...prev, { id, emoji, x }])
     setTimeout(() => setInCallReactions(prev => prev.filter(r => r.id !== id)), 1500)
   }
 
@@ -830,18 +831,17 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
     (otherProfile?.avatar?.startsWith('/') ? otherProfile.avatar : `/${otherProfile?.avatar ?? 'avatar1.png'}`)
 
   return (
+    /* position:fixed so it covers nav bar + full screen on mobile */
     <div style={{
-      position: 'absolute', inset: 0, zIndex: 100,
-      background: isConnected && isVideo ? 'transparent' : 'rgba(7,7,15,0.96)',
-      backdropFilter: isConnected && isVideo ? 'none' : 'blur(16px)',
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: isConnected && isVideo ? '#000' : 'rgba(7,7,15,0.97)',
+      backdropFilter: isConnected && isVideo ? 'none' : 'blur(20px)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden',
     }}>
       {/* Scan line effect (not during video) */}
       {!(isConnected && isVideo) && (
-        <div style={{
-          position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
-        }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
           <div style={{
             position: 'absolute', left: 0, right: 0, height: '2px',
             background: 'linear-gradient(90deg, transparent, rgba(0,255,247,0.15), transparent)',
@@ -850,27 +850,36 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
         </div>
       )}
 
-      {/* Remote video — always mounted */}
+      {/* Remote video — always mounted, shown only when connected video */}
       <video ref={remoteVideoRef} autoPlay playsInline style={
         isConnected && isVideo
-          ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000' }
-          : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+          ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }
+          : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }
       } />
 
-      {/* Local video preview */}
+      {/* Local video preview — bottom-right corner */}
       {isVideo && (
         <video ref={localVideoRef} autoPlay playsInline muted style={
           isConnected
-            ? { position: 'absolute', bottom: '96px', right: '16px', width: '120px', height: '90px', objectFit: 'cover', borderRadius: '12px', border: '2px solid var(--cyan)', zIndex: 2, boxShadow: '0 0 20px rgba(0,255,247,0.3)' }
-            : { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }
+            ? {
+                position: 'absolute', bottom: '104px', right: '12px',
+                width: '90px', height: '68px',
+                objectFit: 'cover', borderRadius: '10px',
+                border: '2px solid var(--cyan)', zIndex: 3,
+                boxShadow: '0 0 16px rgba(0,255,247,0.35)',
+              }
+            : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }
         } />
       )}
 
-      {/* ── RINGING / CALLING / CONNECTING states ── */}
+      {/* ── RINGING / CALLING / CONNECTING ── */}
       {(isRinging || isCalling || isConnecting) && (
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', zIndex: 1 }}>
-          {/* Animated radar rings */}
-          <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          position: 'relative', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: '24px', zIndex: 1, padding: '0 24px',
+        }}>
+          {/* Radar rings */}
+          <div style={{ position: 'relative', width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {[0, 1, 2].map(i => (
               <div key={i} style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
@@ -879,185 +888,192 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
               }} />
             ))}
             <div style={{
-              width: 90, height: 90, borderRadius: '50%',
+              width: 96, height: 96, borderRadius: '50%',
               border: `3px solid ${isRinging ? 'var(--cyan)' : '#4ade80'}`,
-              boxShadow: `0 0 30px ${isRinging ? 'rgba(0,255,247,0.4)' : 'rgba(74,222,128,0.4)'}`,
-              overflow: 'hidden', position: 'relative', zIndex: 1, flexShrink: 0,
+              boxShadow: `0 0 32px ${isRinging ? 'rgba(0,255,247,0.45)' : 'rgba(74,222,128,0.45)'}`,
+              overflow: 'hidden', position: 'relative', zIndex: 1,
             }}>
               <img src={avatarSrc} alt={otherProfile?.username ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile?.photo_url ? 'auto' : 'pixelated' }} />
             </div>
           </div>
 
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '1px' }}>
               @{otherProfile?.username}
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: isRinging ? 'var(--cyan)' : '#4ade80', marginTop: '6px', letterSpacing: '2px' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: isRinging ? 'var(--cyan)' : '#4ade80', marginTop: '8px', letterSpacing: '2px' }}>
               {isRinging
                 ? `📲 ${callType === 'video' ? 'Videollamada' : 'Llamada de voz'} entrante`
                 : isConnecting ? '⚡ Conectando...'
-                : `📡 Llamando... ${callType === 'video' ? '📹' : '📞'}`}
+                : `📡 Llamando...`}
             </div>
           </div>
 
           {isRinging ? (
-            <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
-              <button onClick={onDismiss} style={{
-                width: '60px', height: '60px', borderRadius: '50%',
-                background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)',
-                fontSize: '22px', cursor: 'pointer', outline: 'none',
-                boxShadow: '0 0 24px rgba(255,79,123,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s',
-              }}>📵</button>
-              <button onClick={onAccept} style={{
-                width: '60px', height: '60px', borderRadius: '50%',
-                background: 'rgba(74,222,128,0.2)', border: '2px solid #4ade80',
-                fontSize: '22px', cursor: 'pointer', outline: 'none',
-                boxShadow: '0 0 24px rgba(74,222,128,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s',
-              }}>📞</button>
+            <div style={{ display: 'flex', gap: '32px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <button onClick={onDismiss} style={{
+                  width: '64px', height: '64px', borderRadius: '50%',
+                  background: 'rgba(255,79,123,0.2)', border: '2px solid var(--pink)',
+                  fontSize: '24px', cursor: 'pointer', outline: 'none',
+                  boxShadow: '0 0 28px rgba(255,79,123,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>📵</button>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '1px' }}>RECHAZAR</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <button onClick={onAccept} style={{
+                  width: '64px', height: '64px', borderRadius: '50%',
+                  background: 'rgba(74,222,128,0.2)', border: '2px solid #4ade80',
+                  fontSize: '24px', cursor: 'pointer', outline: 'none',
+                  boxShadow: '0 0 28px rgba(74,222,128,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>📞</button>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#4ade80', letterSpacing: '1px' }}>ACEPTAR</span>
+              </div>
             </div>
           ) : (
             <button onClick={onDismiss} style={{
               background: 'rgba(255,79,123,0.15)', border: '1px solid rgba(255,79,123,0.4)',
-              borderRadius: '24px', color: 'var(--pink)',
-              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-              letterSpacing: '2px', padding: '10px 28px', cursor: 'pointer', outline: 'none',
-              marginTop: '8px',
+              borderRadius: '28px', color: 'var(--pink)',
+              fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700,
+              letterSpacing: '2px', padding: '12px 32px', cursor: 'pointer', outline: 'none',
+              marginTop: '4px',
             }}>CANCELAR</button>
           )}
         </div>
       )}
 
-      {/* ── CONNECTED state ── */}
+      {/* ── CONNECTED ── */}
       {isConnected && (
         <>
-          {/* Top pill — name + duration */}
+          {/* Top pill */}
           <div style={{
-            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
             display: 'flex', alignItems: 'center', gap: '10px',
-            background: 'rgba(7,7,15,0.75)', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '24px', padding: '6px 16px', zIndex: 3,
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(7,7,15,0.8)', border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: '28px', padding: '7px 18px', zIndex: 4,
+            backdropFilter: 'blur(10px)',
           }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', animation: 'pulse-dot 2s ease-in-out infinite', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
               @{otherProfile?.username}
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)', letterSpacing: '1px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
               {callDuration}
             </span>
           </div>
 
-          {/* Audio call UI — waveform visualization */}
+          {/* Audio call center UI */}
           {!isVideo && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 1 }}>
-              <div style={{ position: 'relative', width: 110, height: 110 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', zIndex: 1, marginBottom: '80px' }}>
+              <div style={{ position: 'relative', width: 120, height: 120 }}>
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid var(--cyan)', animation: 'neon-pulse 2s ease-in-out infinite' }} />
                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--card)' }}>
                   <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: otherProfile?.photo_url ? 'auto' : 'pixelated' }} />
                 </div>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '40px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '40px' }}>
                 {[...Array(20)].map((_, i) => (
                   <div key={i} style={{
                     width: '4px', background: 'var(--cyan)', borderRadius: '2px',
                     animation: `waveform-bar ${0.5 + (i % 7) * 0.1}s ease-in-out ${i * 0.05}s infinite`,
-                    opacity: 0.7 + (i % 3) * 0.1,
+                    opacity: 0.6 + (i % 3) * 0.15,
                   }} />
                 ))}
               </div>
-
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '2px' }}>
                 {isMuted ? '🔇 SILENCIADO' : '🎙️ EN LLAMADA'}
               </div>
             </div>
           )}
 
-          {/* In-call floating reactions */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
+          {/* Floating reactions */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5 }}>
             {inCallReactions.map(r => (
               <div key={r.id} style={{
-                position: 'absolute', left: '50%', bottom: '100px',
-                fontSize: '32px', animation: 'float-up 1.5s ease-out forwards',
+                position: 'absolute', left: `${r.x}%`, bottom: '140px',
+                fontSize: '34px', animation: 'float-up 1.5s ease-out forwards',
                 pointerEvents: 'none',
               }}>{r.emoji}</div>
             ))}
           </div>
 
-          {/* Bottom controls bar */}
+          {/* ── Reactions row ── */}
           <div style={{
-            position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: '10px',
-            background: 'rgba(7,7,15,0.85)', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '32px', padding: '10px 16px', zIndex: 3,
-            backdropFilter: 'blur(12px)',
+            position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', gap: '8px', zIndex: 3,
           }}>
-            {/* In-call reactions */}
             {(['🏆', '😮', '💀', '😂'] as const).map((emoji, i) => {
               const labels = ['GG', 'POG', 'RIP', 'KEKW']
               return (
                 <button key={emoji} onClick={() => fireInCallReaction(emoji)} style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px', padding: '6px 8px', cursor: 'pointer', outline: 'none',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                  transition: 'all 0.15s', minWidth: '36px',
+                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '14px', padding: '8px 12px', cursor: 'pointer', outline: 'none',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                  minWidth: '52px', transition: 'all 0.15s',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.transform = 'scale(1.1)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.transform = 'scale(1)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'scale(1.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'scale(1)' }}
                 >
-                  <span style={{ fontSize: '16px' }}>{emoji}</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '7px', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{labels[i]}</span>
+                  <span style={{ fontSize: '18px' }}>{emoji}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '8px', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{labels[i]}</span>
                 </button>
               )
             })}
+          </div>
 
-            <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
-
+          {/* ── Controls row ── */}
+          <div style={{
+            position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            background: 'rgba(7,7,15,0.88)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '36px', padding: '10px 20px', zIndex: 3,
+            backdropFilter: 'blur(16px)',
+          }}>
             {/* Mute */}
-            <button onClick={toggleMute} style={{
-              width: '44px', height: '44px', borderRadius: '50%',
-              background: isMuted ? 'rgba(255,79,123,0.2)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${isMuted ? 'var(--pink)' : 'rgba(255,255,255,0.15)'}`,
-              fontSize: '18px', cursor: 'pointer', outline: 'none',
+            <button onClick={toggleMute} title={isMuted ? 'Activar mic' : 'Silenciar'} style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              background: isMuted ? 'rgba(255,79,123,0.25)' : 'rgba(255,255,255,0.07)',
+              border: `2px solid ${isMuted ? 'var(--pink)' : 'rgba(255,255,255,0.18)'}`,
+              fontSize: '20px', cursor: 'pointer', outline: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
+              boxShadow: isMuted ? '0 0 16px rgba(255,79,123,0.3)' : 'none',
             }}>{isMuted ? '🔇' : '🎙️'}</button>
 
             {/* Camera (video only) */}
             {isVideo && (
-              <button onClick={toggleCamera} style={{
-                width: '44px', height: '44px', borderRadius: '50%',
-                background: isCameraOff ? 'rgba(255,79,123,0.2)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${isCameraOff ? 'var(--pink)' : 'rgba(255,255,255,0.15)'}`,
-                fontSize: '18px', cursor: 'pointer', outline: 'none',
+              <button onClick={toggleCamera} title={isCameraOff ? 'Activar cámara' : 'Apagar cámara'} style={{
+                width: '48px', height: '48px', borderRadius: '50%',
+                background: isCameraOff ? 'rgba(255,79,123,0.25)' : 'rgba(255,255,255,0.07)',
+                border: `2px solid ${isCameraOff ? 'var(--pink)' : 'rgba(255,255,255,0.18)'}`,
+                fontSize: '20px', cursor: 'pointer', outline: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s',
               }}>{isCameraOff ? '📷' : '📹'}</button>
             )}
 
             {/* Screen share */}
-            <button onClick={toggleScreenShare} style={{
-              width: '44px', height: '44px', borderRadius: '50%',
-              background: isScreenSharing ? 'rgba(0,255,247,0.15)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${isScreenSharing ? 'var(--cyan)' : 'rgba(255,255,255,0.15)'}`,
-              fontSize: '18px', cursor: 'pointer', outline: 'none',
+            <button onClick={toggleScreenShare} title={isScreenSharing ? 'Dejar de compartir' : 'Compartir pantalla'} style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              background: isScreenSharing ? 'rgba(0,255,247,0.18)' : 'rgba(255,255,255,0.07)',
+              border: `2px solid ${isScreenSharing ? 'var(--cyan)' : 'rgba(255,255,255,0.18)'}`,
+              fontSize: '20px', cursor: 'pointer', outline: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
+              boxShadow: isScreenSharing ? '0 0 16px rgba(0,255,247,0.3)' : 'none',
             }}>🖥️</button>
 
-            <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.12)' }} />
 
             {/* Hang up */}
-            <button onClick={onDismiss} style={{
-              width: '44px', height: '44px', borderRadius: '50%',
-              background: 'rgba(255,79,123,0.25)', border: '1px solid var(--pink)',
-              fontSize: '18px', cursor: 'pointer', outline: 'none',
+            <button onClick={onDismiss} title="Colgar" style={{
+              width: '52px', height: '52px', borderRadius: '50%',
+              background: 'rgba(255,79,123,0.3)', border: '2px solid var(--pink)',
+              fontSize: '22px', cursor: 'pointer', outline: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(255,79,123,0.3)',
+              boxShadow: '0 0 20px rgba(255,79,123,0.4)',
               transition: 'all 0.15s',
             }}>📵</button>
           </div>
