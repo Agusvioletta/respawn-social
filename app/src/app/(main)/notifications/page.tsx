@@ -207,11 +207,18 @@ export default function NotificationsPage() {
 
   async function handleAccept(req: typeof followRequests[0]) {
     setReqLoading(l => ({ ...l, [req.id]: true }))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = supabase as any
     try {
-      await sb.from('follows').insert({ follower_id: req.from_id, following_id: user!.id })
-      await sb.from('follow_requests').delete().eq('id', req.id)
+      // Route Handler con service role — bypasa RLS para insertar follower_id != auth.uid()
+      const res = await fetch('/api/follow-requests/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: req.id }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        console.error('[Notifications] accept error:', error)
+        return
+      }
       setFollowRequests(prev => prev.filter(r => r.id !== req.id))
     } catch (e) { console.error('[Notifications] accept:', e) }
     finally { setReqLoading(l => ({ ...l, [req.id]: false })) }
