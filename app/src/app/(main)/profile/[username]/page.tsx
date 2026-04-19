@@ -69,6 +69,9 @@ export default function ProfilePage() {
   const [loading,       setLoading]       = useState(true)
   const [followLoading, setFollowLoading] = useState(false)
   const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade'>('posts')
+  const [listModal,     setListModal]     = useState<'followers' | 'following' | null>(null)
+  const [listData,      setListData]      = useState<{ id: string; username: string; avatar: string | null; photo_url: string | null }[]>([])
+  const [listLoading,   setListLoading]   = useState(false)
 
   const isOwn = currentUser?.username === username
 
@@ -131,6 +134,36 @@ export default function ProfilePage() {
     setFollowLoading(false)
   }
 
+  async function openList(type: 'followers' | 'following') {
+    if (!profile) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const privacyShowFollowers = (profile as any).privacy_show_followers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const privacyShowFollowing = (profile as any).privacy_show_following
+    if (type === 'followers' && privacyShowFollowers === false && !isOwn) return
+    if (type === 'following' && privacyShowFollowing === false && !isOwn) return
+
+    setListModal(type)
+    setListData([])
+    setListLoading(true)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      let ids: string[] = []
+      if (type === 'followers') {
+        const { data } = await sb.from('follows').select('follower_id').eq('following_id', profile.id)
+        ids = (data ?? []).map((r: { follower_id: string }) => r.follower_id)
+      } else {
+        const { data } = await sb.from('follows').select('following_id').eq('follower_id', profile.id)
+        ids = (data ?? []).map((r: { following_id: string }) => r.following_id)
+      }
+      if (ids.length === 0) { setListLoading(false); return }
+      const { data: profiles } = await sb.from('profiles').select('id, username, avatar, photo_url').in('id', ids)
+      setListData(profiles ?? [])
+    } catch (e) { console.error('[Profile] openList:', e) }
+    finally { setListLoading(false) }
+  }
+
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
@@ -159,6 +192,14 @@ export default function ProfilePage() {
   const levelName = getLevelName(lvl.level)
   const xpPct     = Math.round((lvl.current / lvl.needed) * 100)
   const nowPlaying = (profile as any).now_playing as string | null  // eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const privacyPosts      = ((profile as any).privacy_posts      ?? 'public') as 'public' | 'followers' | 'private'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const showFollowersList = isOwn || ((profile as any).privacy_show_followers !== false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const showFollowingList = isOwn || ((profile as any).privacy_show_following !== false)
+  const isProfileLocked   = privacyPosts !== 'public'
+  const canSeePosts       = isOwn || privacyPosts === 'public' || (privacyPosts === 'followers' && isFollowing)
   const unlockedCount = ACHIEVEMENTS.filter(a => a.check(statsData)).length
 
   return (
@@ -344,8 +385,22 @@ export default function ProfilePage() {
 
         {/* Name + bio + games */}
         <div style={{ marginTop: '14px', marginBottom: '16px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px', marginBottom: '2px' }}>
-            {profile.username}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+              {profile.username}
+            </span>
+            {isProfileLocked && (
+              <span title={privacyPosts === 'private' ? 'Perfil privado' : 'Solo seguidores'} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                background: privacyPosts === 'private' ? 'rgba(255,79,123,0.12)' : 'rgba(192,132,252,0.12)',
+                border: `1px solid ${privacyPosts === 'private' ? 'rgba(255,79,123,0.35)' : 'rgba(192,132,252,0.35)'}`,
+                borderRadius: '8px', padding: '2px 8px',
+                fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px',
+                color: privacyPosts === 'private' ? 'var(--pink)' : 'var(--purple)',
+              }}>
+                🔒 {privacyPosts === 'private' ? 'PRIVADO' : 'SEGUIDORES'}
+              </span>
+            )}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--cyan)', marginBottom: '8px' }}>
             @{profile.username} · {levelName}
@@ -439,20 +494,71 @@ export default function ProfilePage() {
           gap: '1px', background: 'var(--border)',
           border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden',
         }}>
-          {[
-            { icon: '📝', label: 'Posts',     value: posts.length    },
-            { icon: '⭐', label: 'Seguidores', value: stats.followers },
-            { icon: '👥', label: 'Siguiendo',  value: stats.following },
-            { icon: '💜', label: 'Likes',      value: stats.likes     },
-          ].map(s => (
-            <div key={s.label} style={{ background: 'var(--surface)', padding: '14px 8px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background var(--transition)' }}>
-              <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>{s.icon}</span>
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: 'var(--cyan)', lineHeight: 1 }}>{s.value}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>{s.label}</div>
+          {/* Posts — plain */}
+          <div style={{ background: 'var(--surface)', padding: '14px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>📝</span>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: 'var(--cyan)', lineHeight: 1 }}>{posts.length}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>Posts</div>
+            </div>
+          </div>
+
+          {/* Seguidores — clickeable si está permitido */}
+          <button
+            onClick={() => showFollowersList ? openList('followers') : undefined}
+            disabled={!showFollowersList}
+            style={{
+              background: 'var(--surface)', border: 'none', padding: '14px 8px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              cursor: showFollowersList ? 'pointer' : 'default',
+              transition: 'background var(--transition)', textAlign: 'left',
+            }}
+            onMouseEnter={e => { if (showFollowersList) e.currentTarget.style.background = 'rgba(0,255,247,0.05)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)' }}
+          >
+            <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>⭐</span>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: showFollowersList ? 'var(--cyan)' : 'var(--text-muted)', lineHeight: 1 }}>
+                {showFollowersList ? stats.followers : '🔒'}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>
+                Seguid.
               </div>
             </div>
-          ))}
+          </button>
+
+          {/* Siguiendo — clickeable si está permitido */}
+          <button
+            onClick={() => showFollowingList ? openList('following') : undefined}
+            disabled={!showFollowingList}
+            style={{
+              background: 'var(--surface)', border: 'none', padding: '14px 8px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              cursor: showFollowingList ? 'pointer' : 'default',
+              transition: 'background var(--transition)', textAlign: 'left',
+            }}
+            onMouseEnter={e => { if (showFollowingList) e.currentTarget.style.background = 'rgba(0,255,247,0.05)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)' }}
+          >
+            <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>👥</span>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: showFollowingList ? 'var(--cyan)' : 'var(--text-muted)', lineHeight: 1 }}>
+                {showFollowingList ? stats.following : '🔒'}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>
+                Siguiendo
+              </div>
+            </div>
+          </button>
+
+          {/* Likes — plain */}
+          <div style={{ background: 'var(--surface)', padding: '14px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>💜</span>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: 'var(--cyan)', lineHeight: 1 }}>{stats.likes}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>Likes</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -484,16 +590,42 @@ export default function ProfilePage() {
 
         {/* Posts */}
         {activeTab === 'posts' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {posts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.4 }}>📝</div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>// Sin posts todavía</p>
+          !canSeePosts ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px', marginBottom: '8px' }}>
+                {privacyPosts === 'private' ? 'PERFIL PRIVADO' : 'SOLO SEGUIDORES'}
               </div>
-            ) : posts.map(post => (
-              <PostCard key={post.id} post={post} onDeleted={id => setPosts(p => p.filter(x => x.id !== id))} />
-            ))}
-          </div>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '260px', margin: '0 auto' }}>
+                {privacyPosts === 'private'
+                  ? '// Este perfil no es público. Solo el dueño puede ver el contenido.'
+                  : '// Seguí a este usuario para ver sus posts.'}
+              </p>
+              {privacyPosts === 'followers' && !isOwn && currentUser && (
+                <button onClick={handleFollow} disabled={followLoading} style={{
+                  marginTop: '20px',
+                  background: isFollowing ? 'transparent' : 'rgba(0,255,247,0.1)',
+                  border: `1px solid ${isFollowing ? 'var(--border)' : 'var(--cyan)'}`,
+                  borderRadius: '12px', color: isFollowing ? 'var(--text-muted)' : 'var(--cyan)',
+                  fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                  letterSpacing: '1px', padding: '10px 24px', cursor: 'pointer',
+                }}>
+                  {followLoading ? '...' : isFollowing ? 'Siguiendo' : '+ Seguir para ver'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {posts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.4 }}>📝</div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>// Sin posts todavía</p>
+                </div>
+              ) : posts.map(post => (
+                <PostCard key={post.id} post={post} onDeleted={id => setPosts(p => p.filter(x => x.id !== id))} />
+              ))}
+            </div>
+          )
         )}
 
         {/* Logros */}
@@ -568,6 +700,90 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* ── Followers / Following modal ──────────────────────────────────────── */}
+      {listModal && (
+        <div
+          onClick={() => setListModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(7,7,15,0.85)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '520px',
+              background: 'var(--card)', borderRadius: '20px 20px 0 0',
+              border: '1px solid var(--border)', borderBottom: 'none',
+              maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+            }}
+          >
+            {/* Handle + header */}
+            <div style={{ padding: '12px 20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '36px', height: '4px', background: 'var(--border)', borderRadius: '2px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+                  {listModal === 'followers' ? '⭐ SEGUIDORES' : '👥 SIGUIENDO'}
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '8px' }}>
+                    {listModal === 'followers' ? stats.followers : stats.following}
+                  </span>
+                </div>
+                <button onClick={() => setListModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '18px', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>✕</button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div style={{ overflowY: 'auto', padding: '8px 16px 24px', flex: 1 }}>
+              {listLoading ? (
+                <div style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Cargando...
+                </div>
+              ) : listData.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.4 }}>
+                    {listModal === 'followers' ? '⭐' : '👥'}
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {listModal === 'followers' ? '// Sin seguidores todavía' : '// No sigue a nadie todavía'}
+                  </p>
+                </div>
+              ) : listData.map(u => (
+                <Link key={u.id} href={`/profile/${u.username}`} onClick={() => setListModal(null)} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '10px 4px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    transition: 'background 0.15s', borderRadius: '8px',
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,255,247,0.04)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    {/* Avatar */}
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0, background: 'var(--surface)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={u.photo_url ?? (u.avatar ? (u.avatar.startsWith('/') || u.avatar.startsWith('http') ? u.avatar : `/${u.avatar}`) : '/avatar1.png')}
+                        alt={u.username}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: u.photo_url ? 'auto' : 'pixelated' }}
+                      />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                        {u.username}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
+                        @{u.username}
+                      </div>
+                    </div>
+                    <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '14px' }}>›</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
