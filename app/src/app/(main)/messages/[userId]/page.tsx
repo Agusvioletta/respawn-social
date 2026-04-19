@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -819,10 +820,13 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
   const isVideo      = callType === 'video'
 
   const [inCallReactions, setInCallReactions] = useState<{ id: number; emoji: string; x: number }[]>([])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   function fireInCallReaction(emoji: string) {
     const id = Date.now()
-    const x = 30 + Math.random() * 40 // % across screen
+    const x = 20 + Math.random() * 60
     setInCallReactions(prev => [...prev, { id, emoji, x }])
     setTimeout(() => setInCallReactions(prev => prev.filter(r => r.id !== id)), 1500)
   }
@@ -830,15 +834,23 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
   const avatarSrc = otherProfile?.photo_url ??
     (otherProfile?.avatar?.startsWith('/') ? otherProfile.avatar : `/${otherProfile?.avatar ?? 'avatar1.png'}`)
 
-  return (
-    /* position:fixed so it covers nav bar + full screen on mobile */
+  if (!mounted) return null
+
+  return createPortal(
+    /* Portal → renders at document.body, truly fullscreen on mobile */
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      background: isConnected && isVideo ? '#000' : 'rgba(7,7,15,0.97)',
-      backdropFilter: isConnected && isVideo ? 'none' : 'blur(20px)',
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+      background: isConnected && isVideo ? '#000' : 'rgba(7,7,15,0.98)',
+      backdropFilter: isConnected && isVideo ? 'none' : 'blur(24px)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden',
-    }}>
+      // Prevent body scroll while call is open
+      touchAction: 'none',
+    }}
+    >
+      {/* Animations — needed here because portal renders outside the page style tag */}
+      <style>{animations}</style>
+
       {/* Scan line effect (not during video) */}
       {!(isConnected && isVideo) && (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
@@ -857,20 +869,18 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
           : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }
       } />
 
-      {/* Local video preview — bottom-right corner */}
-      {isVideo && (
-        <video ref={localVideoRef} autoPlay playsInline muted style={
-          isConnected
-            ? {
-                position: 'absolute', bottom: '104px', right: '12px',
-                width: '90px', height: '68px',
-                objectFit: 'cover', borderRadius: '10px',
-                border: '2px solid var(--cyan)', zIndex: 3,
-                boxShadow: '0 0 16px rgba(0,255,247,0.35)',
-              }
-            : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }
-        } />
-      )}
+      {/* Local video preview — top-right corner when connected */}
+      <video ref={localVideoRef} autoPlay playsInline muted style={
+        isConnected && isVideo
+          ? {
+              position: 'absolute', top: '72px', right: '12px',
+              width: '88px', height: '66px',
+              objectFit: 'cover', borderRadius: '10px',
+              border: '2px solid var(--cyan)', zIndex: 3,
+              boxShadow: '0 0 16px rgba(0,255,247,0.4)',
+            }
+          : { position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }
+      } />
 
       {/* ── RINGING / CALLING / CONNECTING ── */}
       {(isRinging || isCalling || isConnecting) && (
@@ -1079,6 +1089,7 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
           </div>
         </>
       )}
-    </div>
+    </div>,
+    document.body
   )
 }
