@@ -27,7 +27,7 @@ interface GamerProfile {
   bio: string | null; games: string[] | null; created_at: string
 }
 interface MiniPost {
-  id: number; username: string; avatar: string | null
+  id: number; user_id: string; username: string; avatar: string | null
   content: string; created_at: string
   likes: { user_id: string }[]
   comments: { id: number }[]
@@ -57,21 +57,39 @@ export default function ExplorePage() {
   async function loadAll() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const [{ data: profiles }, { data: posts }] = await Promise.all([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('profiles').select('id, username, avatar, bio, games, created_at').limit(60),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('posts').select('id, username, avatar, content, created_at, likes(user_id), comments(id)').order('created_at', { ascending: false }).limit(50),
+      const sb = supabase as any
+
+      const [{ data: profiles }, { data: posts }, folResult, privResult] = await Promise.all([
+        sb.from('profiles').select('id, username, avatar, bio, games, created_at').limit(60),
+        sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').order('created_at', { ascending: false }).limit(50),
+        user?.id
+          ? sb.from('follows').select('following_id').eq('follower_id', user.id)
+          : Promise.resolve({ data: [] }),
+        sb.from('profiles').select('id, privacy_posts').in('privacy_posts', ['followers', 'private']),
       ])
 
       const allProfiles: GamerProfile[] = profiles ?? []
-      const allPosts: MiniPost[] = posts ?? []
+      let allPosts: MiniPost[] = posts ?? []
 
       // Following
-      if (user?.id) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: fol } = await (supabase as any).from('follows').select('following_id').eq('follower_id', user.id)
-        setFollowingIds(new Set((fol ?? []).map((f: { following_id: string }) => f.following_id)))
+      const followingSet = new Set<string>((folResult.data ?? []).map((f: { following_id: string }) => f.following_id))
+      if (user?.id) setFollowingIds(followingSet)
+
+      // ── Filtrar posts por privacidad ──────────────────────────────────────
+      const restrictedProfiles: { id: string; privacy_posts: string }[] = privResult.data ?? []
+      if (restrictedProfiles.length) {
+        const excludedIds = new Set(
+          restrictedProfiles
+            .filter(p => {
+              if (p.id === user?.id) return false               // propios siempre visibles
+              if (p.privacy_posts === 'private') return true    // privado → excluir
+              return !followingSet.has(p.id)                    // followers → excluir si no seguís
+            })
+            .map(p => p.id)
+        )
+        if (excludedIds.size > 0) {
+          allPosts = allPosts.filter((p: MiniPost & { user_id?: string }) => !excludedIds.has(p.user_id ?? ''))
+        }
       }
 
       // Gamers destacados: ordenados por cantidad de posts
@@ -84,7 +102,7 @@ export default function ExplorePage() {
         .slice(0, 6)
       setGamers(featured)
 
-      // Posts recientes
+      // Posts recientes (ya filtrados)
       setRecent(allPosts.slice(0, 8))
 
       // Nuevos usuarios
@@ -130,14 +148,33 @@ export default function ExplorePage() {
   async function runSearch(term: string) {
     setSearching(true)
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
       const [{ data: uRes }, { data: pRes }] = await Promise.all([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('profiles').select('id, username, avatar, bio, games, created_at').ilike('username', `%${term}%`).neq('id', user?.id ?? '').limit(12),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('posts').select('id, username, avatar, content, created_at, likes(user_id), comments(id)').ilike('content', `%${term}%`).order('created_at', { ascending: false }).limit(6),
+        sb.from('profiles').select('id, username, avatar, bio, games, created_at').ilike('username', `%${term}%`).neq('id', user?.id ?? '').limit(12),
+        sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').ilike('content', `%${term}%`).order('created_at', { ascending: false }).limit(20),
       ])
+
+      // Filtrar posts de búsqueda por privacidad
+      let filteredPosts = pRes ?? []
+      if (filteredPosts.length) {
+        const { data: restricted } = await sb.from('profiles').select('id, privacy_posts').in('privacy_posts', ['followers', 'private'])
+        const excludedIds = new Set<string>(
+          (restricted ?? [])
+            .filter((p: { id: string; privacy_posts: string }) => {
+              if (p.id === user?.id) return false
+              if (p.privacy_posts === 'private') return true
+              return !followingIds.has(p.id)
+            })
+            .map((p: { id: string }) => p.id)
+        )
+        if (excludedIds.size > 0) {
+          filteredPosts = filteredPosts.filter((p: { user_id?: string }) => !excludedIds.has(p.user_id ?? ''))
+        }
+      }
+
       setSearchUsers(uRes ?? [])
-      setSearchPosts(pRes ?? [])
+      setSearchPosts(filteredPosts.slice(0, 6))
     } catch { /* empty */ }
     setSearching(false)
   }
