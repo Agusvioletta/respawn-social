@@ -1,13 +1,16 @@
 import { getPosts } from '@/lib/supabase/queries/posts'
 import { FeedList } from '@/components/social/FeedList'
 import { FeedSidebar } from '@/components/social/FeedSidebar'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Feed' }
 
 export default async function FeedPage() {
   let initialPosts: Awaited<ReturnType<typeof getPosts>> = []
   try {
-    initialPosts = await getPosts(30)
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    initialPosts = await getPosts(30, 0, user?.id)
   } catch {
     // Feed vacío si falla la carga inicial
   }
