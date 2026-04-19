@@ -19,7 +19,7 @@ interface Notif {
   actor_avatar:   string | null
   post_id?:       number
   content?:       string
-  created_at:     string
+  created_at:     string | null
 }
 
 // ── Config por tipo ───────────────────────────────────────────────────────────
@@ -31,13 +31,18 @@ const TYPE_CONFIG: Record<NotifType, { icon: string; color: string; bg: string; 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function relativeTime(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (diff < 60)     return 'ahora'
-  if (diff < 3600)   return `${Math.floor(diff / 60)}m`
-  if (diff < 86400)  return `${Math.floor(diff / 3600)}h`
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d`
-  return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diff < 0)        return 'ahora'
+  if (diff < 60)       return 'ahora'
+  if (diff < 3600)     return `${Math.floor(diff / 60)}m`
+  if (diff < 86400)    return `${Math.floor(diff / 3600)}h`
+  if (diff < 30 * 86400)  return `${Math.floor(diff / 86400)}d`
+  if (diff < 365 * 86400) return `${Math.floor(diff / (30 * 86400))}mes`
+  return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
 function notifText(n: Notif) {
@@ -72,8 +77,9 @@ export default function NotificationsPage() {
       const myPostIds = new Set<number>((myPosts ?? []).map((p: { id: number }) => p.id))
 
       // ── Likes ─────────────────────────────────────────────────────────────
+      // Intentamos traer created_at; si la columna no existe Supabase lo ignora
       const { data: likes } = await sb
-        .from('likes').select('id, user_id, post_id')
+        .from('likes').select('id, user_id, post_id, created_at')
         .neq('user_id', user.id).order('id', { ascending: false }).limit(40)
 
       if (likes?.length) {
@@ -82,7 +88,6 @@ export default function NotificationsPage() {
         const likerMap = new Map<string, { username: string; avatar: string | null }>()
         for (const p of (likerProfs ?? [])) likerMap.set(p.id, p)
 
-        let rank = 0
         for (const like of likes) {
           if (!myPostIds.has(like.post_id)) continue
           const prof = likerMap.get(like.user_id)
@@ -91,8 +96,8 @@ export default function NotificationsPage() {
             id: `like-${like.id}`, type: 'like',
             actor_username: prof.username, actor_avatar: prof.avatar,
             post_id: like.post_id,
-            // likes no tienen created_at — aproximar con rank
-            created_at: new Date(Date.now() - rank++ * 60_000).toISOString(),
+            // Usar created_at real si existe, si no null (se muestra '—')
+            created_at: like.created_at ?? null,
           })
         }
       }
@@ -162,7 +167,7 @@ export default function NotificationsPage() {
         }
       }
 
-      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      result.sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
       setNotifs(result.slice(0, 60))
     } catch (e) {
       console.error('[Notifications]', e)
