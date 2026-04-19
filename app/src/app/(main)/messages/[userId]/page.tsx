@@ -97,6 +97,7 @@ export default function ChatPage() {
   const [incomingCall,     setIncomingCall]     = useState<{ from: string; type: CallType } | null>(null)
   const [floatingReactions,setFloatingReactions]= useState<FloatingReaction[]>([])
   const [showChallengeMenu,setShowChallengeMenu]= useState(false)
+  const [incomingCallReaction, setIncomingCallReaction] = useState<{ emoji: string; id: number } | null>(null)
 
   // Voice recording
   const [recState,    setRecState]    = useState<'idle' | 'recording' | 'preview'>('idle')
@@ -174,6 +175,12 @@ export default function ChatPage() {
         setIsOtherTyping(true)
         if (typingTimer.current) clearTimeout(typingTimer.current)
         typingTimer.current = setTimeout(() => setIsOtherTyping(false), 2500)
+      })
+
+      .on('broadcast', { event: 'call-reaction' }, ({ payload }: { payload: { emoji: string } }) => {
+        if (!payload?.emoji) return
+        setIncomingCallReaction({ emoji: payload.emoji, id: Date.now() })
+        setTimeout(() => setIncomingCallReaction(null), 1600)
       })
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -796,6 +803,8 @@ export default function ChatPage() {
           incomingCall={incomingCall}
           onDismiss={() => { webrtc.endCall() }}
           onAccept={() => { webrtc.acceptCall(); setIncomingCall(null) }}
+          sigChannel={sigChannel}
+          incomingReaction={incomingCallReaction}
         />
       )}
     </div>
@@ -809,9 +818,12 @@ interface CallOverlayProps {
   incomingCall: { from: string; type: CallType } | null
   onDismiss: () => void
   onAccept: () => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sigChannel: React.MutableRefObject<any>
+  incomingReaction: { emoji: string; id: number } | null
 }
 
-function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }: CallOverlayProps) {
+function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept, sigChannel, incomingReaction }: CallOverlayProps) {
   const { callState, callType, isMuted, isCameraOff, isScreenSharing, callDuration, toggleMute, toggleCamera, toggleScreenShare, localVideoRef, remoteVideoRef } = webrtc
   const isRinging    = callState === 'ringing'
   const isCalling    = callState === 'calling'
@@ -824,11 +836,25 @@ function CallOverlay({ webrtc, otherProfile, incomingCall, onDismiss, onAccept }
 
   useEffect(() => { setMounted(true) }, [])
 
-  function fireInCallReaction(emoji: string) {
-    const id = Date.now()
+  // Trigger animation when the OTHER person sends a reaction
+  useEffect(() => {
+    if (!incomingReaction) return
+    spawnReaction(incomingReaction.emoji)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingReaction?.id])
+
+  function spawnReaction(emoji: string) {
+    const id = Date.now() + Math.random()
     const x = 20 + Math.random() * 60
     setInCallReactions(prev => [...prev, { id, emoji, x }])
     setTimeout(() => setInCallReactions(prev => prev.filter(r => r.id !== id)), 1500)
+  }
+
+  function fireInCallReaction(emoji: string) {
+    // Show locally
+    spawnReaction(emoji)
+    // Broadcast to the other person
+    sigChannel.current?.send({ type: 'broadcast', event: 'call-reaction', payload: { emoji } })
   }
 
   const avatarSrc = otherProfile?.photo_url ??
