@@ -60,9 +60,11 @@ export default function NotificationsPage() {
   const supabase = createClient()
   const { readNotifIds, markRead } = useNotificationStore()
 
-  const [notifs,  setNotifs]  = useState<Notif[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter,  setFilter]  = useState<Filter>('all')
+  const [notifs,          setNotifs]          = useState<Notif[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [filter,          setFilter]          = useState<Filter>('all')
+  const [followRequests,  setFollowRequests]  = useState<{ id: number; from_id: string; username: string; avatar: string | null; photo_url: string | null; created_at: string }[]>([])
+  const [reqLoading,      setReqLoading]      = useState<Record<number, boolean>>({})
 
   const loadNotifs = useCallback(async () => {
     if (!user) { setLoading(false); return }
@@ -167,6 +169,24 @@ export default function NotificationsPage() {
         }
       }
 
+      // ── Solicitudes de seguimiento pendientes ────────────────────────────
+      const { data: requests } = await sb
+        .from('follow_requests').select('id, from_id, created_at')
+        .eq('to_id', user.id).order('created_at', { ascending: false })
+
+      if (requests?.length) {
+        const reqIds = requests.map((r: { from_id: string }) => r.from_id)
+        const { data: reqProfs } = await sb.from('profiles').select('id, username, avatar, photo_url').in('id', reqIds)
+        const profMap = new Map<string, { username: string; avatar: string | null; photo_url: string | null }>()
+        for (const p of (reqProfs ?? [])) profMap.set(p.id, p)
+        setFollowRequests(requests.map((r: { id: number; from_id: string; created_at: string }) => {
+          const p = profMap.get(r.from_id) ?? { username: r.from_id, avatar: null, photo_url: null }
+          return { id: r.id, from_id: r.from_id, username: p.username, avatar: p.avatar, photo_url: p.photo_url, created_at: r.created_at }
+        }))
+      } else {
+        setFollowRequests([])
+      }
+
       result.sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
       setNotifs(result.slice(0, 60))
     } catch (e) {
@@ -184,6 +204,29 @@ export default function NotificationsPage() {
     if (notifs.length) markRead(notifs.map(n => n.id))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifs])
+
+  async function handleAccept(req: typeof followRequests[0]) {
+    setReqLoading(l => ({ ...l, [req.id]: true }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    try {
+      await sb.from('follows').insert({ follower_id: req.from_id, following_id: user!.id })
+      await sb.from('follow_requests').delete().eq('id', req.id)
+      setFollowRequests(prev => prev.filter(r => r.id !== req.id))
+    } catch (e) { console.error('[Notifications] accept:', e) }
+    finally { setReqLoading(l => ({ ...l, [req.id]: false })) }
+  }
+
+  async function handleReject(reqId: number) {
+    setReqLoading(l => ({ ...l, [reqId]: true }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    try {
+      await sb.from('follow_requests').delete().eq('id', reqId)
+      setFollowRequests(prev => prev.filter(r => r.id !== reqId))
+    } catch (e) { console.error('[Notifications] reject:', e) }
+    finally { setReqLoading(l => ({ ...l, [reqId]: false })) }
+  }
 
   const isUnread = (id: string) => !readNotifIds.includes(id)
 
@@ -232,6 +275,90 @@ export default function NotificationsPage() {
           </button>
         )}
       </div>
+
+      {/* ── Solicitudes de seguimiento ──────────────────────────────────────── */}
+      {followRequests.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--purple)', letterSpacing: '2px' }}>
+              SOLICITUDES DE SEGUIMIENTO
+            </span>
+            <span style={{
+              background: 'rgba(192,132,252,0.2)', border: '1px solid rgba(192,132,252,0.4)',
+              borderRadius: '999px', padding: '1px 8px',
+              fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, color: 'var(--purple)',
+            }}>{followRequests.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {followRequests.map(req => (
+              <div key={req.id} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                background: 'rgba(192,132,252,0.06)',
+                border: '1px solid rgba(192,132,252,0.2)',
+                borderLeft: '3px solid var(--purple)',
+                borderRadius: 'var(--radius-md)', padding: '12px 14px',
+              }}>
+                <Link href={`/profile/${req.username}`} style={{ display: 'block', flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1px solid rgba(192,132,252,0.3)', background: 'var(--surface)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={req.photo_url ?? (req.avatar ? (req.avatar.startsWith('/') || req.avatar.startsWith('http') ? req.avatar : `/${req.avatar}`) : '/avatar1.png')}
+                      alt={req.username}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: req.photo_url ? 'auto' : 'pixelated' }}
+                    />
+                  </div>
+                </Link>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Link href={`/profile/${req.username}`} style={{ textDecoration: 'none' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                      @{req.username}
+                    </span>
+                  </Link>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                    quiere seguirte
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {relativeTime(req.created_at)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleAccept(req)}
+                    disabled={!!reqLoading[req.id]}
+                    style={{
+                      background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.4)',
+                      borderRadius: '10px', color: '#4ade80',
+                      fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                      letterSpacing: '1px', padding: '6px 14px', cursor: 'pointer', outline: 'none',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.2)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)' }}
+                  >
+                    {reqLoading[req.id] ? '...' : '✓ ACEPTAR'}
+                  </button>
+                  <button
+                    onClick={() => handleReject(req.id)}
+                    disabled={!!reqLoading[req.id]}
+                    style={{
+                      background: 'transparent', border: '1px solid var(--border)',
+                      borderRadius: '10px', color: 'var(--text-muted)',
+                      fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                      letterSpacing: '1px', padding: '6px 14px', cursor: 'pointer', outline: 'none',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--pink)'; e.currentTarget.style.color = 'var(--pink)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0 0' }} />
+        </div>
+      )}
 
       {/* ── Filtros ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>

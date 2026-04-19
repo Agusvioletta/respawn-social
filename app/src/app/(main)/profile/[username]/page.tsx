@@ -65,9 +65,10 @@ export default function ProfilePage() {
   const [posts,         setPosts]         = useState<PostWithMeta[]>([])
   const [stats,         setStats]         = useState({ followers: 0, following: 0, likes: 0 })
   const [arcadeScores,  setArcadeScores]  = useState<Record<string, number>>({})
-  const [isFollowing,   setIsFollowing]   = useState(false)
-  const [loading,       setLoading]       = useState(true)
-  const [followLoading, setFollowLoading] = useState(false)
+  const [isFollowing,       setIsFollowing]       = useState(false)
+  const [hasPendingRequest, setHasPendingRequest] = useState(false)
+  const [loading,           setLoading]           = useState(true)
+  const [followLoading,     setFollowLoading]     = useState(false)
   const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade'>('posts')
   const [listModal,     setListModal]     = useState<'followers' | 'following' | null>(null)
   const [listData,      setListData]      = useState<{ id: string; username: string; avatar: string | null; photo_url: string | null }[]>([])
@@ -109,9 +110,12 @@ export default function ProfilePage() {
       setArcadeScores(best)
 
       if (currentUser && !isOwn) {
-        const { data: followData } = await sb.from('follows').select('follower_id')
-          .eq('follower_id', currentUser.id).eq('following_id', prof.id).maybeSingle()
+        const [{ data: followData }, { data: requestData }] = await Promise.all([
+          sb.from('follows').select('follower_id').eq('follower_id', currentUser.id).eq('following_id', prof.id).maybeSingle(),
+          sb.from('follow_requests').select('id').eq('from_id', currentUser.id).eq('to_id', prof.id).maybeSingle(),
+        ])
         setIsFollowing(!!followData)
+        setHasPendingRequest(!!requestData)
       }
     } catch (e) { console.error('[Profile]', e) }
     finally { setLoading(false) }
@@ -124,10 +128,23 @@ export default function ProfilePage() {
     setFollowLoading(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requiresApproval = (profile as any).privacy_posts !== 'public'
+
     if (isFollowing) {
+      // Unfollow
       const { error } = await sb.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', profile.id)
       if (!error) { setIsFollowing(false); setStats(s => ({ ...s, followers: s.followers - 1 })) }
+    } else if (hasPendingRequest) {
+      // Cancel pending request
+      const { error } = await sb.from('follow_requests').delete().eq('from_id', currentUser.id).eq('to_id', profile.id)
+      if (!error) setHasPendingRequest(false)
+    } else if (requiresApproval) {
+      // Send follow request — needs owner approval
+      const { error } = await sb.from('follow_requests').insert({ from_id: currentUser.id, to_id: profile.id })
+      if (!error) setHasPendingRequest(true)
     } else {
+      // Public profile — direct follow
       const { error } = await sb.from('follows').insert({ follower_id: currentUser.id, following_id: profile.id })
       if (!error) { setIsFollowing(true); setStats(s => ({ ...s, followers: s.followers + 1 })) }
     }
@@ -368,15 +385,19 @@ export default function ProfilePage() {
                   </button>
                 </Link>
                 <button onClick={handleFollow} disabled={followLoading} style={{
-                  background: isFollowing ? 'transparent' : 'var(--cyan-glow)',
-                  border: `1px solid ${isFollowing ? 'var(--border)' : 'var(--cyan)'}`,
+                  background: isFollowing
+                    ? 'transparent'
+                    : hasPendingRequest
+                    ? 'rgba(192,132,252,0.1)'
+                    : 'rgba(0,255,247,0.08)',
+                  border: `1px solid ${isFollowing ? 'var(--border)' : hasPendingRequest ? 'rgba(192,132,252,0.5)' : 'var(--cyan)'}`,
                   borderRadius: 'var(--radius-md)',
-                  color: isFollowing ? 'var(--text-muted)' : 'var(--cyan)',
+                  color: isFollowing ? 'var(--text-muted)' : hasPendingRequest ? 'var(--purple)' : 'var(--cyan)',
                   fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
                   letterSpacing: '1px', padding: '8px 18px', cursor: 'pointer',
                   transition: 'all var(--transition)',
                 }}>
-                  {followLoading ? '...' : isFollowing ? 'Siguiendo' : 'Seguir'}
+                  {followLoading ? '...' : isFollowing ? 'Siguiendo' : hasPendingRequest ? '⏳ Solicitud enviada' : 'Seguir'}
                 </button>
               </>
             )}
@@ -604,13 +625,14 @@ export default function ProfilePage() {
               {privacyPosts === 'followers' && !isOwn && currentUser && (
                 <button onClick={handleFollow} disabled={followLoading} style={{
                   marginTop: '20px',
-                  background: isFollowing ? 'transparent' : 'rgba(0,255,247,0.1)',
-                  border: `1px solid ${isFollowing ? 'var(--border)' : 'var(--cyan)'}`,
-                  borderRadius: '12px', color: isFollowing ? 'var(--text-muted)' : 'var(--cyan)',
+                  background: isFollowing ? 'transparent' : hasPendingRequest ? 'rgba(192,132,252,0.1)' : 'rgba(0,255,247,0.1)',
+                  border: `1px solid ${isFollowing ? 'var(--border)' : hasPendingRequest ? 'rgba(192,132,252,0.5)' : 'var(--cyan)'}`,
+                  borderRadius: '12px',
+                  color: isFollowing ? 'var(--text-muted)' : hasPendingRequest ? 'var(--purple)' : 'var(--cyan)',
                   fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
                   letterSpacing: '1px', padding: '10px 24px', cursor: 'pointer',
                 }}>
-                  {followLoading ? '...' : isFollowing ? 'Siguiendo' : '+ Seguir para ver'}
+                  {followLoading ? '...' : isFollowing ? 'Siguiendo' : hasPendingRequest ? '⏳ Solicitud enviada' : '+ Solicitar seguir'}
                 </button>
               )}
             </div>
