@@ -41,17 +41,23 @@ export default function LFGPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [posts, setPosts] = useState<LFGPost[]>([])
-  const [loading, setLoading] = useState(true)
-  const [gameFilter, setGameFilter] = useState('')
+  const [posts,          setPosts]          = useState<LFGPost[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [gameFilter,     setGameFilter]     = useState('')
   const [platformFilter, setPlatformFilter] = useState('Todos')
-  const [gameSearch, setGameSearch] = useState('')
+  const [gameSearch,     setGameSearch]     = useState('')
+  // follow state keyed by user_id of post author
+  const [followingIds,   setFollowingIds]   = useState<Set<string>>(new Set())
+  const [pendingIds,     setPendingIds]     = useState<Set<string>>(new Set())
+  const [privacyMap,     setPrivacyMap]     = useState<Record<string, string>>({})
+  const [followPending,  setFollowPending]  = useState<Set<string>>(new Set())
 
   const loadLFG = useCallback(async () => {
     setLoading(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let query = (supabase as any)
+      const sb = supabase as any
+      let query = sb
         .from('posts')
         .select('id, user_id, username, avatar, content, lfg_game, lfg_platform, lfg_slots, created_at, likes(user_id), comments(id)')
         .eq('post_type', 'lfg')
@@ -62,17 +68,64 @@ export default function LFGPage() {
       if (platformFilter !== 'Todos') query = query.eq('lfg_platform', platformFilter)
 
       const { data } = await query
-      setPosts(data ?? [])
+      const fetched: LFGPost[] = data ?? []
+      setPosts(fetched)
+
+      if (user?.id && fetched.length) {
+        const authorIds = [...new Set(fetched.map(p => p.user_id).filter(id => id !== user.id))]
+        const [{ data: fol }, { data: reqs }, { data: profs }] = await Promise.all([
+          sb.from('follows').select('following_id').eq('follower_id', user.id).in('following_id', authorIds),
+          sb.from('follow_requests').select('to_id').eq('from_id', user.id).in('to_id', authorIds),
+          sb.from('profiles').select('id, privacy_posts').in('id', authorIds),
+        ])
+        setFollowingIds(new Set((fol ?? []).map((r: { following_id: string }) => r.following_id)))
+        setPendingIds(new Set((reqs ?? []).map((r: { to_id: string }) => r.to_id)))
+        const pm: Record<string, string> = {}
+        for (const p of (profs ?? [])) pm[p.id] = p.privacy_posts ?? 'public'
+        setPrivacyMap(pm)
+      }
     } catch {
-      // Si la columna no existe aún, mostrar vacío
       setPosts([])
     } finally {
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameFilter, platformFilter])
+  }, [gameFilter, platformFilter, user?.id])
 
   useEffect(() => { loadLFG() }, [loadLFG])
+
+  const handleFollowAuthor = useCallback(async (e: React.MouseEvent, authorId: string) => {
+    e.stopPropagation()
+    if (!user?.id) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+
+    setFollowPending(prev => new Set(prev).add(authorId))
+    try {
+      if (followingIds.has(authorId)) {
+        // Unfollow
+        await sb.from('follows').delete().eq('follower_id', user.id).eq('following_id', authorId)
+        setFollowingIds(prev => { const s = new Set(prev); s.delete(authorId); return s })
+      } else if (pendingIds.has(authorId)) {
+        // Cancelar solicitud
+        await sb.from('follow_requests').delete().eq('from_id', user.id).eq('to_id', authorId)
+        setPendingIds(prev => { const s = new Set(prev); s.delete(authorId); return s })
+      } else {
+        const privacy = privacyMap[authorId] ?? 'public'
+        if (privacy === 'public' || privacy === null || privacy === undefined) {
+          // Seguir directo
+          await sb.from('follows').insert({ follower_id: user.id, following_id: authorId })
+          setFollowingIds(prev => new Set(prev).add(authorId))
+        } else {
+          // Solicitud de seguimiento
+          await sb.from('follow_requests').insert({ from_id: user.id, to_id: authorId })
+          setPendingIds(prev => new Set(prev).add(authorId))
+        }
+      }
+    } catch { /* silenciar errores de duplicado */ } finally {
+      setFollowPending(prev => { const s = new Set(prev); s.delete(authorId); return s })
+    }
+  }, [user?.id, followingIds, pendingIds, privacyMap, supabase])
 
   // Agrupar posts por juego para el contador
   const gameGroups = posts.reduce<Record<string, number>>((acc, p) => {
@@ -329,23 +382,53 @@ export default function LFGPage() {
                       💬 {post.comments?.length ?? 0}
                     </span>
                     {user && user.id !== post.user_id && (
-                      <button
-                        onClick={e => { e.stopPropagation(); router.push(`/messages/${post.user_id}`) }}
-                        style={{
-                          marginLeft: 'auto',
-                          background: 'rgba(192,132,252,0.15)',
-                          border: '1px solid rgba(192,132,252,0.4)',
-                          borderRadius: 'var(--radius-md)',
-                          color: 'var(--purple)',
-                          fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-                          letterSpacing: '1px', padding: '5px 14px', cursor: 'pointer',
-                          transition: 'all var(--transition)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(192,132,252,0.25)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(192,132,252,0.15)')}
-                      >
-                        UNIRSE →
-                      </button>
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* Follow / Solicitud button */}
+                        {(() => {
+                          const isFollowing = followingIds.has(post.user_id)
+                          const isPending   = pendingIds.has(post.user_id)
+                          const isLoading   = followPending.has(post.user_id)
+                          const label = isFollowing ? '✓ Siguiendo' : isPending ? '⏳ Solicitado' : '➕ Seguir'
+                          const color = isFollowing ? 'var(--cyan)' : isPending ? 'var(--purple)' : 'var(--text-secondary)'
+                          const borderColor = isFollowing ? 'rgba(0,255,247,0.35)' : isPending ? 'rgba(192,132,252,0.4)' : 'rgba(144,144,176,0.3)'
+                          const bgColor = isFollowing ? 'rgba(0,255,247,0.08)' : isPending ? 'rgba(192,132,252,0.1)' : 'transparent'
+                          return (
+                            <button
+                              onClick={e => handleFollowAuthor(e, post.user_id)}
+                              disabled={isLoading}
+                              style={{
+                                background: bgColor,
+                                border: `1px solid ${borderColor}`,
+                                borderRadius: 'var(--radius-md)',
+                                color,
+                                fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700,
+                                letterSpacing: '0.5px', padding: '5px 10px', cursor: 'pointer',
+                                transition: 'all var(--transition)',
+                                opacity: isLoading ? 0.5 : 1,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {isLoading ? '...' : label}
+                            </button>
+                          )
+                        })()}
+                        <button
+                          onClick={e => { e.stopPropagation(); router.push(`/messages/${post.user_id}`) }}
+                          style={{
+                            background: 'rgba(192,132,252,0.15)',
+                            border: '1px solid rgba(192,132,252,0.4)',
+                            borderRadius: 'var(--radius-md)',
+                            color: 'var(--purple)',
+                            fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                            letterSpacing: '1px', padding: '5px 14px', cursor: 'pointer',
+                            transition: 'all var(--transition)',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(192,132,252,0.25)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(192,132,252,0.15)')}
+                        >
+                          UNIRSE →
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

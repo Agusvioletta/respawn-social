@@ -53,6 +53,13 @@ export default function TournamentsPage() {
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState('')
 
+  // Edit modal state
+  const [showEdit, setShowEdit]   = useState(false)
+  const [editId,   setEditId]     = useState<number | null>(null)
+  const [editForm, setEditForm]   = useState({ name: '', game: '', format: FORMATS[0], maxPlayers: 16, date: '', prize: '', description: '' })
+  const [editing,  setEditing]    = useState(false)
+  const [editError, setEditError] = useState('')
+
   const load = useCallback(async () => {
     setLoading(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -120,6 +127,66 @@ export default function TournamentsPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  function openEdit(t: Tournament) {
+    setEditId(t.id)
+    setEditForm({
+      name: t.name,
+      game: t.game,
+      format: t.format,
+      maxPlayers: t.max_players,
+      date: t.date ? t.date.slice(0, 16) : '',
+      prize: t.prize ?? '',
+      description: t.description ?? '',
+    })
+    setEditError('')
+    setShowEdit(true)
+  }
+
+  async function handleEditSave() {
+    setEditError('')
+    if (!editForm.name.trim()) { setEditError('Ingresá un nombre.'); return }
+    if (!editForm.game) { setEditError('Seleccioná un juego.'); return }
+    if (!editForm.date) { setEditError('Seleccioná una fecha.'); return }
+    setEditing(true)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from('tournaments').update({
+        name: editForm.name.trim(),
+        game: editForm.game,
+        format: editForm.format,
+        max_players: editForm.maxPlayers,
+        prize: editForm.prize.trim() || null,
+        description: editForm.description.trim() || null,
+        date: editForm.date,
+      }).eq('id', editId)
+      if (error) throw error
+      setShowEdit(false)
+      showToast('✓ Torneo actualizado.')
+      load()
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : 'Error al guardar.')
+    } finally {
+      setEditing(false)
+    }
+  }
+
+  async function handleDelete(id: number, name: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    await sb.from('tournament_players').delete().eq('tournament_id', id)
+    await sb.from('tournaments').delete().eq('id', id)
+    showToast(`🗑 Torneo "${name}" eliminado.`)
+    load()
+  }
+
+  async function handleStatusChange(id: number, newStatus: TStatus) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('tournaments').update({ status: newStatus }).eq('id', id)
+    const labels: Record<TStatus, string> = { live: 'iniciado 🔴', upcoming: 'programado ⏳', finished: 'finalizado ✅' }
+    showToast(`Torneo ${labels[newStatus]}.`)
+    load()
   }
 
   const live     = tournaments.filter(t => t.status === 'live')
@@ -220,7 +287,13 @@ export default function TournamentsPage() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
-          {displayed.map(t => <TournamentCard key={t.id} t={t} userId={user?.id} onJoin={joinTournament} onLeave={leaveTournament} />)}
+          {displayed.map(t => (
+            <TournamentCard
+              key={t.id} t={t} userId={user?.id}
+              onJoin={joinTournament} onLeave={leaveTournament}
+              onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange}
+            />
+          ))}
         </div>
       )}
 
@@ -292,6 +365,73 @@ export default function TournamentsPage() {
         </div>
       )}
 
+      {/* Edit modal */}
+      {showEdit && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(7,7,15,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, padding: '16px',
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowEdit(false) }}>
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)', padding: '24px',
+            width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto',
+          }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', letterSpacing: '2px', color: 'var(--purple)', fontWeight: 700, margin: '0 0 20px' }}>
+              EDITAR TORNEO
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input style={inputStyle} placeholder="Nombre del torneo *" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+
+              <select style={inputStyle} value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))}>
+                <option value="">Seleccioná un juego *</option>
+                {GAMES.map(g => <option key={g} value={g}>{gameIcon(g)} {g}</option>)}
+              </select>
+
+              <select style={inputStyle} value={editForm.format} onChange={e => setEditForm(f => ({ ...f, format: e.target.value }))}>
+                {FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <select style={{ ...inputStyle, flex: 1 }} value={editForm.maxPlayers} onChange={e => setEditForm(f => ({ ...f, maxPlayers: parseInt(e.target.value) }))}>
+                  {PLAYER_OPTS.map(n => <option key={n} value={n}>{n} jugadores</option>)}
+                </select>
+                <input style={{ ...inputStyle, flex: 1 }} type="datetime-local" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+              </div>
+
+              <input style={inputStyle} placeholder="Premio (ej: $500 ARS, Skin exclusiva)" value={editForm.prize} onChange={e => setEditForm(f => ({ ...f, prize: e.target.value }))} />
+              <textarea style={{ ...inputStyle, resize: 'none', minHeight: '80px' }} placeholder="Descripción (opcional)" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+
+              {editError && (
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)' }}>
+                  ⚠ {editError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button onClick={() => setShowEdit(false)} style={{
+                  flex: 1, background: 'transparent', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '10px', cursor: 'pointer',
+                }}>
+                  Cancelar
+                </button>
+                <button onClick={handleEditSave} disabled={editing} style={{
+                  flex: 2, background: 'rgba(192,132,252,0.15)', border: '1px solid rgba(192,132,252,0.4)',
+                  borderRadius: 'var(--radius-md)', color: 'var(--purple)',
+                  fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700,
+                  letterSpacing: '1px', padding: '10px', cursor: 'pointer',
+                  opacity: editing ? 0.6 : 1,
+                }}>
+                  {editing ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toast && (
         <div style={{
@@ -309,13 +449,18 @@ export default function TournamentsPage() {
 }
 
 function TournamentCard({
-  t, userId, onJoin, onLeave
+  t, userId, onJoin, onLeave, onEdit, onDelete, onStatusChange
 }: {
   t: Tournament
   userId?: string
   onJoin: (id: number) => void
   onLeave: (id: number) => void
+  onEdit: (t: Tournament) => void
+  onDelete: (id: number, name: string) => void
+  onStatusChange: (id: number, status: TStatus) => void
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
   const players = t.tournament_players
   const pct = Math.min(100, Math.round(players.length / t.max_players * 100))
   const full = players.length >= t.max_players
@@ -425,7 +570,7 @@ function TournamentCard({
               ? <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)', textAlign: 'center', padding: '8px', border: '1px solid rgba(255,79,123,0.3)', borderRadius: 'var(--radius-md)' }}>⚔ EN JUEGO</div>
               : <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}>👁 Espectador (próximamente)</div>
           )}
-          {t.status === 'upcoming' && (
+          {t.status === 'upcoming' && !isCreator && (
             joined
               ? <button onClick={() => onLeave(t.id)} style={{
                   width: '100%', background: 'rgba(0,255,247,0.1)', border: '1px solid var(--cyan-border)',
@@ -445,12 +590,132 @@ function TournamentCard({
                     letterSpacing: '1px', padding: '8px', cursor: 'pointer',
                   }}>INSCRIBIRME</button>
           )}
-          {t.status === 'finished' && (
+          {t.status === 'finished' && !isCreator && (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
               ✅ Finalizado
             </div>
           )}
         </div>
+
+        {/* ── Creator management ─────────────────────────────── */}
+        {isCreator && (
+          <div style={{
+            borderTop: '1px solid rgba(192,132,252,0.15)',
+            paddingTop: '10px', marginTop: '4px',
+            display: 'flex', flexDirection: 'column', gap: '6px',
+          }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--purple)', letterSpacing: '1.5px', marginBottom: '2px' }}>
+              ⚙ GESTIÓN
+            </div>
+
+            {/* Status transition buttons */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {t.status === 'upcoming' && (
+                <>
+                  <button
+                    onClick={() => onEdit(t)}
+                    style={{
+                      flex: 1, background: 'transparent', border: '1px solid rgba(192,132,252,0.35)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--purple)',
+                      fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '6px 8px', cursor: 'pointer',
+                      transition: 'all var(--transition)',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(192,132,252,0.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    ✏ Editar
+                  </button>
+                  <button
+                    onClick={() => onStatusChange(t.id, 'live')}
+                    style={{
+                      flex: 1, background: 'transparent', border: '1px solid rgba(255,79,123,0.35)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--pink)',
+                      fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '6px 8px', cursor: 'pointer',
+                      transition: 'all var(--transition)',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,79,123,0.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    ▶ Iniciar
+                  </button>
+                </>
+              )}
+              {t.status === 'live' && (
+                <button
+                  onClick={() => onStatusChange(t.id, 'finished')}
+                  style={{
+                    flex: 1, background: 'transparent', border: '1px solid rgba(0,255,247,0.3)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                    fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '6px 8px', cursor: 'pointer',
+                    transition: 'all var(--transition)',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,255,247,0.08)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  ✅ Finalizar torneo
+                </button>
+              )}
+              {t.status === 'finished' && (
+                <div style={{
+                  flex: 1, fontFamily: 'var(--font-mono)', fontSize: '10px',
+                  color: 'var(--text-muted)', textAlign: 'center', padding: '6px',
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                }}>
+                  ✅ Finalizado
+                </div>
+              )}
+            </div>
+
+            {/* Delete with confirmation */}
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                style={{
+                  background: 'transparent', border: '1px solid rgba(255,79,123,0.2)',
+                  borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '5px 8px',
+                  cursor: 'pointer', transition: 'all var(--transition)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,79,123,0.5)'; e.currentTarget.style.color = 'var(--pink)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,79,123,0.2)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+              >
+                🗑 Eliminar torneo
+              </button>
+            ) : (
+              <div style={{
+                background: 'rgba(255,79,123,0.07)', border: '1px solid rgba(255,79,123,0.35)',
+                borderRadius: 'var(--radius-md)', padding: '8px 10px',
+              }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--pink)', margin: '0 0 8px' }}>
+                  ¿Confirmás que querés eliminar este torneo? Esta acción no se puede deshacer.
+                </p>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    style={{
+                      flex: 1, background: 'transparent', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+                      fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '5px', cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => { setConfirmDelete(false); onDelete(t.id, t.name) }}
+                    style={{
+                      flex: 1, background: 'rgba(255,79,123,0.15)', border: '1px solid rgba(255,79,123,0.5)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--pink)',
+                      fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700,
+                      padding: '5px', cursor: 'pointer',
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
