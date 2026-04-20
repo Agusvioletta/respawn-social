@@ -20,6 +20,19 @@ const GAMES = ['Valorant', 'CS2', 'Fortnite', 'Apex', 'Minecraft', 'League of Le
 const FORMATS = ['Eliminación simple', 'Round Robin', 'Suizo']
 const PLAYER_OPTS = [4, 8, 16, 32, 64]
 
+// Defaults inteligentes por juego
+const GAME_DEFAULTS: Record<string, { format: string; maxPlayers: number }> = {
+  'Valorant':          { format: 'Eliminación simple', maxPlayers: 16 },  // 5v5
+  'CS2':               { format: 'Eliminación simple', maxPlayers: 16 },  // 5v5
+  'League of Legends': { format: 'Eliminación simple', maxPlayers: 16 },  // 5v5
+  'Overwatch':         { format: 'Eliminación simple', maxPlayers: 16 },  // 5v5
+  'Rocket League':     { format: 'Eliminación simple', maxPlayers: 16 },  // 3v3
+  'Fortnite':          { format: 'Round Robin',        maxPlayers: 32 },  // battle royale
+  'Apex':              { format: 'Round Robin',        maxPlayers: 32 },  // battle royale
+  'Minecraft':         { format: 'Eliminación simple', maxPlayers: 8  },  // suele ser chico
+  'Respawn Arcade':    { format: 'Eliminación simple', maxPlayers: 8  },  // 1v1 retro
+}
+
 type TStatus = 'live' | 'upcoming' | 'finished'
 type Tab = 'live' | 'upcoming' | 'finished' | 'mine'
 
@@ -324,7 +337,11 @@ export default function TournamentsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input style={inputStyle} placeholder="Nombre del torneo *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
 
-              <select style={inputStyle} value={form.game} onChange={e => setForm(f => ({ ...f, game: e.target.value }))}>
+              <select style={inputStyle} value={form.game} onChange={e => {
+                const g = e.target.value
+                const def = GAME_DEFAULTS[g]
+                setForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
+              }}>
                 <option value="">Seleccioná un juego *</option>
                 {GAMES.map(g => <option key={g} value={g}>{gameIcon(g)} {g}</option>)}
               </select>
@@ -392,7 +409,11 @@ export default function TournamentsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input style={inputStyle} placeholder="Nombre del torneo *" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
 
-              <select style={inputStyle} value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))}>
+              <select style={inputStyle} value={editForm.game} onChange={e => {
+                const g = e.target.value
+                const def = GAME_DEFAULTS[g]
+                setEditForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
+              }}>
                 <option value="">Seleccioná un juego *</option>
                 {GAMES.map(g => <option key={g} value={g}>{gameIcon(g)} {g}</option>)}
               </select>
