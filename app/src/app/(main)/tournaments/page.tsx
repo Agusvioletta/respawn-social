@@ -334,26 +334,38 @@ export default function TournamentsPage() {
               CREAR TORNEO
             </h2>
 
+            <datalist id="dl-games">{GAMES.map(g => <option key={g} value={g} />)}</datalist>
+            <datalist id="dl-formats">{FORMATS.map(f => <option key={f} value={f} />)}</datalist>
+            <datalist id="dl-players">{PLAYER_OPTS.map(n => <option key={n} value={n} />)}</datalist>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input style={inputStyle} placeholder="Nombre del torneo *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
 
-              <select style={inputStyle} value={form.game} onChange={e => {
-                const g = e.target.value
-                const def = GAME_DEFAULTS[g]
-                setForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
-              }}>
-                <option value="">Seleccioná un juego *</option>
-                {GAMES.map(g => <option key={g} value={g}>{gameIcon(g)} {g}</option>)}
-              </select>
+              <input
+                style={inputStyle} list="dl-games"
+                placeholder="Juego * (ej: Valorant, Minecraft...)"
+                value={form.game}
+                onChange={e => {
+                  const g = e.target.value
+                  const def = GAME_DEFAULTS[g]
+                  setForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
+                }}
+              />
 
-              <select style={inputStyle} value={form.format} onChange={e => setForm(f => ({ ...f, format: e.target.value }))}>
-                {FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              <input
+                style={inputStyle} list="dl-formats"
+                placeholder="Formato * (ej: Eliminación simple)"
+                value={form.format}
+                onChange={e => setForm(f => ({ ...f, format: e.target.value }))}
+              />
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                <select style={{ ...inputStyle, flex: 1 }} value={form.maxPlayers} onChange={e => setForm(f => ({ ...f, maxPlayers: parseInt(e.target.value) }))}>
-                  {PLAYER_OPTS.map(n => <option key={n} value={n}>{n} jugadores</option>)}
-                </select>
+                <input
+                  style={{ ...inputStyle, flex: 1 }} list="dl-players" type="number" min={2}
+                  placeholder="Jugadores *"
+                  value={form.maxPlayers}
+                  onChange={e => setForm(f => ({ ...f, maxPlayers: parseInt(e.target.value) || 16 }))}
+                />
                 <input style={{ ...inputStyle, flex: 1 }} type="datetime-local" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
               </div>
 
@@ -409,23 +421,31 @@ export default function TournamentsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input style={inputStyle} placeholder="Nombre del torneo *" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
 
-              <select style={inputStyle} value={editForm.game} onChange={e => {
-                const g = e.target.value
-                const def = GAME_DEFAULTS[g]
-                setEditForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
-              }}>
-                <option value="">Seleccioná un juego *</option>
-                {GAMES.map(g => <option key={g} value={g}>{gameIcon(g)} {g}</option>)}
-              </select>
+              <input
+                style={inputStyle} list="dl-games"
+                placeholder="Juego * (ej: Valorant, Minecraft...)"
+                value={editForm.game}
+                onChange={e => {
+                  const g = e.target.value
+                  const def = GAME_DEFAULTS[g]
+                  setEditForm(f => ({ ...f, game: g, ...(def ? { format: def.format, maxPlayers: def.maxPlayers } : {}) }))
+                }}
+              />
 
-              <select style={inputStyle} value={editForm.format} onChange={e => setEditForm(f => ({ ...f, format: e.target.value }))}>
-                {FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              <input
+                style={inputStyle} list="dl-formats"
+                placeholder="Formato *"
+                value={editForm.format}
+                onChange={e => setEditForm(f => ({ ...f, format: e.target.value }))}
+              />
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                <select style={{ ...inputStyle, flex: 1 }} value={editForm.maxPlayers} onChange={e => setEditForm(f => ({ ...f, maxPlayers: parseInt(e.target.value) }))}>
-                  {PLAYER_OPTS.map(n => <option key={n} value={n}>{n} jugadores</option>)}
-                </select>
+                <input
+                  style={{ ...inputStyle, flex: 1 }} list="dl-players" type="number" min={2}
+                  placeholder="Jugadores *"
+                  value={editForm.maxPlayers}
+                  onChange={e => setEditForm(f => ({ ...f, maxPlayers: parseInt(e.target.value) || 16 }))}
+                />
                 <input style={{ ...inputStyle, flex: 1 }} type="datetime-local" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
               </div>
 
