@@ -23,12 +23,10 @@ export default async function FeedPage() {
       </div>
 
       {/* Sidebar — oculto en mobile/tablet */}
-      <aside className="hidden xl:block sidebar-scroll" style={{
+      <aside className="hidden xl:block" style={{
         width: '280px', flexShrink: 0,
         position: 'sticky', top: '24px',
-        maxHeight: 'calc(100vh - 48px)',
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        alignSelf: 'flex-start',
       }}>
         <FeedSidebar />
       </aside>
