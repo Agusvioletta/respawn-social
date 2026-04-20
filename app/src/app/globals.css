@@ -172,11 +172,26 @@ nav a:active {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Scrollbar global (página entera) ───────────────────────── */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(144,144,176,0.25) transparent;
+}
+html::-webkit-scrollbar       { width: 5px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb {
+  background: rgba(144,144,176,0.2);
+  border-radius: 4px;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(144,144,176,0.4);
+}
+
 /* Sidebar scroll — ocultar scrollbar en todos los navegadores */
 .sidebar-scroll {
-  scrollbar-width: none;        /* Firefox */
-  -ms-overflow-style: none;     /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .sidebar-scroll::-webkit-scrollbar {
-  display: none;                /* Chrome/Safari */
+  display: none;
 }
