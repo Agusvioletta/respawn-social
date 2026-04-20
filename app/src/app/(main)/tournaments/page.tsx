@@ -173,12 +173,20 @@ export default function TournamentsPage() {
   }
 
   async function handleDelete(id: number, name: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = supabase as any
-    await sb.from('tournament_players').delete().eq('tournament_id', id)
-    await sb.from('tournaments').delete().eq('id', id)
+    // Optimistic: remove from UI immediately
+    setTournaments(prev => prev.filter(t => t.id !== id))
     showToast(`🗑 Torneo "${name}" eliminado.`)
-    load()
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      await sb.from('tournament_players').delete().eq('tournament_id', id)
+      const { error } = await sb.from('tournaments').delete().eq('id', id).eq('creator_id', user!.id)
+      if (error) throw error
+    } catch (e: unknown) {
+      // Revert: reload real state and show error
+      load()
+      showToast(`⚠ Error al eliminar: ${e instanceof Error ? e.message : 'Revisá los permisos en Supabase.'}`)
+    }
   }
 
   async function handleStatusChange(id: number, newStatus: TStatus) {
