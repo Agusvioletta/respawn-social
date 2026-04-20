@@ -171,3 +171,12 @@ nav a:active {
   outline: none !important;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Sidebar scroll — ocultar scrollbar en todos los navegadores */
+.sidebar-scroll {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari */
+}

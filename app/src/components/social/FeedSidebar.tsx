@@ -167,7 +167,7 @@ export function FeedSidebar() {
   const { level, current, needed } = xpLevel(xpTotal)
 
   return (
-    <div>
+    <div style={{ paddingBottom: '24px' }}>
       {/* Mini perfil propio */}
       {user && (
         <div style={cardStyle}>
