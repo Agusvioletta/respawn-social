@@ -513,6 +513,8 @@ function TournamentCard({
       onMouseEnter={e => (e.currentTarget.style.borderColor = statusColor ?? 'var(--border)')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
     >
+      {/* Link al detalle */}
+      <Link href={`/tournaments/${t.id}`} style={{ textDecoration: 'none' }}>
       {/* Card header */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
@@ -540,6 +542,8 @@ function TournamentCard({
           )}
         </div>
       </div>
+
+      </Link>
 
       {/* Card body */}
       <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
