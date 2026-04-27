@@ -24,15 +24,7 @@ interface TopGamer {
   rank: number
 }
 
-const TRENDING_TAGS = [
-  { tag: 'Valorant', hot: true },
-  { tag: 'Minecraft', hot: false },
-  { tag: 'LoL', hot: true },
-  { tag: 'Fortnite', hot: false },
-  { tag: 'CS2', hot: true },
-  { tag: 'Elden Ring', hot: false },
-  { tag: 'GTA6', hot: true },
-]
+const FALLBACK_TAGS = ['Valorant', 'Minecraft', 'LoL', 'Fortnite', 'CS2', 'Elden Ring', 'GTA6']
 
 export function FeedSidebar() {
   const user = useAuthStore((s) => s.user)
@@ -41,12 +33,16 @@ export function FeedSidebar() {
   const [following, setFollowing] = useState<Set<string>>(new Set())
   const [topGamers, setTopGamers] = useState<TopGamer[]>([])
   const [myXP, setMyXP] = useState(0)
+  const [trendingTags, setTrendingTags] = useState<{ tag: string; hot: boolean }[]>(
+    FALLBACK_TAGS.map((t, i) => ({ tag: t, hot: i % 2 === 0 }))
+  )
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const u = user as any
 
   useEffect(() => {
     loadTopGamers()
+    loadTrendingTags()
     if (!user?.id) return
     loadSuggested()
     loadMyXP()
@@ -105,6 +101,32 @@ export function FeedSidebar() {
         .map((p: typeof withXP[0], i: number) => ({ ...p, rank: i + 1 }))
 
       setTopGamers(sorted)
+    } catch { /* silently skip */ }
+  }
+
+  async function loadTrendingTags() {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from('posts')
+        .select('content')
+        .order('created_at', { ascending: false })
+        .limit(200)
+      if (!data?.length) return
+      const counts: Record<string, number> = {}
+      for (const post of data) {
+        const tags = (post.content ?? '').match(/#(\w+)/g) ?? []
+        for (const tag of tags) {
+          const clean = tag.slice(1).toLowerCase()
+          counts[clean] = (counts[clean] ?? 0) + 1
+        }
+      }
+      if (!Object.keys(counts).length) return
+      const sorted = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 7)
+      // "hot" = top 3 más mencionados
+      setTrendingTags(sorted.map(([tag], i) => ({ tag, hot: i < 3 })))
     } catch { /* silently skip */ }
   }
 
@@ -391,28 +413,30 @@ export function FeedSidebar() {
       <div style={cardStyle}>
         <div style={titleStyle}>🔥 TRENDING</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {TRENDING_TAGS.map((t) => (
-            <span key={t.tag} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              background: t.hot ? 'rgba(255,79,123,0.06)' : 'var(--surface)',
-              border: `1px solid ${t.hot ? 'rgba(255,79,123,0.3)' : 'var(--border)'}`,
-              borderRadius: '20px', padding: '4px 12px',
-              fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
-              color: t.hot ? 'var(--pink)' : 'var(--text-secondary)',
-              letterSpacing: '0.5px', cursor: 'pointer',
-              transition: 'all var(--transition)',
-            }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = t.hot ? 'var(--pink)' : 'rgba(0,255,247,0.3)'
-                ;(e.currentTarget as HTMLElement).style.color = t.hot ? 'var(--pink)' : 'var(--cyan)'
+          {trendingTags.map((t) => (
+            <Link key={t.tag} href={`/explore?q=${encodeURIComponent(t.tag)}`} style={{ textDecoration: 'none' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                background: t.hot ? 'rgba(255,79,123,0.06)' : 'var(--surface)',
+                border: `1px solid ${t.hot ? 'rgba(255,79,123,0.3)' : 'var(--border)'}`,
+                borderRadius: '20px', padding: '4px 12px',
+                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                color: t.hot ? 'var(--pink)' : 'var(--text-secondary)',
+                letterSpacing: '0.5px', cursor: 'pointer',
+                transition: 'all var(--transition)',
               }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = t.hot ? 'rgba(255,79,123,0.3)' : 'var(--border)'
-                ;(e.currentTarget as HTMLElement).style.color = t.hot ? 'var(--pink)' : 'var(--text-secondary)'
-              }}
-            >
-              {t.hot && '🔥 '}#{t.tag}
-            </span>
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = t.hot ? 'var(--pink)' : 'rgba(0,255,247,0.3)'
+                  ;(e.currentTarget as HTMLElement).style.color = t.hot ? 'var(--pink)' : 'var(--cyan)'
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = t.hot ? 'rgba(255,79,123,0.3)' : 'var(--border)'
+                  ;(e.currentTarget as HTMLElement).style.color = t.hot ? 'var(--pink)' : 'var(--text-secondary)'
+                }}
+              >
+                {t.hot && '🔥 '}#{t.tag}
+              </span>
+            </Link>
           ))}
         </div>
       </div>

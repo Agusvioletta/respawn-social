@@ -167,7 +167,11 @@ function ExplorePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any
       const [{ data: uRes }, { data: pRes }] = await Promise.all([
-        sb.from('profiles').select('id, username, avatar, bio, games, created_at').ilike('username', `%${term}%`).neq('id', user?.id ?? '').limit(12),
+        // Buscar por username O bio (or filter)
+        sb.from('profiles')
+          .select('id, username, avatar, bio, games, created_at')
+          .or(`username.ilike.%${term}%,bio.ilike.%${term}%`)
+          .neq('id', user?.id ?? '').limit(12),
         sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').ilike('content', `%${term}%`).order('created_at', { ascending: false }).limit(20),
       ])
 
