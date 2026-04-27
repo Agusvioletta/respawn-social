@@ -46,11 +46,17 @@ export default function PostPage() {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  // Comment likes: { [commentId]: count }
+  const [commentLikeCounts, setCommentLikeCounts] = useState<Record<number, number>>({})
+  const [commentLikedIds, setCommentLikedIds] = useState<Set<number>>(new Set())
+  // Share
+  const [copied, setCopied] = useState(false)
 
   async function loadPost() {
     if (!/^\d+$/.test(params.id as string)) { setLoading(false); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const sb = supabase as any
+    const { data, error } = await sb
       .from('posts')
       .select('*, likes(user_id), comments(id, post_id, user_id, username, avatar, content, parent_id, image_url, created_at)')
       .eq('id', params.id)
@@ -59,10 +65,56 @@ export default function PostPage() {
     setPost(data)
     setLikeCount(data.likes?.length ?? 0)
     setLiked(user ? data.likes?.some((l: { user_id: string }) => l.user_id === user.id) : false)
+
+    // Load comment likes
+    try {
+      const { data: clData } = await sb
+        .from('comment_likes')
+        .select('comment_id, user_id')
+        .in('comment_id', (data.comments ?? []).map((c: Comment) => c.id))
+      if (clData) {
+        const counts: Record<number, number> = {}
+        const liked = new Set<number>()
+        for (const row of clData) {
+          counts[row.comment_id] = (counts[row.comment_id] ?? 0) + 1
+          if (user && row.user_id === user.id) liked.add(row.comment_id)
+        }
+        setCommentLikeCounts(counts)
+        setCommentLikedIds(liked)
+      }
+    } catch { /* comment_likes might not exist yet */ }
+
     setLoading(false)
   }
 
-  useEffect(() => { loadPost() }, [params.id])
+  useEffect(() => { loadPost() }, [params.id])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Realtime: nuevos comentarios en este post
+  useEffect(() => {
+    if (!params.id || !/^\d+$/.test(params.id as string)) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ch = (supabase as any)
+      .channel(`post-comments:${params.id}`)
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'comments',
+        filter: `post_id=eq.${params.id}`,
+      }, (payload: any) => {  // eslint-disable-line @typescript-eslint/no-explicit-any
+        setPost(p => {
+          if (!p) return p
+          if (p.comments.some(c => c.id === payload.new.id)) return p
+          return { ...p, comments: [...p.comments, payload.new as Comment] }
+        })
+      })
+      .on('postgres_changes' as any, {
+        event: 'DELETE', schema: 'public', table: 'comments',
+        filter: `post_id=eq.${params.id}`,
+      }, (payload: any) => {  // eslint-disable-line @typescript-eslint/no-explicit-any
+        setPost(p => p ? { ...p, comments: p.comments.filter(c => c.id !== payload.old.id) } : p)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id])
 
   async function handleLike() {
     if (!user || !post) return
@@ -126,6 +178,54 @@ export default function PostPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('posts').delete().eq('id', post.id).eq('user_id', user.id)
     router.push('/feed')
+  }
+
+  async function handleCommentLike(commentId: number) {
+    if (!user) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const isLiked = commentLikedIds.has(commentId)
+    // Optimistic
+    setCommentLikedIds(prev => {
+      const next = new Set(prev)
+      isLiked ? next.delete(commentId) : next.add(commentId)
+      return next
+    })
+    setCommentLikeCounts(prev => ({
+      ...prev,
+      [commentId]: Math.max(0, (prev[commentId] ?? 0) + (isLiked ? -1 : 1)),
+    }))
+    try {
+      if (isLiked) {
+        await sb.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', user.id)
+      } else {
+        await sb.from('comment_likes').insert({ comment_id: commentId, user_id: user.id })
+      }
+    } catch {
+      // Revert
+      setCommentLikedIds(prev => {
+        const next = new Set(prev)
+        isLiked ? next.add(commentId) : next.delete(commentId)
+        return next
+      })
+      setCommentLikeCounts(prev => ({
+        ...prev,
+        [commentId]: Math.max(0, (prev[commentId] ?? 0) + (isLiked ? 1 : -1)),
+      }))
+    }
+  }
+
+  function handleShare() {
+    const url = `${window.location.origin}/post/${post!.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      const ta = document.createElement('textarea'); ta.value = url
+      ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   function formatContent(text: string) {
@@ -210,8 +310,8 @@ export default function PostPage() {
           />
         )}
 
-        {/* Stats + like */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+        {/* Stats + like + share */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button onClick={handleLike} style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             background: liked ? 'rgba(255,79,123,0.1)' : 'transparent',
@@ -226,6 +326,18 @@ export default function PostPage() {
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
             💬 {topComments.length} comentario{topComments.length !== 1 ? 's' : ''}
           </span>
+          <button onClick={handleShare} style={{
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            background: copied ? 'rgba(74,222,128,0.1)' : 'transparent',
+            border: `1px solid ${copied ? 'rgba(74,222,128,0.4)' : 'var(--border)'}`,
+            borderRadius: 'var(--radius-sm)', padding: '5px 12px',
+            color: copied ? '#4ade80' : 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)', fontSize: '11px',
+            cursor: 'pointer', transition: 'all var(--transition)',
+          }}>
+            {copied ? '✓ copiado' : '🔗 compartir'}
+          </button>
         </div>
       </div>
 
@@ -287,7 +399,22 @@ export default function PostPage() {
                   />
 
                   {/* Comment actions */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Comment like */}
+                    <button
+                      onClick={() => handleCommentLike(comment.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        background: commentLikedIds.has(comment.id) ? 'rgba(255,79,123,0.1)' : 'none',
+                        border: `1px solid ${commentLikedIds.has(comment.id) ? 'rgba(255,79,123,0.5)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-sm)', padding: '3px 10px',
+                        fontFamily: 'var(--font-mono)', fontSize: '10px',
+                        color: commentLikedIds.has(comment.id) ? 'var(--pink)' : 'var(--text-muted)',
+                        cursor: user ? 'pointer' : 'default', transition: 'all var(--transition)',
+                      }}
+                    >
+                      ♥ {commentLikeCounts[comment.id] || ''}
+                    </button>
                     {user && (
                       <button onClick={() => setOpenReply(openReply === comment.id ? null : comment.id)}
                         style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>
