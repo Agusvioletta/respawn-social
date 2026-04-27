@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
-const MAX_CHARS = 280
+const MAX_CHARS_FREE = 280
+const MAX_CHARS_PRO = 500
 
 const LFG_PLATFORMS = ['PC', 'PS5', 'PS4', 'Xbox', 'Nintendo Switch', 'Mobile', 'Cualquier plataforma']
 
@@ -30,9 +31,13 @@ export function PostComposer({ onPost }: PostComposerProps) {
   const [lfgPlatform, setLfgPlatform] = useState('')
   const [lfgSlots, setLfgSlots] = useState(1)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userTier = (user as any)?.premium_tier ?? 'free'
+  const MAX_CHARS = (userTier === 'pro' || userTier === 'elite') ? MAX_CHARS_PRO : MAX_CHARS_FREE
   const charCount = content.length
   const isOverLimit = charCount > MAX_CHARS
-  const counterColor = charCount > 270 ? 'var(--pink)' : charCount > 240 ? '#F59E0B' : 'var(--text-muted)'
+  const warnAt = MAX_CHARS - 30
+  const counterColor = charCount > MAX_CHARS - 10 ? 'var(--pink)' : charCount > warnAt ? '#F59E0B' : 'var(--text-muted)'
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

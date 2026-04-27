@@ -12,6 +12,7 @@ export interface PostWithMeta {
   lfg_game?: string | null
   lfg_platform?: string | null
   lfg_slots?: number | null
+  author_premium_tier?: string | null
   likes: { user_id: string }[]
   comments: {
     id: number
@@ -82,7 +83,8 @@ export async function getPosts(limit = 30, offset = 0, currentUserId?: string): 
       id, user_id, username, avatar, content, image_url, created_at,
       post_type, lfg_game, lfg_platform, lfg_slots,
       likes(user_id),
-      comments(id, user_id, username, avatar, content, parent_id, created_at)
+      comments(id, user_id, username, avatar, content, parent_id, created_at),
+      profiles!posts_user_id_fkey(premium_tier)
     `)
     .order('created_at', { ascending: false })
 
@@ -104,5 +106,12 @@ export async function getPosts(limit = 30, offset = 0, currentUserId?: string): 
 
   const { data, error } = await query.range(offset, offset + limit - 1)
   if (error) throw error
-  return data as PostWithMeta[]
+  // Flatten profiles join into author_premium_tier
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const posts = (data as any[]).map((p: any) => ({
+    ...p,
+    author_premium_tier: p.profiles?.premium_tier ?? null,
+    profiles: undefined,
+  }))
+  return posts as PostWithMeta[]
 }

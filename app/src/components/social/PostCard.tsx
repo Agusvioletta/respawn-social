@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { detectGameTag } from '@/lib/utils/xp'
 import { UserAvatar } from '@/components/ui/UserAvatar'
+import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 interface PostCardProps {
@@ -247,6 +248,9 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
                 style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
                 @{post.username}
               </Link>
+              {(post.author_premium_tier === 'pro' || post.author_premium_tier === 'elite') && (
+                <PremiumBadge tier={post.author_premium_tier} />
+              )}
               {gameTag && (
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontSize: '10px',
