@@ -69,6 +69,8 @@ export default function ProfilePage() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false)
   const [loading,           setLoading]           = useState(true)
   const [followLoading,     setFollowLoading]     = useState(false)
+  const [tournamentsJoined, setTournamentsJoined] = useState(0)
+  const [userCommentsCount, setUserCommentsCount] = useState(0)
   const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade'>('posts')
   const [listModal,     setListModal]     = useState<'followers' | 'following' | null>(null)
   const [listData,      setListData]      = useState<{ id: string; username: string; avatar: string | null; photo_url: string | null }[]>([])
@@ -89,6 +91,8 @@ export default function ProfilePage() {
         { count: followerCount },
         { count: followingCount },
         { data: scores },
+        { count: tournamentsJoinedCount },
+        { count: commentsCount },
       ] = await Promise.all([
         sb.from('posts')
           .select('*, likes(user_id), comments(id,user_id,username,avatar,content,parent_id,created_at)')
@@ -96,11 +100,15 @@ export default function ProfilePage() {
         sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', prof.id),
         sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', prof.id),
         sb.from('game_scores').select('game_id, score').eq('user_id', prof.id),
+        sb.from('tournament_players').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
+        sb.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
       ])
 
       setPosts(postsData ?? [])
       const likes = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
       setStats({ followers: followerCount ?? 0, following: followingCount ?? 0, likes })
+      setTournamentsJoined(tournamentsJoinedCount ?? 0)
+      setUserCommentsCount(commentsCount ?? 0)
 
       // Best score por juego
       const best: Record<string, number> = {}
@@ -202,9 +210,10 @@ export default function ProfilePage() {
 
   const statsData: StatsData = {
     postCount: posts.length, followersCount: stats.followers, followingCount: stats.following,
-    likesReceived: stats.likes, commentsCount: 0, maxLevel: profile.max_level ?? 1, tournamentsJoined: 0,
+    likesReceived: stats.likes, commentsCount: userCommentsCount, maxLevel: profile.max_level ?? 1,
+    tournamentsJoined,
   }
-  const xp        = calculateXP({ posts: posts.length, followers: stats.followers, following: stats.following, likes: stats.likes, gameLevels: (profile.max_level ?? 1) - 1 })
+  const xp        = calculateXP({ posts: posts.length, followers: stats.followers, following: stats.following, likes: stats.likes, comments: userCommentsCount, gameLevels: (profile.max_level ?? 1) - 1 })
   const lvl       = xpLevel(xp)
   const levelName = getLevelName(lvl.level)
   const xpPct     = Math.round((lvl.current / lvl.needed) * 100)

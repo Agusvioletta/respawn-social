@@ -23,6 +23,9 @@ interface BracketMatch {
   winnerId: string | null
 }
 
+// winnerId per match — stored as { [matchId]: userId }
+type BracketState = Record<string, string>
+
 interface Tournament {
   id: number
   creator_id: string
@@ -34,11 +37,12 @@ interface Tournament {
   description: string | null
   date: string | null
   status: 'upcoming' | 'live' | 'finished'
+  bracket_state?: BracketState | null
   tournament_players: TPlayer[]
 }
 
 // ── Bracket helpers ───────────────────────────────────────────────────────────
-function buildBracket(players: TPlayer[]): BracketMatch[][] {
+function buildBracket(players: TPlayer[], saved: BracketState = {}): BracketMatch[][] {
   // Potencia de 2 más cercana ≥ players.length
   const size = Math.max(2, Math.pow(2, Math.ceil(Math.log2(Math.max(2, players.length)))))
   const slots = Array.from({ length: size }, (_, i) => players[i] ?? null)
@@ -52,20 +56,34 @@ function buildBracket(players: TPlayer[]): BracketMatch[][] {
   const rounds: BracketMatch[][] = []
   const round0: BracketMatch[] = []
   for (let i = 0; i < size; i += 2) {
-    round0.push({ id: `r0-m${i / 2}`, round: 0, matchIndex: i / 2, p1: seeded[i], p2: seeded[i + 1], winnerId: null })
+    const id = `r0-m${i / 2}`
+    round0.push({ id, round: 0, matchIndex: i / 2, p1: seeded[i], p2: seeded[i + 1], winnerId: saved[id] ?? null })
   }
   rounds.push(round0)
 
-  // Rondas siguientes (vacías por ahora — ganadores se setean manualmente)
+  // Rondas siguientes — ganadores avanzan desde la ronda anterior
   let prev = round0.length
   while (prev > 1) {
     const next = Math.ceil(prev / 2)
     const r = rounds.length
-    rounds.push(
-      Array.from({ length: next }, (_, i) => ({
-        id: `r${r}-m${i}`, round: r, matchIndex: i, p1: null, p2: null, winnerId: null,
-      }))
-    )
+    const prevRound = rounds[r - 1]
+    const newRound: BracketMatch[] = Array.from({ length: next }, (_, i) => {
+      const id = `r${r}-m${i}`
+      // Llenar con ganadores de la ronda previa si existen
+      const leftMatch  = prevRound[i * 2]
+      const rightMatch = prevRound[i * 2 + 1]
+      const getWinner = (m: BracketMatch | undefined): TPlayer | null => {
+        if (!m) return null
+        if (m.winnerId) return m.p1?.user_id === m.winnerId ? m.p1 : m.p2
+        // BYE automático: si solo hay un jugador, avanza solo
+        if (m.p1 && !m.p2) return m.p1
+        return null
+      }
+      const p1 = getWinner(leftMatch)
+      const p2 = getWinner(rightMatch)
+      return { id, round: r, matchIndex: i, p1, p2, winnerId: saved[id] ?? null }
+    })
+    rounds.push(newRound)
     prev = next
   }
 
@@ -98,6 +116,7 @@ export default function TournamentDetailPage() {
   const [tab, setTab] = useState<'bracket' | 'players'>('bracket')
   const [joining, setJoining] = useState(false)
   const [toast, setToast] = useState('')
+  const [bracketState, setBracketState] = useState<BracketState>({})
 
   useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -111,6 +130,7 @@ export default function TournamentDetailPage() {
         .eq('id', id)
         .single()
       setTournament(data ?? null)
+      setBracketState((data?.bracket_state as BracketState) ?? {})
     } catch { setTournament(null) }
     setLoading(false)
   }
@@ -142,6 +162,32 @@ export default function TournamentDetailPage() {
     load()
   }
 
+  async function handleSetWinner(matchId: string, winnerId: string) {
+    if (!tournament) return
+    // winnerId = '' means reset
+    const newState = { ...bracketState }
+    if (winnerId) newState[matchId] = winnerId
+    else delete newState[matchId]
+    setBracketState(newState) // optimistic
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('tournaments').update({ bracket_state: newState })
+        .eq('id', tournament.id).eq('creator_id', user!.id)
+      if (error) {
+        // Columna bracket_state puede no existir todavía — mostrar aviso
+        if (error.message?.includes('bracket_state') || error.code === '42703') {
+          showToast('⚠ Ejecutá el SQL: ALTER TABLE tournaments ADD COLUMN bracket_state JSONB;')
+        } else {
+          showToast('⚠ Error guardando resultado. Verificá permisos RLS.')
+        }
+        setBracketState(bracketState) // revert
+      }
+    } catch {
+      setBracketState(bracketState) // revert
+    }
+  }
+
   if (loading) return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '24px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', paddingTop: '80px' }}>
       Cargando torneo...
@@ -160,7 +206,7 @@ export default function TournamentDetailPage() {
   const isCreator = tournament.creator_id === user?.id
   const joined    = players.some(p => p.user_id === user?.id)
   const full      = players.length >= tournament.max_players
-  const bracket   = buildBracket(players)
+  const bracket   = buildBracket(players, bracketState)
   const rounds    = bracket.length
 
   const statusColor = { live: 'var(--pink)', upcoming: 'var(--cyan)', finished: 'var(--text-muted)' }[tournament.status]
@@ -323,7 +369,13 @@ export default function TournamentDetailPage() {
                       gap: '8px', padding: '4px 8px',
                     }}>
                       {round.map((match) => (
-                        <BracketMatchCard key={match.id} match={match} highlight={rIdx === rounds - 1} />
+                        <BracketMatchCard
+                          key={match.id}
+                          match={match}
+                          highlight={rIdx === rounds - 1}
+                          canEdit={isCreator && tournament.status === 'live'}
+                          onSetWinner={(winnerId) => handleSetWinner(match.id, winnerId)}
+                        />
                       ))}
                     </div>
                   </div>
@@ -395,28 +447,71 @@ export default function TournamentDetailPage() {
 }
 
 // ── Bracket match card ─────────────────────────────────────────────────────────
-function BracketMatchCard({ match, highlight }: { match: BracketMatch; highlight: boolean }) {
+function BracketMatchCard({
+  match, highlight, canEdit, onSetWinner,
+}: {
+  match: BracketMatch
+  highlight: boolean
+  canEdit?: boolean
+  onSetWinner?: (winnerId: string) => void
+}) {
   const borderColor = highlight ? 'rgba(0,255,247,0.35)' : 'var(--border)'
   const slots = [match.p1, match.p2]
+  // Partida jugable: ambos jugadores presentes (o BYE automático)
+  const canPickWinner = canEdit && match.p1 && match.p2 && !match.winnerId
 
   return (
     <div style={{
       background: 'var(--card)', border: `1px solid ${borderColor}`,
       borderRadius: 'var(--radius-md)', overflow: 'hidden',
       boxShadow: highlight ? '0 0 12px rgba(0,255,247,0.06)' : 'none',
+      position: 'relative',
     }}>
+      {canPickWinner && (
+        <div style={{
+          position: 'absolute', top: '2px', right: '4px',
+          fontFamily: 'var(--font-mono)', fontSize: '8px', color: 'var(--text-muted)',
+          letterSpacing: '0.5px',
+        }}>
+          click = ganador
+        </div>
+      )}
+      {/* Botón para resetear ganador (creator only) */}
+      {canEdit && match.winnerId && (
+        <button
+          onClick={() => onSetWinner?.('')}
+          title="Resetear resultado"
+          style={{
+            position: 'absolute', top: '2px', right: '4px',
+            background: 'transparent', border: 'none',
+            fontFamily: 'var(--font-mono)', fontSize: '8px', color: 'var(--text-muted)',
+            cursor: 'pointer', padding: '0 2px',
+          }}
+        >
+          ↩
+        </button>
+      )}
       {slots.map((player, si) => {
         const isWinner = match.winnerId && player && match.winnerId === player.user_id
         const isBye    = match.p1 && !match.p2 && si === 1
+        const clickable = canPickWinner && !!player
         return (
-          <div key={si} style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '7px 10px',
-            borderBottom: si === 0 ? `1px solid ${borderColor}` : 'none',
-            background: isWinner ? 'rgba(0,255,247,0.06)' : 'transparent',
-            opacity: match.winnerId && !isWinner && player ? 0.45 : 1,
-            minHeight: '36px',
-          }}>
+          <div
+            key={si}
+            onClick={clickable ? () => onSetWinner?.(player!.user_id) : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '7px 10px',
+              borderBottom: si === 0 ? `1px solid ${borderColor}` : 'none',
+              background: isWinner ? 'rgba(0,255,247,0.06)' : 'transparent',
+              opacity: match.winnerId && !isWinner && player ? 0.45 : 1,
+              minHeight: '36px',
+              cursor: clickable ? 'pointer' : 'default',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLElement).style.background = 'rgba(0,255,247,0.04)' }}
+            onMouseLeave={e => { if (clickable) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
             {isBye ? (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 BYE
@@ -432,6 +527,9 @@ function BracketMatchCard({ match, highlight }: { match: BracketMatch; highlight
                   @{player.profiles?.username}
                 </span>
                 {isWinner && <span style={{ fontSize: '12px', flexShrink: 0 }}>👑</span>}
+                {clickable && (
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', flexShrink: 0, opacity: 0.6 }}>✓</span>
+                )}
               </>
             ) : (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>

@@ -121,7 +121,7 @@ export default function SettingsPage() {
     setForm({
       username: user.username,
       bio: user.bio ?? '',
-      games: [...((u.games ?? ['', '', '']), '', '', '')].slice(0, 3),
+      games: [...(u.games ?? []), '', '', ''].slice(0, 3),
       nowPlaying: u.now_playing ?? '',
     })
     setSelectedAvatar(user.avatar ?? '/avatar1.png')
@@ -157,7 +157,7 @@ export default function SettingsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: createdTournaments } = await (supabase as any).from('tournaments').select('id').eq('creator_id', user.id)
     const totalLikes = (posts ?? []).reduce((s: number, p: { likes?: unknown[] }) => s + (p.likes?.length ?? 0), 0)
-    const xp = calculateXP({ posts: posts?.length ?? 0, followers: followers?.length ?? 0, following: following?.length ?? 0, likes: totalLikes, gameLevels: user.max_level })
+    const xp = calculateXP({ posts: posts?.length ?? 0, followers: followers?.length ?? 0, following: following?.length ?? 0, likes: totalLikes, gameLevels: Math.max(0, (user.max_level ?? 1) - 1) })
     const { level } = xpLevel(xp)
     setStats({ posts: posts?.length ?? 0, following: following?.length ?? 0, followers: followers?.length ?? 0, likes: totalLikes, maxLevel: user.max_level, tournamentsJoined: tournaments?.length ?? 0, tournamentsCreated: createdTournaments?.length ?? 0, dmsSent: msgs?.length ?? 0, level })
   }

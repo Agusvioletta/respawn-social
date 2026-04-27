@@ -40,6 +40,7 @@ export function FeedSidebar() {
   const [suggested, setSuggested] = useState<SuggestedUser[]>([])
   const [following, setFollowing] = useState<Set<string>>(new Set())
   const [topGamers, setTopGamers] = useState<TopGamer[]>([])
+  const [myXP, setMyXP] = useState(0)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const u = user as any
@@ -48,6 +49,7 @@ export function FeedSidebar() {
     loadTopGamers()
     if (!user?.id) return
     loadSuggested()
+    loadMyXP()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
@@ -64,19 +66,22 @@ export function FeedSidebar() {
 
       const userIds = profiles.map((p: { id: string }) => p.id)
 
-      // 2 queries batch en vez de 40 queries individuales (N+1)
+      // Batch queries — evita N+1 round-trips a la DB
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [{ data: postRows }, { data: followRows }] = await Promise.all([
+        // Posts con likes incluidos para contar en JS
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('posts').select('user_id').in('user_id', userIds),
+        (supabase as any).from('posts').select('user_id, likes(user_id)').in('user_id', userIds),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from('follows').select('following_id').in('following_id', userIds),
       ])
 
       // Contar en JS — más rápido que múltiples round-trips a la DB
       const postCounts = new Map<string, number>()
+      const likesCounts = new Map<string, number>()
       for (const row of (postRows ?? [])) {
         postCounts.set(row.user_id, (postCounts.get(row.user_id) ?? 0) + 1)
+        likesCounts.set(row.user_id, (likesCounts.get(row.user_id) ?? 0) + (row.likes?.length ?? 0))
       }
       const followCounts = new Map<string, number>()
       for (const row of (followRows ?? [])) {
@@ -89,8 +94,8 @@ export function FeedSidebar() {
           posts: postCounts.get(p.id) ?? 0,
           followers: followCounts.get(p.id) ?? 0,
           following: 0,
-          likes: 0,
-          gameLevels: p.max_level ?? 1,
+          likes: likesCounts.get(p.id) ?? 0,
+          gameLevels: Math.max(0, (p.max_level ?? 1) - 1),
         }),
       }))
 
@@ -100,6 +105,36 @@ export function FeedSidebar() {
         .map((p: typeof withXP[0], i: number) => ({ ...p, rank: i + 1 }))
 
       setTopGamers(sorted)
+    } catch { /* silently skip */ }
+  }
+
+  async function loadMyXP() {
+    if (!user?.id) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      const [
+        { count: postCount },
+        { count: followerCount },
+        { count: followingCount },
+        { count: commentCount },
+        { data: likesData },
+      ] = await Promise.all([
+        sb.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+        sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
+        sb.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('posts').select('likes(user_id)').eq('user_id', user.id),
+      ])
+      const likesReceived = (likesData ?? []).reduce((s: number, p: { likes?: unknown[] }) => s + (p.likes?.length ?? 0), 0)
+      setMyXP(calculateXP({
+        posts: postCount ?? 0,
+        followers: followerCount ?? 0,
+        following: followingCount ?? 0,
+        comments: commentCount ?? 0,
+        likes: likesReceived,
+        gameLevels: (u?.max_level ?? 1) - 1,
+      }))
     } catch { /* silently skip */ }
   }
 
@@ -159,12 +194,8 @@ export function FeedSidebar() {
     gap: '6px',
   }
 
-  // XP del usuario
-  const xpTotal = u ? calculateXP({
-    posts: 0, followers: 0, following: 0, likes: 0,
-    gameLevels: u.max_level ?? 1,
-  }) : 0
-  const { level, current, needed } = xpLevel(xpTotal)
+  // XP del usuario (cargado en loadMyXP con stats reales)
+  const { level, current, needed } = xpLevel(myXP)
 
   return (
     <div style={{ paddingBottom: '24px' }}>
