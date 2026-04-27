@@ -12,6 +12,7 @@ import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 import type { Profile } from '@/lib/types/database'
 import { getBanner } from '@/lib/banners'
 import { ConnectionsWidget } from '@/components/profile/ConnectionsWidget'
+import { PremiumBadge } from '@/components/ui/PremiumBadge'
 
 // ── Logros ────────────────────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
@@ -438,10 +439,12 @@ export default function ProfilePage() {
 
         {/* Name + bio + games */}
         <div style={{ marginTop: '14px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px' }}>
               {profile.username}
             </span>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <PremiumBadge tier={(profile as any).premium_tier} size="md" />
             {isProfileLocked && (
               <span title={privacyPosts === 'private' ? 'Perfil privado' : 'Solo seguidores'} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '4px',

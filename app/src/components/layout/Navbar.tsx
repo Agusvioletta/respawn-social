@@ -36,6 +36,7 @@ const ALL_NAV = [
   { href: '/tournaments', icon: '🏆', label: 'Torneos'     },
   { href: '/arcade',      icon: '🕹️', label: 'Arcade'      },
   { href: '/messages',    icon: '💬', label: 'Mensajes'    },
+  { href: '/premium',     icon: '⚡', label: 'Premium'     },
 ]
 
 // ── Sonido notificación ───────────────────────────────────────────────────────
