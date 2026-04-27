@@ -151,6 +151,26 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
       .replace(/@(\w+)/g, '<a href="/profile/$1" onclick="event.stopPropagation()" style="color:var(--purple);text-decoration:none;">@$1</a>')
   }
 
+  const [copied, setCopied] = useState(false)
+
+  function handleShare(e: React.MouseEvent) {
+    e.stopPropagation()
+    const url = `${window.location.origin}/post/${post.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea')
+      ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   const isLFG = post.post_type === 'lfg'
   const totalReactions = Object.values(reactions).reduce((a, b) => a + b, 0)
 
@@ -367,7 +387,24 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
         }}>
           💬 {comments.length} comentario{comments.length !== 1 ? 's' : ''}
         </span>
-        <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
+        <button
+          onClick={handleShare}
+          title="Copiar enlace"
+          style={{
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: '4px',
+            background: copied ? 'rgba(74,222,128,0.1)' : 'transparent',
+            border: `1px solid ${copied ? 'rgba(74,222,128,0.4)' : 'transparent'}`,
+            borderRadius: 'var(--radius-sm)',
+            color: copied ? '#4ade80' : 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)', fontSize: '10px',
+            padding: '3px 8px', cursor: 'pointer',
+            transition: 'all var(--transition)',
+          }}
+        >
+          {copied ? '✓ copiado' : '🔗 compartir'}
+        </button>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
           ver →
         </span>
       </div>

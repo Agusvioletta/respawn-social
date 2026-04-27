@@ -8,6 +8,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 
+// Helper to check if we are currently on the /notifications page
+function onNotifsPage() { return window.location.pathname.startsWith('/notifications') }
+
 // ── Nav items ─────────────────────────────────────────────────────────────────
 // Primarios: aparecen siempre en mobile bottom bar (máx 5 con el botón Más)
 const PRIMARY_NAV = [
@@ -60,8 +63,10 @@ export function Navbar() {
     lastNotifAt, setLastNotifAt,
   } = useNotificationStore()
   const supabase = createClient()
-  const msgChannelRef    = useRef<ReturnType<typeof supabase.channel> | null>(null)
-  const notifChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const msgChannelRef        = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const notifChannelRef      = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const likesChannelRef      = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const myPostIdsRef         = useRef<Set<number>>(new Set())
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Cerrar drawer en cambio de ruta
@@ -103,6 +108,11 @@ export function Navbar() {
           // Comentarios en mis posts (excluyo los míos propios)
           queries.push(
             sb.from('comments').select('*', { count: 'exact', head: true })
+              .in('post_id', postIds).gte('created_at', since).neq('user_id', user!.id)
+          )
+          // Likes en mis posts (excluyo los míos propios)
+          queries.push(
+            sb.from('likes').select('*', { count: 'exact', head: true })
               .in('post_id', postIds).gte('created_at', since).neq('user_id', user!.id)
           )
         }
@@ -156,6 +166,54 @@ export function Navbar() {
       })
       .subscribe()
     notifChannelRef.current = ch
+    return () => { supabase.removeChannel(ch) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Cargar IDs de posts del usuario y suscribirse a likes/comentarios en tiempo real
+  useEffect(() => {
+    if (!user?.id) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+
+    async function seedPostIds() {
+      try {
+        const { data } = await sb.from('posts').select('id').eq('user_id', user!.id)
+        myPostIdsRef.current = new Set((data ?? []).map((p: { id: number }) => p.id))
+      } catch { /* silently skip */ }
+    }
+    seedPostIds()
+
+    const ch = sb
+      .channel(`navbar-likes:${user.id}`)
+      // Nuevo like en cualquier post → filtramos client-side
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'likes' }, (payload: any) => {
+        if (
+          payload.new.user_id !== user!.id &&
+          myPostIdsRef.current.has(payload.new.post_id) &&
+          !onNotifsPage()
+        ) {
+          addUnreadNotif()
+        }
+      })
+      // Nuevo comentario en cualquier post → filtramos client-side
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'comments' }, (payload: any) => {
+        if (
+          payload.new.user_id !== user!.id &&
+          myPostIdsRef.current.has(payload.new.post_id) &&
+          !onNotifsPage()
+        ) {
+          addUnreadNotif()
+        }
+      })
+      // Nuevo post del usuario → agregar al set local
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'posts',
+        filter: `user_id=eq.${user.id}` }, (payload: any) => {
+        myPostIdsRef.current.add(payload.new.id)
+      })
+      .subscribe()
+
+    likesChannelRef.current = ch
     return () => { supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
