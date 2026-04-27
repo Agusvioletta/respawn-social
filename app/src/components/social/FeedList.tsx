@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { PostCard } from './PostCard'
@@ -22,6 +22,13 @@ export function FeedList({ initialPosts }: FeedListProps) {
   const user = useAuthStore((s) => s.user)
   const supabase = createClient()
   const topRef = useRef<HTMLDivElement>(null)
+  // Sentinel para infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  // Ref para el offset actual sin causar re-renders
+  const postsLenRef = useRef(initialPosts.length)
+
+  // Mantener el ref sincronizado
+  useEffect(() => { postsLenRef.current = posts.length }, [posts.length])
 
   useEffect(() => {
     const channel = supabase
@@ -74,14 +81,15 @@ export function FeedList({ initialPosts }: FeedListProps) {
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  async function loadMore() {
-    if (loadingMore) return
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any
+      const offset = postsLenRef.current
 
-      // Filtro básico de privacidad: excluir perfiles privados/followers si no los seguís
+      // Filtro básico de privacidad
       let excludedIds: string[] = []
       if (user?.id) {
         const { data: restricted } = await sb.from('profiles').select('id, privacy_posts').in('privacy_posts', ['followers', 'private'])
@@ -103,17 +111,33 @@ export function FeedList({ initialPosts }: FeedListProps) {
         .from('posts')
         .select('id, user_id, username, avatar, content, image_url, created_at, post_type, lfg_game, lfg_platform, lfg_slots, likes(user_id), comments(id, user_id, username, avatar, content, parent_id, created_at)')
         .order('created_at', { ascending: false })
-        .range(posts.length, posts.length + PAGE_SIZE - 1)
+        .range(offset, offset + PAGE_SIZE - 1)
 
       if (excludedIds.length > 0) query = query.not('user_id', 'in', `(${excludedIds.join(',')})`)
 
       const { data } = await query
-      const newPosts: PostWithMeta[] = (data ?? []).filter((p: PostWithMeta) => !posts.some(existing => existing.id === p.id))
-      setPosts(prev => [...prev, ...newPosts])
+      setPosts(prev => {
+        const newPosts: PostWithMeta[] = (data ?? []).filter((p: PostWithMeta) => !prev.some(existing => existing.id === p.id))
+        return [...prev, ...newPosts]
+      })
       if ((data?.length ?? 0) < PAGE_SIZE) setHasMore(false)
     } catch { /* silently skip */ }
     finally { setLoadingMore(false) }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingMore, hasMore, user?.id])
+
+  // IntersectionObserver — auto-load when sentinel enters viewport
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore()
+      },
+      { rootMargin: '400px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadMore])
 
   function handlePost(newPost: PostWithMeta) {
     setPosts((prev) => {
@@ -180,26 +204,17 @@ export function FeedList({ initialPosts }: FeedListProps) {
             <PostCard key={post.id} post={post} onDeleted={handleDeleted} />
           ))}
 
-          {/* Load more */}
+          {/* Sentinel invisible para infinite scroll */}
           {hasMore && (
-            <button
-              onClick={loadMore}
-              disabled={loadingMore}
-              style={{
-                width: '100%', background: 'transparent',
-                border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
-                color: loadingMore ? 'var(--text-muted)' : 'var(--cyan)',
-                fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '1px',
-                padding: '12px', cursor: loadingMore ? 'default' : 'pointer',
-                transition: 'all var(--transition)',
-                marginTop: '4px',
-              }}
-              onMouseEnter={e => { if (!loadingMore) (e.currentTarget as HTMLElement).style.borderColor = 'var(--cyan-border)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
-            >
-              {loadingMore ? '// cargando...' : '↓ cargar más posts'}
-            </button>
+            <div ref={sentinelRef} style={{ padding: '16px', textAlign: 'center' }}>
+              {loadingMore && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                  // cargando...
+                </span>
+              )}
+            </div>
           )}
+
           {!hasMore && posts.length > 30 && (
             <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', padding: '12px' }}>
               // sin más posts

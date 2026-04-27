@@ -162,6 +162,26 @@ export default function TournamentDetailPage() {
     load()
   }
 
+  async function handleChangeStatus(newStatus: 'live' | 'finished') {
+    if (!tournament || !user) return
+    setJoining(true)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('tournaments').update({ status: newStatus })
+        .eq('id', tournament.id).eq('creator_id', user.id)
+      if (error) {
+        showToast('⚠ Error al cambiar el estado. Verificá permisos RLS.')
+      } else {
+        setTournament(t => t ? { ...t, status: newStatus } : t)
+        showToast(newStatus === 'live' ? '🔴 ¡Torneo iniciado!' : '✅ Torneo finalizado')
+      }
+    } catch {
+      showToast('⚠ Error al cambiar el estado.')
+    }
+    setJoining(false)
+  }
+
   async function handleSetWinner(matchId: string, winnerId: string) {
     if (!tournament) return
     // winnerId = '' means reset
@@ -281,7 +301,7 @@ export default function TournamentDetailPage() {
             </div>
           </div>
 
-          {/* Action */}
+          {/* Acciones del participante */}
           {user && !isCreator && tournament.status === 'upcoming' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
               {joined ? (
@@ -308,6 +328,44 @@ export default function TournamentDetailPage() {
                   letterSpacing: '1px', padding: '10px 20px', cursor: 'pointer',
                 }}>
                   {joining ? 'INSCRIBIENDO...' : 'INSCRIBIRME'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Controles del creador */}
+          {isCreator && tournament.status !== 'finished' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+              {tournament.status === 'upcoming' && (
+                <button
+                  onClick={() => handleChangeStatus('live')}
+                  disabled={joining || players.length < 2}
+                  title={players.length < 2 ? 'Necesitás al menos 2 participantes' : ''}
+                  style={{
+                    background: players.length < 2 ? 'transparent' : 'rgba(255,79,123,0.12)',
+                    border: `1px solid ${players.length < 2 ? 'var(--border)' : 'rgba(255,79,123,0.5)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    color: players.length < 2 ? 'var(--text-muted)' : 'var(--pink)',
+                    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                    letterSpacing: '1px', padding: '10px 20px',
+                    cursor: players.length < 2 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {joining ? 'INICIANDO...' : '🔴 INICIAR TORNEO'}
+                </button>
+              )}
+              {tournament.status === 'live' && (
+                <button
+                  onClick={() => handleChangeStatus('finished')}
+                  disabled={joining}
+                  style={{
+                    background: 'rgba(85,85,112,0.2)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-mono)', fontSize: '11px',
+                    padding: '10px 20px', cursor: 'pointer',
+                  }}
+                >
+                  {joining ? 'FINALIZANDO...' : '✅ Finalizar torneo'}
                 </button>
               )}
             </div>

@@ -11,6 +11,7 @@ import { calculateXP, xpLevel, getLevelName } from '@/lib/utils/xp'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 import type { Profile } from '@/lib/types/database'
 import { getBanner } from '@/lib/banners'
+import { ConnectionsWidget } from '@/components/profile/ConnectionsWidget'
 
 // ── Logros ────────────────────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
@@ -71,6 +72,7 @@ export default function ProfilePage() {
   const [followLoading,     setFollowLoading]     = useState(false)
   const [tournamentsJoined, setTournamentsJoined] = useState(0)
   const [userCommentsCount, setUserCommentsCount] = useState(0)
+  const [totalPosts,        setTotalPosts]        = useState(0)
   const [profileTournaments, setProfileTournaments] = useState<{ id: number; name: string; game: string; status: string; prize: string | null; creator_id: string }[]>([])
   const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade' | 'torneos'>('posts')
   const [listModal,     setListModal]     = useState<'followers' | 'following' | null>(null)
@@ -95,6 +97,7 @@ export default function ProfilePage() {
         { count: tournamentsJoinedCount },
         { count: commentsCount },
         { data: tournamentPlayersData },
+        { count: totalPostCount },
       ] = await Promise.all([
         sb.from('posts')
           .select('*, likes(user_id), comments(id,user_id,username,avatar,content,parent_id,created_at)')
@@ -105,6 +108,7 @@ export default function ProfilePage() {
         sb.from('tournament_players').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
         sb.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
         sb.from('tournament_players').select('tournament_id').eq('user_id', prof.id),
+        sb.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
       ])
 
       // Fetch tournament details for the tournaments tab
@@ -123,6 +127,7 @@ export default function ProfilePage() {
       setProfileTournaments(allTournaments)
 
       setPosts(postsData ?? [])
+      setTotalPosts(totalPostCount ?? 0)
       const likes = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
       setStats({ followers: followerCount ?? 0, following: followingCount ?? 0, likes })
       setTournamentsJoined(tournamentsJoinedCount ?? 0)
@@ -227,11 +232,11 @@ export default function ProfilePage() {
   )
 
   const statsData: StatsData = {
-    postCount: posts.length, followersCount: stats.followers, followingCount: stats.following,
+    postCount: totalPosts, followersCount: stats.followers, followingCount: stats.following,
     likesReceived: stats.likes, commentsCount: userCommentsCount, maxLevel: profile.max_level ?? 1,
     tournamentsJoined,
   }
-  const xp        = calculateXP({ posts: posts.length, followers: stats.followers, following: stats.following, likes: stats.likes, comments: userCommentsCount, gameLevels: (profile.max_level ?? 1) - 1 })
+  const xp        = calculateXP({ posts: totalPosts, followers: stats.followers, following: stats.following, likes: stats.likes, comments: userCommentsCount, gameLevels: (profile.max_level ?? 1) - 1 })
   const lvl       = xpLevel(xp)
   const levelName = getLevelName(lvl.level)
   const xpPct     = Math.round((lvl.current / lvl.needed) * 100)
@@ -488,6 +493,16 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* ── Conexiones ───────────────────────────────────────────────────── */}
+        <ConnectionsWidget connections={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          steam_id:         (profile as any).steam_id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          discord_username: (profile as any).discord_username,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          twitch_username:  (profile as any).twitch_username,
+        }} />
+
         {/* ── XP Bar ───────────────────────────────────────────────────────── */}
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
@@ -546,7 +561,7 @@ export default function ProfilePage() {
           <div style={{ background: 'var(--surface)', padding: '14px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '16px', opacity: 0.7, flexShrink: 0 }}>📝</span>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: 'var(--cyan)', lineHeight: 1 }}>{posts.length}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: 'var(--cyan)', lineHeight: 1 }}>{totalPosts}</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>Posts</div>
             </div>
           </div>
@@ -616,7 +631,7 @@ export default function ProfilePage() {
         borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10,
       }}>
         {([
-          { key: 'posts',   label: `📝 Posts (${posts.length})` },
+          { key: 'posts',   label: `📝 Posts (${totalPosts})` },
           { key: 'logros',  label: `🏆 Logros (${unlockedCount}/${ACHIEVEMENTS.length})` },
           { key: 'arcade',  label: '🕹️ Arcade' },
           { key: 'torneos', label: `🎮 Torneos (${profileTournaments.length})` },

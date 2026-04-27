@@ -60,6 +60,33 @@ export default function MessagesPage() {
 
   useEffect(() => { loadConversations() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Realtime: refrescar lista cuando llega un mensaje nuevo ──────────────────
+  useEffect(() => {
+    if (!user?.id) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ch = (supabase as any)
+      .channel('messages-list-realtime')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+        const m = payload.new
+        if (m.from_id !== user.id && m.to_id !== user.id) return
+        // Actualizar la última conversación sin recargar todo
+        const otherId = m.from_id === user.id ? m.to_id : m.from_id
+        const preview = m.content?.startsWith('🎤') ? '🎤 Mensaje de voz' : (m.from_id === user.id ? 'Vos: ' : '') + (m.content ?? '').slice(0, 50) + ((m.content?.length ?? 0) > 50 ? '…' : '')
+        setConversations(prev => {
+          const existing = prev.find(c => c.otherId === otherId)
+          const updated: Conversation = existing
+            ? { ...existing, lastMessage: preview, lastTime: 'ahora', isMine: m.from_id === user.id, unread: m.from_id !== user.id }
+            : { otherId, otherProfile: profiles.find(p => p.id === otherId) ?? { id: otherId, username: otherId, avatar: null, bio: null }, lastMessage: preview, lastTime: 'ahora', isMine: m.from_id === user.id, unread: m.from_id !== user.id }
+          // Mover al tope
+          return [updated, ...prev.filter(c => c.otherId !== otherId)]
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, profiles])
+
   async function loadConversations() {
     if (!user) { setLoading(false); return }
     try {
