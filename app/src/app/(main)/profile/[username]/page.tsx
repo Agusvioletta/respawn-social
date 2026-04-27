@@ -71,7 +71,8 @@ export default function ProfilePage() {
   const [followLoading,     setFollowLoading]     = useState(false)
   const [tournamentsJoined, setTournamentsJoined] = useState(0)
   const [userCommentsCount, setUserCommentsCount] = useState(0)
-  const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade'>('posts')
+  const [profileTournaments, setProfileTournaments] = useState<{ id: number; name: string; game: string; status: string; prize: string | null; creator_id: string }[]>([])
+  const [activeTab,     setActiveTab]     = useState<'posts' | 'logros' | 'arcade' | 'torneos'>('posts')
   const [listModal,     setListModal]     = useState<'followers' | 'following' | null>(null)
   const [listData,      setListData]      = useState<{ id: string; username: string; avatar: string | null; photo_url: string | null }[]>([])
   const [listLoading,   setListLoading]   = useState(false)
@@ -93,6 +94,7 @@ export default function ProfilePage() {
         { data: scores },
         { count: tournamentsJoinedCount },
         { count: commentsCount },
+        { data: tournamentPlayersData },
       ] = await Promise.all([
         sb.from('posts')
           .select('*, likes(user_id), comments(id,user_id,username,avatar,content,parent_id,created_at)')
@@ -102,7 +104,23 @@ export default function ProfilePage() {
         sb.from('game_scores').select('game_id, score').eq('user_id', prof.id),
         sb.from('tournament_players').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
         sb.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', prof.id),
+        sb.from('tournament_players').select('tournament_id').eq('user_id', prof.id),
       ])
+
+      // Fetch tournament details for the tournaments tab
+      const tIds: number[] = (tournamentPlayersData ?? []).map((r: { tournament_id: number }) => r.tournament_id)
+      const { data: createdTournaments } = await sb.from('tournaments').select('id, name, game, status, prize, creator_id').eq('creator_id', prof.id)
+      let joinedTournaments: typeof createdTournaments = []
+      if (tIds.length > 0) {
+        const { data: jt } = await sb.from('tournaments').select('id, name, game, status, prize, creator_id').in('id', tIds).neq('creator_id', prof.id)
+        joinedTournaments = jt ?? []
+      }
+      const allTournaments = [...(createdTournaments ?? []), ...(joinedTournaments ?? [])]
+        .sort((a: { status: string }, b: { status: string }) => {
+          const order: Record<string, number> = { live: 0, upcoming: 1, finished: 2 }
+          return (order[a.status] ?? 3) - (order[b.status] ?? 3)
+        })
+      setProfileTournaments(allTournaments)
 
       setPosts(postsData ?? [])
       const likes = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
@@ -598,9 +616,10 @@ export default function ProfilePage() {
         borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10,
       }}>
         {([
-          { key: 'posts',  label: `📝 Posts (${posts.length})` },
-          { key: 'logros', label: `🏆 Logros (${unlockedCount}/${ACHIEVEMENTS.length})` },
-          { key: 'arcade', label: '🕹️ Arcade' },
+          { key: 'posts',   label: `📝 Posts (${posts.length})` },
+          { key: 'logros',  label: `🏆 Logros (${unlockedCount}/${ACHIEVEMENTS.length})` },
+          { key: 'arcade',  label: '🕹️ Arcade' },
+          { key: 'torneos', label: `🎮 Torneos (${profileTournaments.length})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             flex: 1, padding: '13px 8px',
@@ -741,6 +760,107 @@ export default function ProfilePage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Torneos */}
+        {activeTab === 'torneos' && (
+          <div>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              // torneos creados y en los que participó
+            </p>
+            {profileTournaments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.4 }}>🏆</div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: isOwn ? '16px' : 0 }}>
+                  // Sin torneos todavía
+                </p>
+                {isOwn && (
+                  <Link href="/tournaments" style={{
+                    display: 'inline-block', textDecoration: 'none',
+                    background: 'rgba(0,255,247,0.08)', border: '1px solid rgba(0,255,247,0.35)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                    letterSpacing: '1px', padding: '8px 20px',
+                  }}>
+                    + Explorar torneos
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {profileTournaments.map(t => {
+                  const statusColor = t.status === 'live' ? '#4ade80' : t.status === 'upcoming' ? 'var(--cyan)' : 'var(--text-muted)'
+                  const statusLabel = t.status === 'live' ? '🔴 EN VIVO' : t.status === 'upcoming' ? '⏳ PRÓXIMO' : '✓ FINALIZADO'
+                  const isCreator   = t.creator_id === profile.id
+                  return (
+                    <Link key={t.id} href={`/tournaments/${t.id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        background: 'var(--surface)',
+                        border: `1px solid ${t.status === 'live' ? 'rgba(74,222,128,0.25)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-md)', padding: '14px 16px',
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        transition: 'background var(--transition), border-color var(--transition)',
+                        cursor: 'pointer',
+                      }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(0,255,247,0.04)'
+                          e.currentTarget.style.borderColor = 'rgba(0,255,247,0.2)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'var(--surface)'
+                          e.currentTarget.style.borderColor = t.status === 'live' ? 'rgba(74,222,128,0.25)' : 'var(--border)'
+                        }}
+                      >
+                        {/* Status dot */}
+                        <div style={{
+                          width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
+                          background: statusColor,
+                          boxShadow: t.status === 'live' ? '0 0 8px #4ade80' : 'none',
+                        }} />
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                              {t.name}
+                            </span>
+                            {isCreator && (
+                              <span style={{
+                                fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: 700,
+                                color: 'var(--purple)', letterSpacing: '1px',
+                                background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.3)',
+                                borderRadius: '10px', padding: '1px 7px',
+                              }}>
+                                CREADOR
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
+                              🎮 {t.game}
+                            </span>
+                            {t.prize && (
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#FFB800' }}>
+                                🏅 {t.prize}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Status badge */}
+                        <span style={{
+                          fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: 700,
+                          color: statusColor, letterSpacing: '1px', flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {statusLabel}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '14px', flexShrink: 0 }}>›</span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
