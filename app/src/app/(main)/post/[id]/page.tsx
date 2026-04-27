@@ -168,9 +168,16 @@ export default function PostPage() {
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
 
       {/* Back */}
-      <Link href="/feed" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none', display: 'inline-block', marginBottom: '20px' }}>
-        ← Feed
-      </Link>
+      <button
+        onClick={() => router.back()}
+        style={{
+          background: 'transparent', border: 'none',
+          fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)',
+          cursor: 'pointer', padding: 0, marginBottom: '20px', display: 'inline-block',
+        }}
+      >
+        ← Volver
+      </button>
 
       {/* Post principal */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '16px' }}>

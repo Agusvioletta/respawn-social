@@ -650,7 +650,20 @@ export default function ProfilePage() {
               {posts.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                   <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.4 }}>📝</div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>// Sin posts todavía</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: isOwn ? '16px' : 0 }}>
+                    // Sin posts todavía
+                  </p>
+                  {isOwn && (
+                    <Link href="/feed" style={{
+                      display: 'inline-block', textDecoration: 'none',
+                      background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)',
+                      borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                      fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                      letterSpacing: '1px', padding: '8px 20px',
+                    }}>
+                      + Publicar algo
+                    </Link>
+                  )}
                 </div>
               ) : posts.map(post => (
                 <PostCard key={post.id} post={post} onDeleted={id => setPosts(p => p.filter(x => x.id !== id))} />
