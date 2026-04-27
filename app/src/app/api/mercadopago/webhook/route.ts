@@ -64,24 +64,13 @@ export async function POST(req: NextRequest) {
       next_payment_date?: string
     }
 
-    // Intentar identificar al usuario: primero por external_reference, luego por email
-    let userId = sub.external_reference ?? null
+    // Identificar al usuario: primero por external_reference, luego por email
+    let userId: string | null = sub.external_reference ?? null
 
     if (!userId && sub.payer_email) {
-      // Buscar por email en auth.users via admin API
-      const { data: authUser } = await supabase.auth.admin.listUsers()
-      const match = authUser?.users?.find(u => u.email === sub.payer_email)
+      const { data } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+      const match = data?.users?.find((u: { email?: string; id: string }) => u.email === sub.payer_email)
       if (match) userId = match.id
-
-      // También intentar por la tabla mp_pending
-      if (!userId) {
-        const { data: pending } = await supabase
-          .from('mp_pending')
-          .select('user_id')
-          .eq('email', sub.payer_email)
-          .single()
-        if (pending) userId = (pending as { user_id: string }).user_id
-      }
     }
 
     if (!userId) {

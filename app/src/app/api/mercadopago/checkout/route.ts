@@ -36,9 +36,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Plan no configurado todavía. Volvé pronto.' }, { status: 400 })
   }
 
-  // Obtener el init_point del plan desde MP y redirigir al usuario
-  // MP no permite crear preapproval con card_token server-side —
-  // el usuario completa la suscripción directo en el checkout de MP
+  // Obtener el init_point del plan desde MP
+  // El usuario completa la suscripción directo en el checkout de MP (no se puede hacer server-side)
   const res = await fetch(`https://api.mercadopago.com/preapproval_plan/${planId}`, {
     headers: { 'Authorization': `Bearer ${accessToken}` },
   })
@@ -49,18 +48,6 @@ export async function POST(req: NextRequest) {
     console.error('[MP checkout] No se pudo obtener el plan:', plan)
     return NextResponse.json({ error: plan.message ?? 'Error al obtener el plan.' }, { status: 500 })
   }
-
-  // Guardamos el user_id en un pending temporal para que el webhook lo resuelva por email
-  // También lo pasamos como external_reference en la URL si MP lo acepta
-  await supabase.from('mp_pending').upsert({
-    email: user.email,
-    user_id: user.id,
-    tier,
-    billing,
-    created_at: new Date().toISOString(),
-  }, { onConflict: 'email' }).throwOnError().catch(() => {
-    // Si la tabla no existe todavía no es bloqueante
-  })
 
   return NextResponse.json({ url: plan.init_point })
 }
