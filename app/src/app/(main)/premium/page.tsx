@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
+import { createClient } from '@/lib/supabase/client'
 
 type Tier = 'pro' | 'elite'
 type Billing = 'monthly' | 'yearly'
@@ -91,12 +92,20 @@ export default function PremiumPage() {
     if (!user) return
     setLoading(tier)
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      // Obtener el token de sesión para autenticarnos en la API route
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token ?? ''
+
+      const res = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ tier, billing }),
       })
-      const data = await res.json()
+      const data = await res.json() as { url?: string; error?: string }
       if (data.url) {
         window.location.href = data.url
       } else {
