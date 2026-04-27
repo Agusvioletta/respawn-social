@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
@@ -33,12 +33,21 @@ interface MiniPost {
   comments: { id: number }[]
 }
 
-export default function ExplorePage() {
+export default function ExplorePageWrapper() {
+  return (
+    <Suspense fallback={<div style={{ padding: '80px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>Cargando...</div>}>
+      <ExplorePage />
+    </Suspense>
+  )
+}
+
+function ExplorePage() {
   const user = useAuthStore((s) => s.user)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
   const [gamers, setGamers] = useState<GamerProfile[]>([])
   const [recent, setRecent] = useState<MiniPost[]>([])
@@ -53,6 +62,13 @@ export default function ExplorePage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { loadAll() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Si hay query inicial (desde URL ?q=...), disparar búsqueda
+  useEffect(() => {
+    const initial = searchParams.get('q')
+    if (initial?.trim()) runSearch(initial.trim())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function loadAll() {
     try {

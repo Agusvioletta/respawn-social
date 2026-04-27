@@ -131,8 +131,8 @@ export default function PostPage() {
   function formatContent(text: string) {
     return text
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/#(\w+)/g, '<span style="color:var(--cyan);">#$1</span>')
-      .replace(/@(\w+)/g, '<span style="color:var(--purple);">@$1</span>')
+      .replace(/#(\w+)/g, '<a href="/explore?q=$1" style="color:var(--cyan);text-decoration:none;">#$1</a>')
+      .replace(/@(\w+)/g, '<a href="/profile/$1" style="color:var(--purple);text-decoration:none;">@$1</a>')
   }
 
   if (loading) return (

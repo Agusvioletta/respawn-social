@@ -147,8 +147,8 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
   function formatContent(text: string) {
     return text
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/#(\w+)/g, '<span style="color:var(--cyan);cursor:pointer;">#$1</span>')
-      .replace(/@(\w+)/g, '<span style="color:var(--purple);">@$1</span>')
+      .replace(/#(\w+)/g, '<a href="/explore?q=$1" onclick="event.stopPropagation()" style="color:var(--cyan);text-decoration:none;cursor:pointer;">#$1</a>')
+      .replace(/@(\w+)/g, '<a href="/profile/$1" onclick="event.stopPropagation()" style="color:var(--purple);text-decoration:none;">@$1</a>')
   }
 
   const isLFG = post.post_type === 'lfg'
