@@ -54,18 +54,67 @@ export function Navbar() {
   const pathname = usePathname()
   const router   = useRouter()
   const { user, setUser }                         = useAuthStore()
-  const { unreadMessages, addUnread, clearUnread } = useNotificationStore()
+  const {
+    unreadMessages, addUnread, clearUnread,
+    unreadNotifs, setUnreadNotifs, addUnreadNotif, clearUnreadNotifs,
+    lastNotifAt, setLastNotifAt,
+  } = useNotificationStore()
   const supabase = createClient()
-  const msgChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const msgChannelRef    = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const notifChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Cerrar drawer en cambio de ruta
   useEffect(() => { setDrawerOpen(false) }, [pathname])
 
-  // Limpiar badge al entrar a /messages
+  // Limpiar badges al entrar a sus páginas
   useEffect(() => {
-    if (pathname.startsWith('/messages')) clearUnread()
-  }, [pathname, clearUnread])
+    if (pathname.startsWith('/messages'))     clearUnread()
+    if (pathname.startsWith('/notifications')) {
+      clearUnreadNotifs()
+      setLastNotifAt(new Date().toISOString())
+    }
+  }, [pathname, clearUnread, clearUnreadNotifs, setLastNotifAt])
+
+  // Contar notificaciones no leídas desde lastNotifAt al montar
+  useEffect(() => {
+    if (!user?.id) return
+    async function countUnread() {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sb = supabase as any
+        const since = lastNotifAt
+
+        // Mis posts → para filtrar likes/comentarios
+        const { data: myPosts } = await sb
+          .from('posts').select('id').eq('user_id', user!.id)
+        const postIds: number[] = (myPosts ?? []).map((p: { id: number }) => p.id)
+
+        const queries: Promise<{ count: number | null }>[] = [
+          // Nuevos seguidores
+          sb.from('follows').select('*', { count: 'exact', head: true })
+            .eq('following_id', user!.id).gte('created_at', since),
+          // Solicitudes de seguimiento
+          sb.from('follow_requests').select('*', { count: 'exact', head: true })
+            .eq('to_id', user!.id).gte('created_at', since),
+        ]
+
+        if (postIds.length > 0) {
+          // Comentarios en mis posts (excluyo los míos propios)
+          queries.push(
+            sb.from('comments').select('*', { count: 'exact', head: true })
+              .in('post_id', postIds).gte('created_at', since).neq('user_id', user!.id)
+          )
+        }
+
+        const results = await Promise.all(queries)
+        const total = results.reduce((s, r) => s + (r.count ?? 0), 0)
+        setUnreadNotifs(total)
+      } catch { /* silently skip */ }
+    }
+    countUnread()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   // Suscripción global: mensajes nuevos
   useEffect(() => {
@@ -83,6 +132,30 @@ export function Navbar() {
       })
       .subscribe()
     msgChannelRef.current = ch
+    return () => { supabase.removeChannel(ch) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Suscripción global: notificaciones (nuevos seguidores + solicitudes)
+  useEffect(() => {
+    if (!user?.id) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ch = (supabase as any)
+      .channel(`navbar-notifs:${user.id}`)
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'follows',
+        filter: `following_id=eq.${user.id}`,
+      }, () => {
+        if (!window.location.pathname.startsWith('/notifications')) addUnreadNotif()
+      })
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'follow_requests',
+        filter: `to_id=eq.${user.id}`,
+      }, () => {
+        if (!window.location.pathname.startsWith('/notifications')) addUnreadNotif()
+      })
+      .subscribe()
+    notifChannelRef.current = ch
     return () => { supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -142,8 +215,9 @@ export function Navbar() {
               <span style={{ fontSize: '18px' }}>👤</span>Perfil
             </Link>
           )}
-          <Link href="/notifications" style={desktopNavItemStyle(pathname === '/notifications')}>
+          <Link href="/notifications" style={{ ...desktopNavItemStyle(pathname === '/notifications'), position: 'relative' }}>
             <span style={{ fontSize: '18px' }}>🔔</span>Notificaciones
+            {unreadNotifs > 0 && <BadgePill count={unreadNotifs} />}
           </Link>
           <Link href="/settings" style={desktopNavItemStyle(pathname === '/settings')}>
             <span style={{ fontSize: '18px' }}>⚙️</span>Configuración
@@ -221,7 +295,7 @@ export function Navbar() {
             icon={drawerOpen ? '✕' : '⋯'}
             label="Más"
             active={drawerOpen || SECONDARY_NAV.some(i => pathname.startsWith(i.href)) || pathname.startsWith('/profile')}
-            badge={0}
+            badge={unreadNotifs}
             isMore
           />
         </button>
@@ -284,6 +358,7 @@ export function Navbar() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '0 12px' }}>
           {SECONDARY_NAV.map(item => {
             const active = pathname.startsWith(item.href)
+            const isNotif = item.href === '/notifications'
             return (
               <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                 <div style={{
@@ -291,9 +366,22 @@ export function Navbar() {
                   padding: '12px 14px', borderRadius: 'var(--radius-md)',
                   background: active ? 'var(--cyan-glow)' : 'transparent',
                   border: `1px solid ${active ? 'var(--cyan-border)' : 'transparent'}`,
-                  transition: 'all var(--transition)',
+                  transition: 'all var(--transition)', position: 'relative',
                 }}>
-                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                  <span style={{ fontSize: '18px', position: 'relative' }}>
+                    {item.icon}
+                    {isNotif && unreadNotifs > 0 && (
+                      <span style={{
+                        position: 'absolute', top: '-4px', right: '-8px',
+                        minWidth: '16px', height: '16px', borderRadius: '999px',
+                        background: 'var(--pink)', color: '#fff',
+                        fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 900,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+                      }}>
+                        {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                      </span>
+                    )}
+                  </span>
                   <span style={{
                     fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: active ? 700 : 500,
                     color: active ? 'var(--cyan)' : 'var(--text-secondary)', letterSpacing: '0.5px',
