@@ -84,14 +84,12 @@ export async function getPosts(limit = 30, offset = 0, currentUserId?: string): 
       id, user_id, username, avatar, content, image_url, created_at,
       post_type, lfg_game, lfg_platform, lfg_slots,
       likes(user_id),
-      comments(id, user_id, username, avatar, content, parent_id, created_at),
-      profiles!posts_user_id_fkey(premium_tier, name_color)
+      comments(id, user_id, username, avatar, content, parent_id, created_at)
     `)
     .order('created_at', { ascending: false })
 
   // Si no estás autenticado, solo posts de perfiles públicos
   if (!currentUserId) {
-    // Traer IDs de perfiles públicos
     const { data: publicProfiles } = await sb
       .from('profiles')
       .select('id')
@@ -100,20 +98,32 @@ export async function getPosts(limit = 30, offset = 0, currentUserId?: string): 
     if (publicIds.length > 0) query = query.in('user_id', publicIds)
     else return []
   } else if (visibleUserIds) {
-    // Excluir los ids restringidos — visibleUserIds[0] es '__excluded__'
     const excludedIds = visibleUserIds.slice(1)
     if (excludedIds.length > 0) query = query.not('user_id', 'in', `(${excludedIds.join(',')})`)
   }
 
   const { data, error } = await query.range(offset, offset + limit - 1)
   if (error) throw error
-  // Flatten profiles join into author_premium_tier
+
+  // ── Enriquecer con premium_tier y name_color de profiles ──────────────────
+  // Query separada (más confiable que FK join)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const posts = (data as any[]).map((p: any) => ({
-    ...p,
-    author_premium_tier: p.profiles?.premium_tier ?? null,
-    author_name_color: p.profiles?.name_color ?? null,
-    profiles: undefined,
-  }))
+  const posts = data as any[]
+  if (posts.length > 0) {
+    const userIds = [...new Set(posts.map((p: { user_id: string }) => p.user_id))]
+    const { data: profileData } = await sb
+      .from('profiles')
+      .select('id, premium_tier, name_color')
+      .in('id', userIds)
+    const tierMap: Record<string, { premium_tier: string | null; name_color: string | null }> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const prof of (profileData ?? [])) tierMap[prof.id] = { premium_tier: prof.premium_tier, name_color: prof.name_color }
+    return posts.map((p: { user_id: string }) => ({
+      ...p,
+      author_premium_tier: tierMap[p.user_id]?.premium_tier ?? null,
+      author_name_color:   tierMap[p.user_id]?.name_color   ?? null,
+    })) as PostWithMeta[]
+  }
+
   return posts as PostWithMeta[]
 }

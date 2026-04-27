@@ -127,7 +127,13 @@ export default function ProfilePage() {
         })
       setProfileTournaments(allTournaments)
 
-      setPosts(postsData ?? [])
+      // Enriquecer posts con premium_tier y name_color del perfil (ya lo tenemos)
+      const enrichedPosts = (postsData ?? []).map((p: PostWithMeta) => ({
+        ...p,
+        author_premium_tier: (prof as { premium_tier?: string }).premium_tier ?? null,
+        author_name_color:   (prof as { name_color?: string }).name_color ?? null,
+      }))
+      setPosts(enrichedPosts)
       setTotalPosts(totalPostCount ?? 0)
       const likes = (postsData ?? []).reduce((s: number, p: PostWithMeta) => s + (p.likes?.length ?? 0), 0)
       setStats({ followers: followerCount ?? 0, following: followingCount ?? 0, likes })

@@ -116,8 +116,19 @@ export function FeedList({ initialPosts }: FeedListProps) {
       if (excludedIds.length > 0) query = query.not('user_id', 'in', `(${excludedIds.join(',')})`)
 
       const { data } = await query
+      // Enriquecer con premium_tier y name_color
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let enriched: PostWithMeta[] = data ?? []
+      if (enriched.length > 0) {
+        const uids = [...new Set(enriched.map((p: PostWithMeta) => p.user_id))]
+        const { data: profs } = await sb.from('profiles').select('id, premium_tier, name_color').in('id', uids)
+        const tMap: Record<string, { premium_tier: string | null; name_color: string | null }> = {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const pr of (profs ?? [])) tMap[pr.id] = { premium_tier: pr.premium_tier, name_color: pr.name_color }
+        enriched = enriched.map((p: PostWithMeta) => ({ ...p, author_premium_tier: tMap[p.user_id]?.premium_tier ?? null, author_name_color: tMap[p.user_id]?.name_color ?? null }))
+      }
       setPosts(prev => {
-        const newPosts: PostWithMeta[] = (data ?? []).filter((p: PostWithMeta) => !prev.some(existing => existing.id === p.id))
+        const newPosts = enriched.filter((p: PostWithMeta) => !prev.some(existing => existing.id === p.id))
         return [...prev, ...newPosts]
       })
       if ((data?.length ?? 0) < PAGE_SIZE) setHasMore(false)
