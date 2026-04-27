@@ -58,14 +58,34 @@ export async function POST(req: NextRequest) {
     const sub = await res.json() as {
       id: string
       status: string            // 'authorized' | 'paused' | 'cancelled' | 'pending'
-      external_reference: string // = supabase user id
+      external_reference?: string
+      payer_email?: string
       preapproval_plan_id: string
       next_payment_date?: string
     }
 
-    const userId = sub.external_reference
+    // Intentar identificar al usuario: primero por external_reference, luego por email
+    let userId = sub.external_reference ?? null
+
+    if (!userId && sub.payer_email) {
+      // Buscar por email en auth.users via admin API
+      const { data: authUser } = await supabase.auth.admin.listUsers()
+      const match = authUser?.users?.find(u => u.email === sub.payer_email)
+      if (match) userId = match.id
+
+      // También intentar por la tabla mp_pending
+      if (!userId) {
+        const { data: pending } = await supabase
+          .from('mp_pending')
+          .select('user_id')
+          .eq('email', sub.payer_email)
+          .single()
+        if (pending) userId = (pending as { user_id: string }).user_id
+      }
+    }
+
     if (!userId) {
-      console.warn('[MP webhook] Sin external_reference en sub:', sub.id)
+      console.warn('[MP webhook] No se pudo identificar al usuario para sub:', sub.id)
       return NextResponse.json({ received: true })
     }
 

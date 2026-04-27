@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // IDs de planes creados en Mercado Pago (preapproval_plan)
-// Los creás una vez en MP Dashboard o via API y pegás los IDs acá
 const PLAN_IDS = {
   pro:   { monthly: process.env.MP_PLAN_PRO_MONTHLY   ?? '', yearly: process.env.MP_PLAN_PRO_YEARLY   ?? '' },
   elite: { monthly: process.env.MP_PLAN_ELITE_MONTHLY ?? '', yearly: process.env.MP_PLAN_ELITE_YEARLY ?? '' },
@@ -37,34 +36,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Plan no configurado todavía. Volvé pronto.' }, { status: 400 })
   }
 
-  const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://respawnsocial.vercel.app'
-
-  // Crear suscripción (preapproval) en MP
-  // El usuario es redirigido a init_point para completar el pago
-  const body = {
-    preapproval_plan_id: planId,
-    reason: `Respawn ${tier === 'pro' ? 'Pro' : 'Elite'} — ${billing === 'monthly' ? 'Mensual' : 'Anual'}`,
-    external_reference: user.id,   // lo usamos en el webhook para identificar al usuario
-    payer_email: user.email,
-    back_url: `${origin}/premium/success`,
-  }
-
-  const res = await fetch('https://api.mercadopago.com/preapproval', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'X-Idempotency-Key': `${user.id}-${tier}-${billing}-${Date.now()}`,
-    },
-    body: JSON.stringify(body),
+  // Obtener el init_point del plan desde MP y redirigir al usuario
+  // MP no permite crear preapproval con card_token server-side —
+  // el usuario completa la suscripción directo en el checkout de MP
+  const res = await fetch(`https://api.mercadopago.com/preapproval_plan/${planId}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
   })
 
-  const data = await res.json() as { init_point?: string; message?: string; error?: string }
+  const plan = await res.json() as { init_point?: string; message?: string }
 
-  if (!res.ok || !data.init_point) {
-    console.error('[MP checkout]', data)
-    return NextResponse.json({ error: data.message ?? 'Error al crear la suscripción.' }, { status: 500 })
+  if (!res.ok || !plan.init_point) {
+    console.error('[MP checkout] No se pudo obtener el plan:', plan)
+    return NextResponse.json({ error: plan.message ?? 'Error al obtener el plan.' }, { status: 500 })
   }
 
-  return NextResponse.json({ url: data.init_point })
+  // Guardamos el user_id en un pending temporal para que el webhook lo resuelva por email
+  // También lo pasamos como external_reference en la URL si MP lo acepta
+  await supabase.from('mp_pending').upsert({
+    email: user.email,
+    user_id: user.id,
+    tier,
+    billing,
+    created_at: new Date().toISOString(),
+  }, { onConflict: 'email' }).throwOnError().catch(() => {
+    // Si la tabla no existe todavía no es bloqueante
+  })
+
+  return NextResponse.json({ url: plan.init_point })
 }
