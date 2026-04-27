@@ -221,6 +221,12 @@ export default function TournamentDetailPage() {
     return ROUND_NAMES[fromEnd] ?? `Ronda ${r + 1}`
   }
 
+  // Campeón: ganador de la final (última ronda, único match)
+  const finalMatch = bracket[rounds - 1]?.[0]
+  const champion: TPlayer | null = finalMatch?.winnerId
+    ? (finalMatch.p1?.user_id === finalMatch.winnerId ? finalMatch.p1 : finalMatch.p2) ?? null
+    : null
+
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 16px 48px' }}>
 
@@ -309,6 +315,41 @@ export default function TournamentDetailPage() {
         </div>
       </div>
 
+      {/* ── Champion banner ── */}
+      {champion && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(255,200,0,0.1), rgba(0,255,247,0.06))',
+          border: '1px solid rgba(255,200,0,0.4)',
+          borderRadius: 'var(--radius-lg)', padding: '20px 24px',
+          marginBottom: '20px',
+          display: 'flex', alignItems: 'center', gap: '16px',
+          boxShadow: '0 0 30px rgba(255,200,0,0.08)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Glow */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,200,0,0.8), transparent)' }} />
+          <span style={{ fontSize: '36px', flexShrink: 0 }}>🏆</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, color: 'rgba(255,200,0,0.7)', letterSpacing: '3px', marginBottom: '6px' }}>
+              CAMPEÓN DEL TORNEO
+            </div>
+            <Link href={`/profile/${champion.profiles?.username}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <UserAvatar avatar={champion.profiles?.avatar ?? null} username={champion.profiles?.username ?? '?'} size={44} />
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: '#FFD700', letterSpacing: '1px', textShadow: '0 0 20px rgba(255,200,0,0.5)' }}>
+                  @{champion.profiles?.username}
+                </div>
+                {tournament.prize && (
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'rgba(255,200,0,0.7)', marginTop: '2px' }}>
+                    🎖 {tournament.prize}
+                  </div>
+                )}
+              </div>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
         {(['bracket', 'players'] as const).map(t => (
@@ -328,6 +369,19 @@ export default function TournamentDetailPage() {
       {/* ── Bracket tab ── */}
       {tab === 'bracket' && (
         <div>
+          {/* Hint para el creador: explicar cómo marcar ganadores */}
+          {isCreator && tournament.status === 'live' && players.length >= 2 && (
+            <div style={{
+              background: 'rgba(0,255,247,0.05)', border: '1px solid rgba(0,255,247,0.2)',
+              borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '14px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+            }}>
+              <span style={{ fontSize: '14px' }}>💡</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)' }}>
+                Hacé click en un jugador para marcarlo como ganador del enfrentamiento. El ↩ resetea el resultado.
+              </span>
+            </div>
+          )}
           {players.length < 2 ? (
             <div style={{
               textAlign: 'center', padding: '60px 20px',
