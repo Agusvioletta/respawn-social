@@ -255,14 +255,28 @@ export default function TournamentsPage() {
             Competí, ganá, hacete leyenda.
           </p>
         </div>
-        <button onClick={() => setShowCreate(true)} style={{
-          background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)',
-          borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
-          fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-          letterSpacing: '1px', padding: '8px 16px', cursor: 'pointer',
-        }}>
-          + CREAR
-        </button>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {((user as any)?.premium_tier === 'pro' || (user as any)?.premium_tier === 'elite') ? (
+          <button onClick={() => setShowCreate(true)} style={{
+            background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)',
+            borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+            fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+            letterSpacing: '1px', padding: '8px 16px', cursor: 'pointer',
+          }}>
+            + CREAR
+          </button>
+        ) : (
+          <a href="/premium" style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.3)',
+            borderRadius: 'var(--radius-md)', color: '#FFD700',
+            fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+            letterSpacing: '1px', padding: '8px 16px', cursor: 'pointer',
+            textDecoration: 'none',
+          }}>
+            🔒 CREAR
+          </a>
+        )}
       </div>
 
       {/* Hero stats */}

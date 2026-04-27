@@ -77,7 +77,7 @@ export default function SettingsPage() {
   const [section, setSection] = useState<Section>('perfil')
 
   // Perfil
-  const [form, setForm] = useState({ username: '', bio: '', games: ['', '', ''], nowPlaying: '' })
+  const [form, setForm] = useState({ username: '', bio: '', games: ['', '', ''], nowPlaying: '', nameColor: '' })
   const [selectedAvatar, setSelectedAvatar] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -129,6 +129,7 @@ export default function SettingsPage() {
       bio: user.bio ?? '',
       games: [...(u.games ?? []), '', '', ''].slice(0, 3),
       nowPlaying: u.now_playing ?? '',
+      nameColor: u.name_color ?? '',
     })
     setSelectedAvatar(user.avatar ?? '/avatar1.png')
     setPrivacy({
@@ -183,6 +184,7 @@ export default function SettingsPage() {
         avatar: selectedAvatar,
         games: form.games.filter(Boolean),
         now_playing: form.nowPlaying.trim() || null,
+        ...(u.premium_tier === 'elite' ? { name_color: form.nameColor || null } : {}),
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('profiles').update(updates).eq('id', user.id)
@@ -586,6 +588,38 @@ export default function SettingsPage() {
               Visible en tu perfil y en la barra lateral. Máx 60 caracteres.
             </div>
           </div>
+
+          {/* COLOR DE NOMBRE — solo Elite */}
+          {u.premium_tier === 'elite' && (
+            <div>
+              <span style={labelStyle}>👑 COLOR DE NOMBRE <span style={{ color: '#FFD700' }}>(ELITE)</span></span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                {['', '#00FFF7', '#FF4F7B', '#C084FC', '#FFD700', '#4ade80', '#F59E0B', '#60a5fa', '#f472b6', '#34d399'].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setForm(f => ({ ...f, nameColor: c }))}
+                    title={c || 'Default'}
+                    style={{
+                      width: 28, height: 28,
+                      borderRadius: '50%',
+                      background: c || 'var(--text-primary)',
+                      border: `2px solid ${form.nameColor === c ? '#fff' : 'transparent'}`,
+                      cursor: 'pointer',
+                      boxShadow: form.nameColor === c ? `0 0 8px ${c || '#fff'}` : 'none',
+                      transition: 'all 0.15s',
+                      flexShrink: 0,
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: form.nameColor || 'var(--text-primary)' }}>
+                @{form.username || user.username} ← preview
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                El primer color (gris) restaura el color por defecto.
+              </div>
+            </div>
+          )}
 
           {saveMsg && (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: saveMsg.startsWith('✓') ? 'var(--cyan)' : 'var(--pink)' }}>

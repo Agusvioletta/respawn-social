@@ -245,7 +245,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <Link href={`/profile/${post.username}`} onClick={(e) => e.stopPropagation()}
-                style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: post.author_name_color ?? 'var(--text-primary)', textDecoration: 'none' }}>
                 @{post.username}
               </Link>
               {(post.author_premium_tier === 'pro' || post.author_premium_tier === 'elite') && (

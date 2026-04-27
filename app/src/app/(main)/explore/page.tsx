@@ -24,7 +24,7 @@ function gameIcon(name: string) { return GAME_ICONS[name.toLowerCase()] ?? '🎮
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface GamerProfile {
   id: string; username: string; avatar: string | null; photo_url?: string | null
-  bio: string | null; games: string[] | null; created_at: string
+  bio: string | null; games: string[] | null; created_at: string; premium_tier?: string | null
 }
 interface MiniPost {
   id: number; user_id: string; username: string; avatar: string | null
@@ -76,7 +76,7 @@ function ExplorePage() {
       const sb = supabase as any
 
       const [{ data: profiles }, { data: posts }, folResult, privResult] = await Promise.all([
-        sb.from('profiles').select('id, username, avatar, photo_url, bio, games, created_at').limit(60),
+        sb.from('profiles').select('id, username, avatar, photo_url, bio, games, created_at, premium_tier').limit(60),
         sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').order('created_at', { ascending: false }).limit(50),
         user?.id
           ? sb.from('follows').select('following_id').eq('follower_id', user.id)
@@ -108,12 +108,13 @@ function ExplorePage() {
         }
       }
 
-      // Gamers destacados: ordenados por cantidad de posts
+      // Gamers destacados: Pro/Elite primero, luego por cantidad de posts
       const postCountByUser: Record<string, number> = {}
       for (const p of allPosts) postCountByUser[p.username] = (postCountByUser[p.username] ?? 0) + 1
+      const tierScore = (tier?: string | null) => tier === 'elite' ? 1000 : tier === 'pro' ? 500 : 0
       const featured = allProfiles
         .filter(p => p.id !== user?.id)
-        .map(p => ({ ...p, score: postCountByUser[p.username] ?? 0 }))
+        .map(p => ({ ...p, score: tierScore(p.premium_tier) + (postCountByUser[p.username] ?? 0) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 6)
       setGamers(featured)
@@ -524,7 +525,7 @@ function ExplorePage() {
 
 // ── Gamer card ────────────────────────────────────────────────────────────────
 function GamerCard({ user, isFollowing, pending, onFollow }: {
-  user: { id: string; username: string; avatar: string | null; photo_url?: string | null; bio: string | null; games: string[] | null }
+  user: { id: string; username: string; avatar: string | null; photo_url?: string | null; bio: string | null; games: string[] | null; premium_tier?: string | null }
   isFollowing: boolean; pending: boolean; onFollow: () => void
 }) {
   return (
@@ -547,8 +548,10 @@ function GamerCard({ user, isFollowing, pending, onFollow }: {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px', marginBottom: '2px' }}>
-            @{user.username}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>@{user.username}</span>
+            {user.premium_tier === 'elite' && <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, color: '#FFD700', background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.35)', borderRadius: '20px', padding: '1px 6px' }}>👑 ELITE</span>}
+            {user.premium_tier === 'pro' && <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, color: 'var(--cyan)', background: 'var(--cyan-glow)', border: '1px solid var(--cyan-border)', borderRadius: '20px', padding: '1px 6px' }}>⚡ PRO</span>}
           </div>
         </Link>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>

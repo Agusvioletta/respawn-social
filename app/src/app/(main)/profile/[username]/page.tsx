@@ -440,7 +440,8 @@ export default function ProfilePage() {
         {/* Name + bio + games */}
         <div style={{ marginTop: '14px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '1px' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 900, color: (profile as any).name_color ?? 'var(--text-primary)', letterSpacing: '1px' }}>
               {profile.username}
             </span>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -627,6 +628,42 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── ELITE STATS ─────────────────────────────────────────────────────── */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      {(profile as any).premium_tier === 'elite' && (
+        <div style={{
+          margin: '0 16px 0',
+          background: 'linear-gradient(135deg, rgba(255,215,0,0.04), var(--card))',
+          border: '1px solid rgba(255,215,0,0.25)',
+          borderRadius: 'var(--radius-md)',
+          padding: '14px 16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12px' }}>👑</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, color: '#FFD700', letterSpacing: '2px' }}>ESTADÍSTICAS ELITE</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
+            {[
+              { icon: '📝', label: 'Posts totales', value: totalPosts },
+              { icon: '❤️', label: 'Likes recibidos', value: stats.likes },
+              { icon: '💬', label: 'Comentarios', value: userCommentsCount },
+              { icon: '🏆', label: 'Torneos', value: tournamentsJoined },
+              { icon: '⭐', label: 'Seguidores', value: stats.followers },
+              { icon: '⚡', label: 'XP total', value: xp },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.15)',
+                borderRadius: 'var(--radius-sm)', padding: '10px 8px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '14px', marginBottom: '2px' }}>{s.icon}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 900, color: '#FFD700', lineHeight: 1 }}>{s.value.toLocaleString('es-AR')}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '8px', color: 'var(--text-muted)', marginTop: '3px', letterSpacing: '0.5px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── TABS ────────────────────────────────────────────────────────────── */}
       <div style={{
