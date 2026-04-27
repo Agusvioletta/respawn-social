@@ -152,8 +152,7 @@ export default function TournamentsPage() {
     if (!editForm.date) { setEditError('Seleccioná una fecha.'); return }
     setEditing(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from('tournaments').update({
+      const updated = {
         name: editForm.name.trim(),
         game: editForm.game,
         format: editForm.format,
@@ -161,11 +160,15 @@ export default function TournamentsPage() {
         prize: editForm.prize.trim() || null,
         description: editForm.description.trim() || null,
         date: editForm.date,
-      }).eq('id', editId)
-      if (error) throw error
+      }
+      // Optimistic update
+      setTournaments(prev => prev.map(t => t.id === editId ? { ...t, ...updated } : t))
       setShowEdit(false)
       showToast('✓ Torneo actualizado.')
-      load()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from('tournaments').update(updated)
+        .eq('id', editId).eq('creator_id', user!.id)
+      if (error) throw error
     } catch (e: unknown) {
       setEditError(e instanceof Error ? e.message : 'Error al guardar.')
     } finally {
@@ -191,11 +194,21 @@ export default function TournamentsPage() {
   }
 
   async function handleStatusChange(id: number, newStatus: TStatus) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('tournaments').update({ status: newStatus }).eq('id', id)
     const labels: Record<TStatus, string> = { live: 'iniciado 🔴', upcoming: 'programado ⏳', finished: 'finalizado ✅' }
+    // Optimistic: cambiar estado en UI al instante
+    setTournaments(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t))
     showToast(`Torneo ${labels[newStatus]}.`)
-    load()
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('tournaments').update({ status: newStatus })
+        .eq('id', id).eq('creator_id', user!.id)
+      if (error) throw error
+    } catch (e: unknown) {
+      // Revert si falla
+      load()
+      showToast(`⚠ Error: ${e instanceof Error ? e.message : 'Verificá los permisos RLS en Supabase.'}`)
+    }
   }
 
   const live     = tournaments.filter(t => t.status === 'live')
