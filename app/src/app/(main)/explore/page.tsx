@@ -136,7 +136,7 @@ function ExplorePage() {
         }
       }
       for (const p of allProfiles) {
-        for (const g of (p.games ?? [])) counts[g] = (counts[g] ?? 0) + 1
+        for (const g of (p.games ?? []).filter(Boolean)) counts[g] = (counts[g] ?? 0) + 1
       }
       if (!Object.keys(counts).length) GAME_LIST.forEach((g, i) => { counts[g] = Math.max(1, 10 - i) })
       const trendList = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([game, count]) => ({ game, count }))
@@ -554,9 +554,9 @@ function GamerCard({ user, isFollowing, pending, onFollow }: {
         <div style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>
           {user.bio || 'Jugando en Respawn'}
         </div>
-        {(user.games ?? []).length > 0 && (
+        {(user.games ?? []).filter(Boolean).length > 0 && (
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-            {(user.games ?? []).slice(0, 2).map(g => (
+            {(user.games ?? []).filter(Boolean).slice(0, 2).map(g => (
               <span key={g} style={{
                 fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700,
                 color: 'var(--purple)', background: 'rgba(192,132,252,0.1)',

@@ -454,9 +454,9 @@ export default function ProfilePage() {
             </div>
           )}
           {/* Games */}
-          {profile.games && profile.games.length > 0 && (
+          {profile.games && profile.games.filter(Boolean).length > 0 && (
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {profile.games.map(g => (
+              {profile.games.filter(Boolean).map(g => (
                 <span key={g} style={{
                   fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
                   color: 'var(--text-secondary)', letterSpacing: '0.5px',
