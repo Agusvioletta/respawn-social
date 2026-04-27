@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { PostCard } from './PostCard'
@@ -17,8 +17,11 @@ export function FeedList({ initialPosts }: FeedListProps) {
   const [posts, setPosts] = useState<PostWithMeta[]>(initialPosts)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(initialPosts.length >= 30) // server cargó 30
+  // Posts pendientes de mostrar (llegaron via realtime de otros usuarios)
+  const [pendingPosts, setPendingPosts] = useState<PostWithMeta[]>([])
   const user = useAuthStore((s) => s.user)
   const supabase = createClient()
+  const topRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const channel = supabase
@@ -30,8 +33,14 @@ export function FeedList({ initialPosts }: FeedListProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           const newPost: PostWithMeta = { ...payload.new, likes: [], comments: [] }
+          // Si es del usuario actual → agregar de inmediato (ya lo maneja onPost)
+          // Si es de otro → cola de pendientes para el banner
+          if (newPost.user_id === user?.id) return
           setPosts((prev) => {
-            // Evitar duplicados (puede llegar via realtime Y via onPost)
+            if (prev.some((p) => p.id === newPost.id)) return prev
+            return prev // No agregar automáticamente — mostrar banner
+          })
+          setPendingPosts((prev) => {
             if (prev.some((p) => p.id === newPost.id)) return prev
             return [newPost, ...prev]
           })
@@ -44,13 +53,26 @@ export function FeedList({ initialPosts }: FeedListProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           setPosts((prev) => prev.filter((p) => p.id !== payload.old.id))
+          setPendingPosts((prev) => prev.filter((p) => p.id !== payload.old.id))
         }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user?.id])
+
+  function showPendingPosts() {
+    setPosts((prev) => {
+      const merged = [...pendingPosts, ...prev]
+      // Dedup por id
+      const seen = new Set<number>()
+      return merged.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+    })
+    setPendingPosts([])
+    // Scroll suave al tope
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function loadMore() {
     if (loadingMore) return
@@ -106,6 +128,40 @@ export function FeedList({ initialPosts }: FeedListProps) {
 
   return (
     <div>
+      {/* Ancla invisible para scroll-to-top */}
+      <div ref={topRef} style={{ height: 0 }} />
+
+      {/* Banner "N posts nuevos" */}
+      {pendingPosts.length > 0 && (
+        <button
+          onClick={showPendingPosts}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            width: '100%',
+            background: 'linear-gradient(90deg, rgba(0,255,247,0.12), rgba(192,132,252,0.12))',
+            border: '1px solid rgba(0,255,247,0.3)',
+            borderRadius: 'var(--radius-lg)',
+            color: 'var(--cyan)',
+            fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+            letterSpacing: '1px', padding: '10px 20px',
+            cursor: 'pointer', marginBottom: '12px',
+            transition: 'all var(--transition)',
+            animation: 'fade-in-down 0.3s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'linear-gradient(90deg, rgba(0,255,247,0.2), rgba(192,132,252,0.2))'
+            e.currentTarget.style.borderColor = 'var(--cyan)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'linear-gradient(90deg, rgba(0,255,247,0.12), rgba(192,132,252,0.12))'
+            e.currentTarget.style.borderColor = 'rgba(0,255,247,0.3)'
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>↑</span>
+          {pendingPosts.length} post{pendingPosts.length !== 1 ? 's' : ''} nuevo{pendingPosts.length !== 1 ? 's' : ''}
+        </button>
+      )}
+
       <PostComposer onPost={handlePost} />
 
       {posts.length === 0 ? (
