@@ -140,9 +140,9 @@ async function fetchSteamAPI(steamId: string): Promise<SteamData | null> {
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { steamId: string } }
+  { params }: { params: Promise<{ steamId: string }> }
 ) {
-  const { steamId } = params
+  const { steamId } = await params
 
   if (!steamId || steamId.length < 2) {
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
