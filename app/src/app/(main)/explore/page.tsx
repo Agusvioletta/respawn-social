@@ -23,7 +23,7 @@ function gameIcon(name: string) { return GAME_ICONS[name.toLowerCase()] ?? '🎮
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface GamerProfile {
-  id: string; username: string; avatar: string | null
+  id: string; username: string; avatar: string | null; photo_url?: string | null
   bio: string | null; games: string[] | null; created_at: string
 }
 interface MiniPost {
@@ -76,7 +76,7 @@ function ExplorePage() {
       const sb = supabase as any
 
       const [{ data: profiles }, { data: posts }, folResult, privResult] = await Promise.all([
-        sb.from('profiles').select('id, username, avatar, bio, games, created_at').limit(60),
+        sb.from('profiles').select('id, username, avatar, photo_url, bio, games, created_at').limit(60),
         sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').order('created_at', { ascending: false }).limit(50),
         user?.id
           ? sb.from('follows').select('following_id').eq('follower_id', user.id)
@@ -169,7 +169,7 @@ function ExplorePage() {
       const [{ data: uRes }, { data: pRes }] = await Promise.all([
         // Buscar por username O bio (or filter)
         sb.from('profiles')
-          .select('id, username, avatar, bio, games, created_at')
+          .select('id, username, avatar, photo_url, bio, games, created_at')
           .or(`username.ilike.%${term}%,bio.ilike.%${term}%`)
           .neq('id', user?.id ?? '').limit(12),
         sb.from('posts').select('id, username, avatar, user_id, content, created_at, likes(user_id), comments(id)').ilike('content', `%${term}%`).order('created_at', { ascending: false }).limit(20),
@@ -491,7 +491,7 @@ function ExplorePage() {
                     }}>
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         <Link href={`/profile/${u.username}`}>
-                          <UserAvatar avatar={u.avatar} username={u.username} size={36} />
+                          <UserAvatar avatar={u.avatar} photoUrl={u.photo_url} username={u.username} size={36} />
                         </Link>
                         <div style={{
                           position: 'absolute', top: '-4px', right: '-4px',
@@ -524,7 +524,7 @@ function ExplorePage() {
 
 // ── Gamer card ────────────────────────────────────────────────────────────────
 function GamerCard({ user, isFollowing, pending, onFollow }: {
-  user: { id: string; username: string; avatar: string | null; bio: string | null; games: string[] | null }
+  user: { id: string; username: string; avatar: string | null; photo_url?: string | null; bio: string | null; games: string[] | null }
   isFollowing: boolean; pending: boolean; onFollow: () => void
 }) {
   return (
@@ -535,7 +535,7 @@ function GamerCard({ user, isFollowing, pending, onFollow }: {
     }}>
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <Link href={`/profile/${user.username}`}>
-          <UserAvatar avatar={user.avatar} username={user.username} size={46} />
+          <UserAvatar avatar={user.avatar} photoUrl={user.photo_url} username={user.username} size={46} />
         </Link>
         {/* Online dot — decorativo */}
         <div style={{

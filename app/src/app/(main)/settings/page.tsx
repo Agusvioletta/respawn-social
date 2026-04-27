@@ -365,7 +365,8 @@ export default function SettingsPage() {
       {stats && (
         <div style={{ ...cardStyle, marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <UserAvatar avatar={user.avatar} username={user.username} size={40} />
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={40} />
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>@{user.username}</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)' }}>

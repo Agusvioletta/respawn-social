@@ -7,8 +7,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 
 interface Profile {
-  id: string; username: string; avatar: string | null; bio: string | null
-  now_playing?: string | null; status?: string | null
+  id: string; username: string; avatar: string | null; photo_url?: string | null
+  bio: string | null; now_playing?: string | null; status?: string | null
 }
 
 type StatusId = 'online' | 'away' | 'dnd' | 'invisible'
@@ -68,7 +68,7 @@ export default function MessagesPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from('messages').select('*').or(`from_id.eq.${user.id},to_id.eq.${user.id}`).order('created_at', { ascending: false }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).from('profiles').select('id, username, avatar, bio, now_playing, status'),
+        (supabase as any).from('profiles').select('id, username, avatar, photo_url, bio, now_playing, status'),
       ])
       setProfiles(allProfiles ?? [])
       if (!msgs?.length) return
@@ -246,7 +246,7 @@ export default function MessagesPage() {
                     const visible = st !== 'invisible'
                     return (
                       <div style={{ position: 'relative', flexShrink: 0 }}>
-                        <UserAvatar avatar={conv.otherProfile.avatar} username={conv.otherProfile.username} size={46} />
+                        <UserAvatar avatar={conv.otherProfile.avatar} photoUrl={conv.otherProfile.photo_url} username={conv.otherProfile.username} size={46} />
                         {visible && (
                           <div style={{
                             position: 'absolute', bottom: '-2px', right: '-2px',
@@ -308,7 +308,7 @@ export default function MessagesPage() {
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <UserAvatar avatar={p.avatar} username={p.username} size={38} />
+                    <UserAvatar avatar={p.avatar} photoUrl={p.photo_url} username={p.username} size={38} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>@{p.username}</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: p.now_playing ? '#4ade80' : 'var(--text-muted)' }}>

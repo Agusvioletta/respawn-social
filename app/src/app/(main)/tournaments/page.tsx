@@ -24,7 +24,7 @@ const PLAYER_OPTS = [4, 8, 16, 32, 64]
 type TStatus = 'live' | 'upcoming' | 'finished'
 type Tab = 'live' | 'upcoming' | 'finished' | 'mine'
 
-interface TPlayer { user_id: string; profiles?: { username: string; avatar: string | null } }
+interface TPlayer { user_id: string; profiles?: { username: string; avatar: string | null; photo_url?: string | null } }
 interface Tournament {
   id: number
   creator_id: string
@@ -66,7 +66,7 @@ export default function TournamentsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any)
       .from('tournaments')
-      .select(`*, tournament_players(user_id, profiles(username, avatar))`)
+      .select(`*, tournament_players(user_id, profiles(username, avatar, photo_url))`)
       .order('date', { ascending: true })
     setTournaments(data ?? [])
     setLoading(false)
@@ -590,7 +590,7 @@ function TournamentCard({
             {avatarPlayers.map((p, i) => (
               <Link key={i} href={`/profile/${p.profiles?.username ?? ''}`} style={{ marginLeft: i > 0 ? '-8px' : 0 }}>
                 <div style={{ border: '2px solid var(--card)', borderRadius: '50%' }}>
-                  <UserAvatar avatar={p.profiles?.avatar ?? null} username={p.profiles?.username ?? '?'} size={24} />
+                  <UserAvatar avatar={p.profiles?.avatar ?? null} photoUrl={p.profiles?.photo_url} username={p.profiles?.username ?? '?'} size={24} />
                 </div>
               </Link>
             ))}

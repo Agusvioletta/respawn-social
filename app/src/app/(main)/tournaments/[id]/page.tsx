@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar'
 interface TPlayer {
   user_id: string
   seed?: number
-  profiles: { username: string; avatar: string | null }
+  profiles: { username: string; avatar: string | null; photo_url?: string | null }
 }
 
 interface BracketMatch {
@@ -126,7 +126,7 @@ export default function TournamentDetailPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)
         .from('tournaments')
-        .select(`*, tournament_players(user_id, profiles(username, avatar))`)
+        .select(`*, tournament_players(user_id, profiles(username, avatar, photo_url))`)
         .eq('id', id)
         .single()
       setTournament(data ?? null)
@@ -334,7 +334,7 @@ export default function TournamentDetailPage() {
               CAMPEÓN DEL TORNEO
             </div>
             <Link href={`/profile/${champion.profiles?.username}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <UserAvatar avatar={champion.profiles?.avatar ?? null} username={champion.profiles?.username ?? '?'} size={44} />
+              <UserAvatar avatar={champion.profiles?.avatar ?? null} photoUrl={champion.profiles?.photo_url} username={champion.profiles?.username ?? '?'} size={44} />
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 900, color: '#FFD700', letterSpacing: '1px', textShadow: '0 0 20px rgba(255,200,0,0.5)' }}>
                   @{champion.profiles?.username}
@@ -464,7 +464,7 @@ export default function TournamentDetailPage() {
                 }}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
                 </span>
-                <UserAvatar avatar={p.profiles?.avatar ?? null} username={p.profiles?.username ?? '?'} size={36} />
+                <UserAvatar avatar={p.profiles?.avatar ?? null} photoUrl={p.profiles?.photo_url} username={p.profiles?.username ?? '?'} size={36} />
                 <Link href={`/profile/${p.profiles?.username}`} style={{ textDecoration: 'none', flex: 1 }}>
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: p.user_id === user?.id ? 'var(--cyan)' : 'var(--text-primary)' }}>
                     @{p.profiles?.username}
@@ -572,7 +572,7 @@ function BracketMatchCard({
               </span>
             ) : player ? (
               <>
-                <UserAvatar avatar={player.profiles?.avatar ?? null} username={player.profiles?.username ?? '?'} size={22} />
+                <UserAvatar avatar={player.profiles?.avatar ?? null} photoUrl={player.profiles?.photo_url} username={player.profiles?.username ?? '?'} size={22} />
                 <span style={{
                   fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600,
                   color: isWinner ? 'var(--cyan)' : 'var(--text-primary)',

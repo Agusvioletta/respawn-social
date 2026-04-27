@@ -139,7 +139,9 @@ export default function PostPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any).from('comments').insert({
       post_id: post.id, user_id: user.id,
-      username: user.username, avatar: user.avatar,
+      username: user.username,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      avatar: (user as any).photo_url ?? user.avatar,
       content: commentText.trim(), parent_id: null,
     }).select().single()
     if (data) {
@@ -155,7 +157,9 @@ export default function PostPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any).from('comments').insert({
       post_id: post.id, user_id: user.id,
-      username: user.username, avatar: user.avatar,
+      username: user.username,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      avatar: (user as any).photo_url ?? user.avatar,
       content, parent_id: parentId,
     }).select().single()
     if (data) {
