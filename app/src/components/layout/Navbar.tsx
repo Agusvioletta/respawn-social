@@ -286,7 +286,8 @@ export function Navbar() {
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
-                <UserAvatar avatar={user.avatar} username={user.username} size={36} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={36} />
                 <div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600 }}>@{user.username}</div>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -399,7 +400,8 @@ export function Navbar() {
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '10px 20px 14px', borderBottom: '1px solid var(--border)', marginBottom: '6px',
             }}>
-              <UserAvatar avatar={user.avatar} username={user.username} size={40} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={40} />
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 700 }}>
                   @{user.username}

@@ -17,6 +17,7 @@ interface ScoreRow {
   profiles: {
     username: string
     avatar: string | null
+    photo_url?: string | null
   }
 }
 
@@ -45,7 +46,7 @@ export default function LeaderboardPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let q = (supabase as any)
         .from('game_scores')
-        .select('id, user_id, game_id, score, created_at, profiles(username, avatar)')
+        .select('id, user_id, game_id, score, created_at, profiles(username, avatar, photo_url)')
         .eq('game_id', gameId)
         .order('score', { ascending: false })
         .limit(50)
@@ -140,7 +141,7 @@ export default function LeaderboardPage() {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', width: '28px', textAlign: 'center', flexShrink: 0 }}>
                   {medal ?? `${i + 1}`}
                 </span>
-                <UserAvatar avatar={row.profiles?.avatar ?? null} username={row.profiles?.username ?? '?'} size={32} />
+                <UserAvatar avatar={row.profiles?.avatar ?? null} photoUrl={row.profiles?.photo_url} username={row.profiles?.username ?? '?'} size={32} />
                 <Link href={`/profile/${row.profiles?.username}`} style={{ flex: 1, textDecoration: 'none' }}>
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     @{row.profiles?.username}

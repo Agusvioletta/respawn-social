@@ -12,14 +12,15 @@ type NotifType = 'like' | 'comment' | 'follow' | 'message'
 type Filter    = 'all' | NotifType
 
 interface Notif {
-  id:             string
-  type:           NotifType
-  actor_id?:      string
-  actor_username: string
-  actor_avatar:   string | null
-  post_id?:       number
-  content?:       string
-  created_at:     string | null
+  id:              string
+  type:            NotifType
+  actor_id?:       string
+  actor_username:  string
+  actor_avatar:    string | null
+  actor_photo_url?: string | null
+  post_id?:        number
+  content?:        string
+  created_at:      string | null
 }
 
 // ── Config por tipo ───────────────────────────────────────────────────────────
@@ -86,8 +87,8 @@ export default function NotificationsPage() {
 
       if (likes?.length) {
         const likerIds = [...new Set<string>(likes.map((l: { user_id: string }) => l.user_id))]
-        const { data: likerProfs } = await sb.from('profiles').select('id, username, avatar').in('id', likerIds)
-        const likerMap = new Map<string, { username: string; avatar: string | null }>()
+        const { data: likerProfs } = await sb.from('profiles').select('id, username, avatar, photo_url').in('id', likerIds)
+        const likerMap = new Map<string, { username: string; avatar: string | null; photo_url: string | null }>()
         for (const p of (likerProfs ?? [])) likerMap.set(p.id, p)
 
         for (const like of likes) {
@@ -96,7 +97,7 @@ export default function NotificationsPage() {
           if (!prof) continue
           result.push({
             id: `like-${like.id}`, type: 'like',
-            actor_username: prof.username, actor_avatar: prof.avatar,
+            actor_username: prof.username, actor_avatar: prof.avatar, actor_photo_url: prof.photo_url,
             post_id: like.post_id,
             // Usar created_at real si existe, si no null (se muestra '—')
             created_at: like.created_at ?? null,
@@ -126,8 +127,8 @@ export default function NotificationsPage() {
 
       if (follows?.length) {
         const followerIds = follows.map((f: { follower_id: string }) => f.follower_id)
-        const { data: followerProfs } = await sb.from('profiles').select('id, username, avatar').in('id', followerIds)
-        const followerMap = new Map<string, { username: string; avatar: string | null }>()
+        const { data: followerProfs } = await sb.from('profiles').select('id, username, avatar, photo_url').in('id', followerIds)
+        const followerMap = new Map<string, { username: string; avatar: string | null; photo_url: string | null }>()
         for (const p of (followerProfs ?? [])) followerMap.set(p.id, p)
 
         for (const f of follows) {
@@ -135,7 +136,7 @@ export default function NotificationsPage() {
           if (!prof) continue
           result.push({
             id: `follow-${f.follower_id}`, type: 'follow',
-            actor_username: prof.username, actor_avatar: prof.avatar,
+            actor_username: prof.username, actor_avatar: prof.avatar, actor_photo_url: prof.photo_url,
             created_at: f.created_at,
           })
         }
@@ -148,8 +149,8 @@ export default function NotificationsPage() {
 
       if (msgs?.length) {
         const senderIds = [...new Set<string>(msgs.map((m: { from_id: string }) => m.from_id))]
-        const { data: senderProfs } = await sb.from('profiles').select('id, username, avatar').in('id', senderIds)
-        const senderMap = new Map<string, { username: string; avatar: string | null }>()
+        const { data: senderProfs } = await sb.from('profiles').select('id, username, avatar, photo_url').in('id', senderIds)
+        const senderMap = new Map<string, { username: string; avatar: string | null; photo_url: string | null }>()
         for (const p of (senderProfs ?? [])) senderMap.set(p.id, p)
 
         // Un item por sender (el más reciente)
@@ -162,7 +163,7 @@ export default function NotificationsPage() {
           result.push({
             id: `msg-${m.id}`, type: 'message',
             actor_id: m.from_id,
-            actor_username: prof.username, actor_avatar: prof.avatar,
+            actor_username: prof.username, actor_avatar: prof.avatar, actor_photo_url: prof.photo_url,
             content: m.content?.slice(0, 60),
             created_at: m.created_at,
           })
@@ -427,7 +428,7 @@ export default function NotificationsPage() {
                 {/* Avatar + tipo icon */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <Link href={`/profile/${n.actor_username}`} style={{ display: 'block' }}>
-                    <UserAvatar avatar={n.actor_avatar} username={n.actor_username} size={40} />
+                    <UserAvatar avatar={n.actor_avatar} photoUrl={n.actor_photo_url} username={n.actor_username} size={40} />
                   </Link>
                   <span style={{
                     position: 'absolute', bottom: '-3px', right: '-4px',

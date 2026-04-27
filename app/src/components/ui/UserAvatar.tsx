@@ -4,15 +4,18 @@ interface UserAvatarProps {
   avatar: string | null
   username: string
   size?: number
+  /** Foto real subida por el usuario — tiene prioridad sobre el pixel avatar */
+  photoUrl?: string | null
 }
 
-export function UserAvatar({ avatar, username, size = 38 }: UserAvatarProps) {
-  // Soporta: URL completa (storage), '/avatar1.png', 'avatar1.png', null
-  const src = !avatar
-    ? '/avatar1.png'
-    : avatar.startsWith('http') || avatar.startsWith('/')
-      ? avatar
-      : `/${avatar}`
+export function UserAvatar({ avatar, username, size = 38, photoUrl }: UserAvatarProps) {
+  // photoUrl (foto real) tiene prioridad; fallback a avatar (pixel) o avatar1
+  const resolveAvatar = (a: string | null) =>
+    !a ? '/avatar1.png'
+    : a.startsWith('http') || a.startsWith('/') ? a
+    : `/${a}`
+
+  const src = photoUrl ? photoUrl : resolveAvatar(avatar)
 
   // Foto real (URL https = Supabase Storage) → círculo, sin pixelado
   // Pixel avatar (path local /avatar*.png)   → cuadrado redondeado, pixelado

@@ -12,6 +12,7 @@ interface SuggestedUser {
   id: string
   username: string
   avatar: string | null
+  photo_url?: string | null
   bio: string | null
 }
 
@@ -19,6 +20,7 @@ interface TopGamer {
   id: string
   username: string
   avatar: string | null
+  photo_url?: string | null
   max_level: number
   xp: number
   rank: number
@@ -54,7 +56,7 @@ export function FeedSidebar() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: profiles } = await (supabase as any)
         .from('profiles')
-        .select('id, username, avatar, max_level')
+        .select('id, username, avatar, photo_url, max_level')
         .order('max_level', { ascending: false })
         .limit(20)
 
@@ -84,7 +86,7 @@ export function FeedSidebar() {
         followCounts.set(row.following_id, (followCounts.get(row.following_id) ?? 0) + 1)
       }
 
-      const withXP = profiles.map((p: { id: string; username: string; avatar: string | null; max_level: number }) => ({
+      const withXP = profiles.map((p: { id: string; username: string; avatar: string | null; photo_url?: string | null; max_level: number }) => ({
         ...p,
         xp: calculateXP({
           posts: postCounts.get(p.id) ?? 0,
@@ -175,7 +177,7 @@ export function FeedSidebar() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any)
       .from('profiles')
-      .select('id, username, avatar, bio')
+      .select('id, username, avatar, photo_url, bio')
       .neq('id', user.id)
       .not('id', 'in', followingIds.length > 0 ? `(${followingIds.join(',')})` : '(null)')
       .limit(4)
@@ -226,7 +228,8 @@ export function FeedSidebar() {
         <div style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', marginBottom: '14px', borderBottom: '1px solid var(--border)' }}>
             <Link href={`/profile/${user.username}`}>
-              <UserAvatar avatar={user.avatar} username={user.username} size={44} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={44} />
             </Link>
             <div style={{ flex: 1, minWidth: 0 }}>
               <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
@@ -271,7 +274,7 @@ export function FeedSidebar() {
                 borderBottom: i < suggested.length - 1 ? '1px solid var(--border)' : 'none',
               }}>
                 <Link href={`/profile/${s.username}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
-                  <UserAvatar avatar={s.avatar} username={s.username} size={30} />
+                  <UserAvatar avatar={s.avatar} photoUrl={s.photo_url} username={s.username} size={30} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       @{s.username}
@@ -384,7 +387,7 @@ export function FeedSidebar() {
                   </div>
                   <Link href={`/profile/${g.username}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <UserAvatar avatar={g.avatar} username={g.username} size={30} />
+                      <UserAvatar avatar={g.avatar} photoUrl={g.photo_url} username={g.username} size={30} />
                       {isMe && (
                         <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', background: 'var(--cyan)', borderRadius: '50%', border: '1px solid var(--card)' }} />
                       )}
