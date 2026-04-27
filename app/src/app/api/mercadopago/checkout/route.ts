@@ -47,10 +47,6 @@ export async function POST(req: NextRequest) {
     external_reference: user.id,   // lo usamos en el webhook para identificar al usuario
     payer_email: user.email,
     back_url: `${origin}/premium/success`,
-    auto_recurring: {
-      // Estos valores se heredan del plan, pero MP los requiere en algunos casos
-      // Si tu plan ya los tiene definidos, MP los ignora
-    },
   }
 
   const res = await fetch('https://api.mercadopago.com/preapproval', {
