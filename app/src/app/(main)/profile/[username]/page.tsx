@@ -13,6 +13,7 @@ import type { Profile } from '@/lib/types/database'
 import { getBanner } from '@/lib/banners'
 import { ConnectionsWidget } from '@/components/profile/ConnectionsWidget'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
+import { ReportModal } from '@/components/ui/ReportModal'
 
 // ── Logros ────────────────────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
@@ -71,6 +72,8 @@ export default function ProfilePage() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false)
   const [loading,           setLoading]           = useState(true)
   const [followLoading,     setFollowLoading]     = useState(false)
+  const [isBlocked,         setIsBlocked]         = useState(false)
+  const [showReportProfile, setShowReportProfile] = useState(false)
   const [tournamentsJoined, setTournamentsJoined] = useState(0)
   const [userCommentsCount, setUserCommentsCount] = useState(0)
   const [totalPosts,        setTotalPosts]        = useState(0)
@@ -187,6 +190,25 @@ export default function ProfilePage() {
       if (!error) { setIsFollowing(true); setStats(s => ({ ...s, followers: s.followers + 1 })) }
     }
     setFollowLoading(false)
+  }
+
+  async function handleBlock() {
+    if (!currentUser || !profile) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    if (isBlocked) {
+      await sb.from('blocks').delete().eq('blocker_id', currentUser.id).eq('blocked_id', profile.id)
+      setIsBlocked(false)
+    } else {
+      if (!confirm(`¿Bloquear a @${profile.username}? No podrán ver tu perfil ni interactuar con vos.`)) return
+      await sb.from('blocks').insert({ blocker_id: currentUser.id, blocked_id: profile.id })
+      setIsBlocked(true)
+      if (isFollowing) {
+        await sb.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', profile.id)
+        setIsFollowing(false)
+        setStats(s => ({ ...s, followers: s.followers - 1 }))
+      }
+    }
   }
 
   async function openList(type: 'followers' | 'following') {
@@ -439,7 +461,32 @@ export default function ProfilePage() {
                 }}>
                   {followLoading ? '...' : isFollowing ? 'Siguiendo' : hasPendingRequest ? '⏳ Solicitud enviada' : 'Seguir'}
                 </button>
+
+                {/* Reportar / Bloquear */}
+                <button
+                  onClick={() => setShowReportProfile(true)}
+                  title="Reportar usuario"
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px', padding: '6px 4px', opacity: 0.6, transition: 'opacity 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
+                >🚩</button>
+                <button
+                  onClick={handleBlock}
+                  title={isBlocked ? 'Desbloquear' : 'Bloquear usuario'}
+                  style={{ background: 'transparent', border: 'none', color: isBlocked ? 'var(--pink)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '14px', padding: '6px 4px', opacity: isBlocked ? 1 : 0.6, transition: 'opacity 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = isBlocked ? '1' : '0.6')}
+                >{isBlocked ? '🚫' : '🔒'}</button>
               </>
+            )}
+
+            {showReportProfile && profile && (
+              <ReportModal
+                type="user"
+                targetId={profile.id}
+                targetName={`@${profile.username}`}
+                onClose={() => setShowReportProfile(false)}
+              />
             )}
           </div>
         </div>

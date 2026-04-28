@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { detectGameTag } from '@/lib/utils/xp'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
+import { ReportModal } from '@/components/ui/ReportModal'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 interface PostCardProps {
@@ -34,6 +35,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
   const [likeCount, setLikeCount] = useState(likes.length)
   const [liked, setLiked] = useState(isLiked)
   const [deleting, setDeleting] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   // Reactions state
   const [reactions, setReactions] = useState<Record<string, number>>({ GG: 0, POG: 0, RIP: 0, KEKW: 0 })
@@ -273,16 +275,44 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
           </div>
         </div>
 
-        {isOwn && (
-          <button onClick={handleDelete} disabled={deleting}
-            style={{
-              background: 'transparent', border: 'none',
-              color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
-              fontSize: '11px', cursor: 'pointer', padding: '4px 8px',
-              borderRadius: 'var(--radius-sm)',
-            }}>
-            {deleting ? '...' : 'borrar'}
-          </button>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {!isOwn && user && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowReport(true) }}
+              title="Reportar publicación"
+              style={{
+                background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
+                fontSize: '11px', cursor: 'pointer', padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)', opacity: 0.6,
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
+            >
+              🚩
+            </button>
+          )}
+          {isOwn && (
+            <button onClick={handleDelete} disabled={deleting}
+              style={{
+                background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
+                fontSize: '11px', cursor: 'pointer', padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+              {deleting ? '...' : 'borrar'}
+            </button>
+          )}
+        </div>
+
+        {showReport && (
+          <ReportModal
+            type="post"
+            targetId={post.id}
+            targetName={`post de @${post.username}`}
+            onClose={() => setShowReport(false)}
+          />
         )}
       </div>
 

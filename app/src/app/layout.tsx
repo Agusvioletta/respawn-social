@@ -13,6 +13,22 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Respawn',
   },
+  openGraph: {
+    type: 'website',
+    siteName: 'Respawn Social',
+    title: 'Respawn Social — El lugar donde siempre volvés',
+    description: 'La red social definitiva para gamers en español. Feed, torneos, arcade integrado, clips y más.',
+    locale: 'es_AR',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Respawn Social',
+    description: 'La red social definitiva para gamers en español.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export const viewport: Viewport = {
