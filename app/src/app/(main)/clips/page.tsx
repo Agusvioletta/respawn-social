@@ -135,8 +135,8 @@ export default function ClipsPage() {
       setUploadError('Solo se permiten archivos de video.')
       return
     }
-    if (file.size > 200 * 1024 * 1024) {
-      setUploadError('El archivo no puede superar los 200 MB.')
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError('El archivo no puede superar los 50 MB.')
       return
     }
     setUploadFile(file)
@@ -435,7 +435,7 @@ export default function ClipsPage() {
                     SELECCIONÁ TU CLIP
                   </p>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-                    MP4, MOV, WebM — máx. 200 MB
+                    MP4, MOV, WebM — máx. 50 MB
                   </p>
                   <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} style={{ display: 'none' }} />
                 </div>
