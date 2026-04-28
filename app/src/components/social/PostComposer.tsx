@@ -121,7 +121,15 @@ export function PostComposer({ onPost }: PostComposerProps) {
         .limit(1)
         .single()
 
-      if (inserted) onPost({ ...inserted, likes: inserted.likes ?? [], comments: inserted.comments ?? [] })
+      if (inserted) onPost({
+        ...inserted,
+        likes: inserted.likes ?? [],
+        comments: inserted.comments ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        author_premium_tier: (user as any).premium_tier ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        author_name_color:   (user as any).name_color   ?? null,
+      })
       setContent('')
       removeImage()
       if (isLFG) { setLfgGame(''); setLfgPlatform(''); setLfgSlots(1); setIsLFG(false) }
