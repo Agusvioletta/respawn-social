@@ -100,6 +100,12 @@ export default function TournamentsPage() {
   async function handleCreate() {
     setFormError('')
     if (!user) { setFormError('Tu sesión no está cargada. Recargá la página.'); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tier = (user as any)?.premium_tier
+    if (tier !== 'pro' && tier !== 'elite') {
+      setFormError('Necesitás un plan Pro o Elite para crear torneos.')
+      return
+    }
     if (!form.name.trim()) { setFormError('Ingresá un nombre.'); return }
     if (!form.game) { setFormError('Seleccioná un juego.'); return }
     if (!form.date) { setFormError('Seleccioná una fecha.'); return }

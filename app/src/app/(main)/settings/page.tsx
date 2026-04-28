@@ -184,7 +184,8 @@ export default function SettingsPage() {
         avatar: selectedAvatar,
         games: form.games.filter(Boolean),
         now_playing: form.nowPlaying.trim() || null,
-        ...(u.premium_tier === 'elite' ? { name_color: form.nameColor || null } : {}),
+        // Siempre sincronizamos name_color: Elite puede setearlo, otros siempre null
+        name_color: u.premium_tier === 'elite' ? (form.nameColor || null) : null,
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('profiles').update(updates).eq('id', user.id)

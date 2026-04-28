@@ -4,11 +4,15 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 
 // MP manda el plan_id en la suscripción — lo usamos para saber el tier
-const TIER_FROM_PLAN: Record<string, 'pro' | 'elite'> = {
-  [process.env.MP_PLAN_PRO_MONTHLY   ?? '']: 'pro',
-  [process.env.MP_PLAN_PRO_YEARLY    ?? '']: 'pro',
-  [process.env.MP_PLAN_ELITE_MONTHLY ?? '']: 'elite',
-  [process.env.MP_PLAN_ELITE_YEARLY  ?? '']: 'elite',
+// Filtramos strings vacíos para evitar que planes desconocidos matcheen
+function buildTierMap(): Record<string, 'pro' | 'elite'> {
+  const entries: [string, 'pro' | 'elite'][] = [
+    [process.env.MP_PLAN_PRO_MONTHLY   ?? '', 'pro'],
+    [process.env.MP_PLAN_PRO_YEARLY    ?? '', 'pro'],
+    [process.env.MP_PLAN_ELITE_MONTHLY ?? '', 'elite'],
+    [process.env.MP_PLAN_ELITE_YEARLY  ?? '', 'elite'],
+  ]
+  return Object.fromEntries(entries.filter(([k]) => k.length > 0))
 }
 
 export async function POST(req: NextRequest) {
@@ -78,27 +82,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    const TIER_FROM_PLAN = buildTierMap()
+
     if (sub.status === 'authorized') {
-      const tier = TIER_FROM_PLAN[sub.preapproval_plan_id] ?? 'pro'
-      await supabase.from('profiles').update({
+      // Sin fallback: si el plan no está en el mapa, no actualizamos
+      const tier = TIER_FROM_PLAN[sub.preapproval_plan_id]
+      if (!tier) {
+        console.error('[MP webhook] Plan desconocido, no se actualiza tier:', sub.preapproval_plan_id)
+        return NextResponse.json({ received: true })
+      }
+      const { error: dbError } = await supabase.from('profiles').update({
         premium_tier:           tier,
-        stripe_subscription_id: sub.id,   // reutilizamos la columna para el ID de MP
+        stripe_subscription_id: sub.id,
         premium_since:          new Date().toISOString(),
         premium_until:          sub.next_payment_date ?? null,
       }).eq('id', userId)
+      if (dbError) {
+        console.error('[MP webhook] Error al actualizar perfil:', dbError)
+        // Retornar 500 para que MP reintente
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
 
     } else if (sub.status === 'cancelled' || sub.status === 'paused') {
-      await supabase.from('profiles').update({
+      const { error: dbError } = await supabase.from('profiles').update({
         premium_tier:           'free',
         stripe_subscription_id: null,
         premium_until:          null,
+        name_color:             null,  // limpiar color de nombre al cancelar
       }).eq('id', userId)
+      if (dbError) {
+        console.error('[MP webhook] Error al resetear perfil:', dbError)
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
     }
 
   } catch (e) {
-    console.error('[MP webhook] Error:', e)
+    console.error('[MP webhook] Error inesperado:', e)
+    // Retornar 500 para que MP reintente en caso de error inesperado
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  // Siempre respondemos 200 para que MP no reintente
   return NextResponse.json({ received: true })
 }
