@@ -251,7 +251,7 @@ export default function PostPage() {
     </div>
   )
 
-  const topComments = post.comments.filter((c) => !c.parent_id).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  const topComments = post.comments.filter((c) => !c.parent_id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   const replies = post.comments.filter((c) => c.parent_id)
   const date = new Date(post.created_at).toLocaleString('es-AR', { dateStyle: 'long', timeStyle: 'short' })
   const isOwn = user?.id === post.user_id

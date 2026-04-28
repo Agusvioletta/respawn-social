@@ -116,7 +116,7 @@ export default function MessagesPage() {
           lastMessage: preview,
           lastTime: relativeTime(msg.created_at),
           isMine: msg.from_id === user.id,
-          unread: !msg.from_id.startsWith(user.id) && false, // TODO: read receipts
+          unread: msg.from_id !== user.id, // último mensaje del otro → sin leer
         })
       }
       setConversations(convs)

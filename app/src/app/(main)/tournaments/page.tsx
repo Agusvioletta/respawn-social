@@ -157,6 +157,7 @@ export default function TournamentsPage() {
     if (!editForm.game) { setEditError('Seleccioná un juego.'); return }
     if (!editForm.date) { setEditError('Seleccioná una fecha.'); return }
     setEditing(true)
+    const prevTournaments = tournaments
     try {
       const updated = {
         name: editForm.name.trim(),
@@ -167,16 +168,18 @@ export default function TournamentsPage() {
         description: editForm.description.trim() || null,
         date: editForm.date,
       }
-      // Optimistic update
-      setTournaments(prev => prev.map(t => t.id === editId ? { ...t, ...updated } : t))
-      setShowEdit(false)
-      showToast('✓ Torneo actualizado.')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('tournaments').update(updated)
         .eq('id', editId).eq('creator_id', user!.id)
       if (error) throw error
+      // Solo actualizamos UI y cerramos si la DB confirmó
+      setTournaments(prev => prev.map(t => t.id === editId ? { ...t, ...updated } : t))
+      setShowEdit(false)
+      showToast('✓ Torneo actualizado.')
     } catch (e: unknown) {
-      setEditError(e instanceof Error ? e.message : 'Error al guardar.')
+      // Revertir cualquier cambio local y mostrar error en el modal
+      setTournaments(prevTournaments)
+      setEditError(e instanceof Error ? e.message : 'Error al guardar. Intentá de nuevo.')
     } finally {
       setEditing(false)
     }

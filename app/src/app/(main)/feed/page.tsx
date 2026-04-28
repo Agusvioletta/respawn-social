@@ -11,8 +11,9 @@ export default async function FeedPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     initialPosts = await getPosts(30, 0, user?.id)
-  } catch {
-    // Feed vacío si falla la carga inicial
+  } catch (e) {
+    console.error('[Feed] Error al cargar posts iniciales:', e)
+    // initialPosts queda vacío — FeedList puede cargar desde el cliente
   }
 
   return (
