@@ -22,6 +22,7 @@ const PRIMARY_NAV = [
 
 // Secundarios: van en el drawer "Más"
 const SECONDARY_NAV = [
+  { href: '/clips',         icon: '🎬', label: 'Clips'         },
   { href: '/lfg',           icon: '🔎', label: 'LFG'           },
   { href: '/tournaments',   icon: '🏆', label: 'Torneos'       },
   { href: '/notifications', icon: '🔔', label: 'Notificaciones'},
@@ -32,6 +33,7 @@ const SECONDARY_NAV = [
 const ALL_NAV = [
   { href: '/feed',        icon: '🏠', label: 'Feed'        },
   { href: '/explore',     icon: '🔍', label: 'Explorar'    },
+  { href: '/clips',       icon: '🎬', label: 'Clips'       },
   { href: '/lfg',         icon: '🔎', label: 'LFG'         },
   { href: '/tournaments', icon: '🏆', label: 'Torneos'     },
   { href: '/arcade',      icon: '🕹️', label: 'Arcade'      },
