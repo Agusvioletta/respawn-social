@@ -107,6 +107,7 @@ export default function ChatPage() {
   const mediaRecRef   = useRef<MediaRecorder | null>(null)
   const recChunks     = useRef<Blob[]>([])
   const recTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [sendError,    setSendError]    = useState('')
 
   const bottomRef    = useRef<HTMLDivElement>(null)
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
@@ -235,6 +236,8 @@ export default function ChatPage() {
     } catch {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id))
       setInput(text)
+      setSendError('No se pudo enviar el mensaje. Intentá de nuevo.')
+      setTimeout(() => setSendError(''), 4000)
     } finally { setSending(false) }
   }
 
@@ -307,7 +310,11 @@ export default function ChatPage() {
         payload: { message: optimistic },
       })
       cancelAudio()
-    } catch (e) { console.error('[Chat] sendAudio:', e) }
+    } catch (e) {
+      console.error('[Chat] sendAudio:', e)
+      setSendError('No se pudo enviar el audio. Intentá de nuevo.')
+      setTimeout(() => setSendError(''), 4000)
+    }
     finally { setSending(false) }
   }
 
@@ -660,6 +667,18 @@ export default function ChatPage() {
           <button onClick={sendAudio} disabled={sending} style={{ background: 'rgba(0,255,247,0.1)', border: '1px solid rgba(0,255,247,0.3)', borderRadius: '10px', color: 'var(--cyan)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', letterSpacing: '1px', outline: 'none' }}>
             {sending ? '...' : 'ENVIAR'}
           </button>
+        </div>
+      )}
+
+      {/* ── Error de envío ────────────────────────────────────────────────────── */}
+      {sendError && (
+        <div style={{
+          padding: '6px 16px', background: 'rgba(255,79,123,0.1)',
+          borderTop: '1px solid rgba(255,79,123,0.25)',
+          fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)',
+          display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+        }}>
+          ⚠ {sendError}
         </div>
       )}
 

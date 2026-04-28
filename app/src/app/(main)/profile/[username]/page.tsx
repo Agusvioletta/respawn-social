@@ -350,7 +350,8 @@ export default function ProfilePage() {
               {(profile as any).photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={(profile as any).photo_url}  // eslint-disable-line @typescript-eslint/no-explicit-any
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  src={(profile as any).photo_url?.startsWith('http') ? (profile as any).photo_url : '/avatar1.png'}
                   alt={profile.username}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
