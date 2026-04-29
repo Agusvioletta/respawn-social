@@ -318,6 +318,64 @@ export function Navbar() {
         )}
       </nav>
 
+      {/* ── Mobile top header ──────────────────────────────────────────────── */}
+      <header
+        className="flex md:hidden"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          height: '52px',
+          background: 'var(--deep)',
+          borderBottom: '1px solid var(--border)',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          zIndex: 60,
+        }}
+      >
+        {/* Logo */}
+        <Link href="/feed" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+          <span style={{
+            fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 800,
+            letterSpacing: '3px', color: 'var(--cyan)',
+            textShadow: '0 0 16px rgba(0,255,247,0.5)',
+            lineHeight: 1,
+          }}>
+            RESPAWN
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '8px',
+            color: 'var(--text-muted)', letterSpacing: '1px', lineHeight: 1,
+          }}>
+            el lugar donde siempre volvés
+          </span>
+        </Link>
+
+        {/* Acciones rápidas: notifs + perfil */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Link href="/notifications" style={{ textDecoration: 'none', position: 'relative', padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: '20px', lineHeight: 1 }}>🔔</span>
+            {unreadNotifs > 0 && (
+              <span style={{
+                position: 'absolute', top: '2px', right: '2px',
+                minWidth: '16px', height: '16px', borderRadius: '999px',
+                background: 'var(--pink)', color: '#fff',
+                fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 900,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 3px', boxShadow: '0 0 6px rgba(255,79,123,0.7)',
+              }}>
+                {unreadNotifs > 99 ? '99+' : unreadNotifs}
+              </span>
+            )}
+          </Link>
+          {user && (
+            <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none', padding: '4px' }}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={32} />
+            </Link>
+          )}
+        </div>
+      </header>
+
       {/* ── Mobile bottom bar ───────────────────────────────────────────────── */}
       <nav
         className="flex md:hidden"

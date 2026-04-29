@@ -30,7 +30,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <AuthProvider initialUser={initialUser}>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--void)' }}>
         <Navbar />
-        <main style={{ flex: 1, minWidth: 0, paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }} className="md:ml-64 md:pb-0">
+        <main style={{ flex: 1, minWidth: 0, paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))', paddingTop: '52px' }} className="md:ml-64 md:pb-0 md:pt-0">
           {children}
         </main>
       </div>

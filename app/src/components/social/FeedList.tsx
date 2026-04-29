@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { PostCard } from './PostCard'
 import { PostComposer } from './PostComposer'
-import { FeedMobileWidgets } from './FeedMobileWidgets'
 import { PostCardSkeleton } from '@/components/ui/Skeleton'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
@@ -200,9 +199,6 @@ export function FeedList({ initialPosts }: FeedListProps) {
       )}
 
       <PostComposer onPost={handlePost} />
-
-      {/* Widgets de descubrimiento — solo mobile/tablet (se ocultan en xl cuando el sidebar ya los muestra) */}
-      <FeedMobileWidgets />
 
       {posts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
