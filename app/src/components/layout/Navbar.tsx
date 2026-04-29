@@ -25,6 +25,7 @@ const SECONDARY_NAV = [
   { href: '/clips',         icon: '🎬', label: 'Clips'         },
   { href: '/lfg',           icon: '🔎', label: 'LFG'           },
   { href: '/tournaments',   icon: '🏆', label: 'Torneos'       },
+  { href: '/premium',       icon: '⚡', label: 'Premium'       },
   { href: '/notifications', icon: '🔔', label: 'Notificaciones'},
   { href: '/settings',      icon: '⚙️', label: 'Configuración' },
 ]
