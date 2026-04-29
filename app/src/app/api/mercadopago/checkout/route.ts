@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 // IDs de planes creados en Mercado Pago (preapproval_plan)
 const PLAN_IDS = {
@@ -8,6 +9,16 @@ const PLAN_IDS = {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: max 10 intentos de checkout por IP por minuto
+  const ip = getClientIp(req)
+  const rl = rateLimit(`checkout:${ip}`, { limit: 10, windowMs: 60_000 })
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Esperá un momento.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    )
+  }
+
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
   if (!accessToken) {
     return NextResponse.json({ error: 'Mercado Pago no configurado.' }, { status: 503 })

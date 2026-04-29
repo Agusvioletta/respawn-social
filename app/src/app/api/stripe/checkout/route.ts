@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 const PRICE_IDS = {
   pro:   { monthly: process.env.STRIPE_PRICE_PRO_MONTHLY   ?? '', yearly: process.env.STRIPE_PRICE_PRO_YEARLY   ?? '' },
@@ -7,6 +8,15 @@ const PRICE_IDS = {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`stripe-checkout:${ip}`, { limit: 10, windowMs: 60_000 })
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Esperá un momento.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    )
+  }
+
   const stripeKey = process.env.STRIPE_SECRET_KEY
   if (!stripeKey) {
     return NextResponse.json({ error: 'Stripe no configurado.' }, { status: 503 })

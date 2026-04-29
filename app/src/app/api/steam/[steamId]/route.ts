@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 // Steam data fetcher — dos modos:
 // 1. Con STEAM_API_KEY  → Web API completa (perfil + juegos recientes + nivel + total)
@@ -139,9 +140,16 @@ async function fetchSteamAPI(steamId: string): Promise<SteamData | null> {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ steamId: string }> }
 ) {
+  // Rate limit: 30 lookups por IP por minuto
+  const ip = getClientIp(req)
+  const rl = rateLimit(`steam:${ip}`, { limit: 30, windowMs: 60_000 })
+  if (!rl.success) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  }
+
   const { steamId } = await params
 
   if (!steamId || steamId.length < 2) {

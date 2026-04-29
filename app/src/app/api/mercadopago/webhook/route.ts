@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendPremiumEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,6 +102,27 @@ export async function POST(req: NextRequest) {
         console.error('[MP webhook] Error al actualizar perfil:', dbError)
         // Retornar 500 para que MP reintente
         return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
+
+      // Enviar email de confirmación premium (fire-and-forget)
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', userId)
+          .single()
+
+        // Obtener email del usuario desde auth
+        const { data: authUser } = await supabase.auth.admin.getUserById(userId)
+        const userEmail = authUser?.user?.email ?? sub.payer_email
+
+        if (userEmail && profile?.username) {
+          const planName = tier === 'elite' ? 'Elite' : 'Pro'
+          await sendPremiumEmail(userEmail, profile.username, tier, planName)
+        }
+      } catch (emailErr) {
+        console.error('[MP webhook] Error enviando email premium:', emailErr)
+        // No fallamos el webhook por esto
       }
 
     } else if (sub.status === 'cancelled' || sub.status === 'paused') {

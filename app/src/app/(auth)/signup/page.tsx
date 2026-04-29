@@ -75,7 +75,14 @@ export default function SignupPage() {
       const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
       if (loginError) throw loginError
 
-      router.push('/feed')
+      // Enviar email de bienvenida (fire-and-forget — no bloqueamos si falla)
+      fetch('/api/email/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: email, username }),
+      }).catch(() => { /* silencioso */ })
+
+      router.push('/onboarding')
 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'No se pudo crear la cuenta.'

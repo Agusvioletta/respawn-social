@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { PostCard } from './PostCard'
 import { PostComposer } from './PostComposer'
+import { PostCardSkeleton } from '@/components/ui/Skeleton'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 const PAGE_SIZE = 20
@@ -217,12 +218,10 @@ export function FeedList({ initialPosts }: FeedListProps) {
 
           {/* Sentinel invisible para infinite scroll */}
           {hasMore && (
-            <div ref={sentinelRef} style={{ padding: '16px', textAlign: 'center' }}>
-              {loadingMore && (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-                  // cargando...
-                </span>
-              )}
+            <div ref={sentinelRef} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {loadingMore && Array.from({ length: 3 }).map((_, i) => (
+                <PostCardSkeleton key={i} />
+              ))}
             </div>
           )}
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { ClipCard, ClipData } from '@/components/clips/ClipCard'
+import { ClipCardSkeleton } from '@/components/ui/Skeleton'
 
 const GAMES = [
   'Valorant', 'Fortnite', 'CS2', 'League of Legends',
@@ -331,8 +332,12 @@ export default function ClipsPage() {
 
       {/* Grid de clips */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
-          Cargando clips...
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '16px',
+        }}>
+          {Array.from({ length: 6 }).map((_, i) => <ClipCardSkeleton key={i} />)}
         </div>
       ) : clips.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -360,23 +365,33 @@ export default function ClipsPage() {
 
       {/* Ver más */}
       {hasMore && !loading && clips.length > 0 && (
-        <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <button
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 32px',
-              fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)',
-              cursor: loadingMore ? 'not-allowed' : 'pointer',
-              opacity: loadingMore ? 0.5 : 1,
-              transition: 'all var(--transition)',
-            }}
-          >
-            {loadingMore ? 'Cargando...' : 'Ver más clips'}
-          </button>
+        <div style={{ marginTop: '24px' }}>
+          {loadingMore ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '16px',
+            }}>
+              {Array.from({ length: 3 }).map((_, i) => <ClipCardSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={handleLoadMore}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 32px',
+                  fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition)',
+                }}
+              >
+                Ver más clips
+              </button>
+            </div>
+          )}
         </div>
       )}
 
