@@ -11,37 +11,21 @@ function getResend() {
 
 const FROM = 'Respawn Social <noreply@respawnsocial.gg>'
 
-export async function sendWelcomeEmail(to: string, username: string) {
-  try {
-    const html = await render(WelcomeEmail({ username }))
-    const { error } = await getResend().emails.send({
-      from: FROM,
-      to,
-      subject: `¡Bienvenido a Respawn Social, @${username}! 🎮`,
-      html,
-    })
-    if (error) console.error('[Email] sendWelcome error:', error)
-  } catch (e) {
-    console.error('[Email] sendWelcome exception:', e)
-  }
+// Emails desactivados temporalmente hasta verificar dominio propio.
+// Para reactivar: configurar RESEND_API_KEY en Vercel y verificar el
+// dominio en resend.com, luego eliminar los returns anticipados.
+
+export async function sendWelcomeEmail(_to: string, _username: string) {
+  if (!process.env.RESEND_API_KEY) return
+  // TODO: reactivar cuando haya dominio verificado
 }
 
 export async function sendPremiumEmail(
-  to: string,
-  username: string,
-  tier: 'pro' | 'elite',
-  planName: string,
+  _to: string,
+  _username: string,
+  _tier: 'pro' | 'elite',
+  _planName: string,
 ) {
-  try {
-    const html = await render(PremiumEmail({ username, tier, planName }))
-    const { error } = await getResend().emails.send({
-      from: FROM,
-      to,
-      subject: `${tier === 'elite' ? '👑 Elite' : '⚡ Pro'} activado en Respawn Social`,
-      html,
-    })
-    if (error) console.error('[Email] sendPremium error:', error)
-  } catch (e) {
-    console.error('[Email] sendPremium exception:', e)
-  }
+  if (!process.env.RESEND_API_KEY) return
+  // TODO: reactivar cuando haya dominio verificado
 }
