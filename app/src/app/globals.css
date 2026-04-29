@@ -282,13 +282,15 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* Tabs: solo scroll en mobile, comportamiento ORIGINAL en desktop */
+/* Tabs: desktop = wrap (igual que el original), mobile = nowrap + scroll */
 .tabs-scroll {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap; /* comportamiento original en desktop */
 }
 @media (max-width: 767px) {
   .tabs-scroll {
+    flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
