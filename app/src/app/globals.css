@@ -204,13 +204,13 @@ html::-webkit-scrollbar-thumb:hover {
 
 /* ── Mobile responsive utilities ────────────────────────────────────────────── */
 
-/* Chat: altura exacta del viewport visible menos bottom nav */
+/* Chat: en mobile descuenta la bottom nav; en desktop igual que antes */
 .chat-full-height {
   height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 768px) {
   .chat-full-height {
-    height: 100dvh;
+    height: calc(100vh - 64px); /* valor original de desktop */
   }
 }
 
@@ -269,33 +269,60 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* Profile action buttons: wrap en mobile */
+/* Profile action buttons: exactamente igual a desktop, solo agrega wrap en mobile */
 .profile-actions {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  gap: 8px;        /* igual que el original */
   padding-bottom: 4px;
 }
+@media (max-width: 479px) {
+  .profile-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
 
-/* Tabs horizontales scrolleables en mobile */
+/* Tabs: solo scroll en mobile, comportamiento ORIGINAL en desktop */
 .tabs-scroll {
   display: flex;
   gap: 6px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-bottom: 2px;
 }
-.tabs-scroll::-webkit-scrollbar { display: none; }
+@media (max-width: 767px) {
+  .tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+  .tabs-scroll::-webkit-scrollbar { display: none; }
+}
 
-/* Profile page: padding lateral menor en mobile */
-.profile-body {
-  padding: 0 12px 24px;
+/* Profile tabs: en desktop los botones vuelven a flex:1 (igual que antes) */
+.profile-tabs-scroll {
+  display: flex;
+  gap: 0;
 }
-@media (min-width: 480px) {
+@media (max-width: 767px) {
+  .profile-tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .profile-tabs-scroll::-webkit-scrollbar { display: none; }
+  .profile-tabs-scroll > button {
+    flex-shrink: 0 !important;
+    flex: none !important;
+  }
+}
+
+/* Profile page: padding lateral menor en mobile, IGUAL en desktop */
+.profile-body {
+  padding: 0 20px 24px; /* igual que el original */
+}
+@media (max-width: 479px) {
   .profile-body {
-    padding: 0 20px 24px;
+    padding: 0 12px 24px;
   }
 }

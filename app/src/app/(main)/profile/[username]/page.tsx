@@ -719,10 +719,9 @@ export default function ProfilePage() {
       )}
 
       {/* ── TABS ────────────────────────────────────────────────────────────── */}
-      <div className="tabs-scroll" style={{
+      <div className="profile-tabs-scroll" style={{
         background: 'var(--deep)',
         borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10,
-        padding: '0 4px 0',
       }}>
         {([
           { key: 'posts',   label: `📝 Posts (${totalPosts})` },
@@ -731,7 +730,7 @@ export default function ProfilePage() {
           { key: 'torneos', label: `🎮 Torneos (${profileTournaments.length})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-            flexShrink: 0, padding: '13px 12px',
+            flex: 1, padding: '13px 8px',
             background: 'transparent', border: 'none',
             borderBottom: `2px solid ${activeTab === tab.key ? 'var(--cyan)' : 'transparent'}`,
             color: activeTab === tab.key ? 'var(--cyan)' : 'var(--text-muted)',
