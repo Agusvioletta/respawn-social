@@ -378,7 +378,7 @@ export default function PostPage() {
             {topComments.map((comment) => {
               const commentReplies = replies.filter((r) => r.parent_id === comment.id)
               const isOwnComment = user?.id === comment.user_id
-              const cDate = new Date(comment.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+              const cDate = new Date(comment.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
               return (
                 <div key={comment.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
@@ -460,7 +460,7 @@ export default function PostPage() {
                                 @{reply.username}
                               </Link>
                               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                                {new Date(reply.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(reply.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {user?.id === reply.user_id && (
                                 <button onClick={() => handleDeleteComment(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
