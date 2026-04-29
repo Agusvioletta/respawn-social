@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/avatar1.png",
+      "src": "/api/icon/192",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/avatar1.png",
+      "src": "/api/icon/512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -23,6 +23,5 @@
   ],
   "categories": ["social", "games", "entertainment"],
   "lang": "es-AR",
-  "dir": "ltr",
-  "screenshots": []
+  "dir": "ltr"
 }

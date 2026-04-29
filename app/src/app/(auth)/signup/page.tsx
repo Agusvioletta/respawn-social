@@ -49,8 +49,14 @@ export default function SignupPage() {
     if (password.length < 6) { setError('// Contraseña mínimo 6 caracteres.'); return }
     if (password !== confirmPassword) { setError('// Las contraseñas no coinciden.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('// Email inválido.'); return }
-    if (username.length < 3) { setError('// Username mínimo 3 caracteres.'); return }
+    if (username.length < 3)  { setError('// Username mínimo 3 caracteres.'); return }
+    if (username.length > 20) { setError('// Username máximo 20 caracteres.'); return }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) { setError('// Solo letras, números y _.'); return }
+    const RESERVED = ['admin','respawn','api','feed','explore','clips','lfg','tournaments',
+      'arcade','messages','premium','settings','profile','notifications','login','signup',
+      'terms','privacy','support','help','moderator','mod','staff','bot','system','null',
+      'undefined','root','superuser','respawnsocial']
+    if (RESERVED.includes(username.toLowerCase())) { setError('// Ese username no está disponible.'); return }
 
     setLoading(true)
     try {
@@ -188,7 +194,7 @@ export default function SignupPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={labelStyle}>Username</label>
             <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
-              placeholder="tu_nick_gamer" autoComplete="username" style={inputStyle} />
+              placeholder="tu_nick_gamer" autoComplete="username" maxLength={20} style={inputStyle} />
           </div>
 
           {/* Email */}
