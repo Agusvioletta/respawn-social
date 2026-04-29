@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
+import { TournamentCardSkeleton } from '@/components/ui/Skeleton'
 
 const GAME_ICONS: Record<string, string> = {
   'valorant': '🔫', 'minecraft': '⛏', 'league of legends': '⚔',
@@ -311,18 +312,18 @@ export default function TournamentsPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <button style={tabStyle('live')} onClick={() => setTab('live')}>🔴 En vivo {live.length > 0 && `(${live.length})`}</button>
-        <button style={tabStyle('upcoming')} onClick={() => setTab('upcoming')}>⏳ Próximos</button>
-        <button style={tabStyle('finished')} onClick={() => setTab('finished')}>✅ Finalizados</button>
-        <button style={tabStyle('mine')} onClick={() => setTab('mine')}>🎮 Mis torneos</button>
+      <div className="tabs-scroll" style={{ marginBottom: '20px' }}>
+        <button style={{ ...tabStyle('live'), flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setTab('live')}>🔴 En vivo {live.length > 0 && `(${live.length})`}</button>
+        <button style={{ ...tabStyle('upcoming'), flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setTab('upcoming')}>⏳ Próximos</button>
+        <button style={{ ...tabStyle('finished'), flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setTab('finished')}>✅ Finalizados</button>
+        <button style={{ ...tabStyle('mine'), flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setTab('mine')}>🎮 Mis torneos</button>
       </div>
 
       {/* Grid */}
       {loading ? (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '48px' }}>
-          Cargando torneos...
-        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+          {Array.from({ length: 4 }).map((_, i) => <TournamentCardSkeleton key={i} />)}
+        </div>
       ) : displayed.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px' }}>
           <div style={{ fontSize: '36px', marginBottom: '10px' }}>🏆</div>

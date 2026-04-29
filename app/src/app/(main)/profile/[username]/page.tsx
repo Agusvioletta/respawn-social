@@ -350,9 +350,8 @@ export default function ProfilePage() {
       })()}
 
       {/* ── MAIN CARD ───────────────────────────────────────────────────────── */}
-      <div style={{
+      <div className="profile-body" style={{
         background: 'var(--card)', borderBottom: '1px solid var(--border)',
-        padding: '0 20px 24px',
       }}>
         {/* Avatar row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
@@ -421,7 +420,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Follow / Edit */}
-          <div style={{ paddingBottom: '4px', display: 'flex', gap: '8px' }}>
+          <div className="profile-actions">
             {isOwn ? (
               <Link href="/settings" style={{ textDecoration: 'none' }}>
                 <button style={{
@@ -588,7 +587,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Level milestones */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: '3px' }}>
+          <div className="arcade-levels-grid">
             {LEVEL_NAMES.map((name, i) => {
               const lNum    = i + 1
               const reached = lvl.level > lNum
@@ -720,9 +719,10 @@ export default function ProfilePage() {
       )}
 
       {/* ── TABS ────────────────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', background: 'var(--deep)',
+      <div className="tabs-scroll" style={{
+        background: 'var(--deep)',
         borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10,
+        padding: '0 4px 0',
       }}>
         {([
           { key: 'posts',   label: `📝 Posts (${totalPosts})` },
@@ -731,12 +731,13 @@ export default function ProfilePage() {
           { key: 'torneos', label: `🎮 Torneos (${profileTournaments.length})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-            flex: 1, padding: '13px 8px',
+            flexShrink: 0, padding: '13px 12px',
             background: 'transparent', border: 'none',
             borderBottom: `2px solid ${activeTab === tab.key ? 'var(--cyan)' : 'transparent'}`,
             color: activeTab === tab.key ? 'var(--cyan)' : 'var(--text-muted)',
             fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
             letterSpacing: '1px', cursor: 'pointer', transition: 'all var(--transition)',
+            whiteSpace: 'nowrap',
           }}>
             {tab.label}
           </button>

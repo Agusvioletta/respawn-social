@@ -379,7 +379,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', background: 'var(--void)', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
+    <div className="chat-full-height" style={{ display: 'flex', flexDirection: 'column', background: 'var(--void)', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
       <style>{animations}</style>
 
       {/* ── HEADER: Squad Room ── */}

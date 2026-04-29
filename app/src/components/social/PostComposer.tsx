@@ -238,7 +238,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
           {/* LFG fields */}
           {isLFG && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="lfg-grid">
               <div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '1px' }}>JUEGO *</div>
                 <input

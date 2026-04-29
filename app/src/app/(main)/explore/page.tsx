@@ -242,9 +242,9 @@ function ExplorePage() {
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 16px 40px' }}>
 
       {/* ── Hero search ── */}
-      <div style={{
+      <div className="explore-hero" style={{
         background: 'var(--card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-xl)', padding: '40px 32px',
+        borderRadius: 'var(--radius-xl)',
         textAlign: 'center', position: 'relative', overflow: 'hidden',
         marginBottom: '24px',
       }}>
@@ -256,8 +256,8 @@ function ExplorePage() {
           WebkitMaskImage: 'radial-gradient(ellipse 80% 100% at 50% 0%, black, transparent)',
           maskImage: 'radial-gradient(ellipse 80% 100% at 50% 0%, black, transparent)',
         }} />
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 900,
+        <h1 className="explore-hero-title" style={{
+          fontFamily: 'var(--font-display)', fontWeight: 900,
           color: 'var(--text-primary)', letterSpacing: '2px', marginBottom: '8px',
           position: 'relative',
         }}>

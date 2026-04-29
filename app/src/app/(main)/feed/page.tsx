@@ -17,7 +17,7 @@ export default async function FeedPage() {
   }
 
   return (
-    <div style={{ padding: '24px 24px 24px 24px', display: 'flex', gap: '24px', alignItems: 'flex-start', maxWidth: '960px' }}>
+    <div className="feed-layout" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', maxWidth: '960px' }}>
       {/* Main feed */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <FeedList initialPosts={initialPosts} />

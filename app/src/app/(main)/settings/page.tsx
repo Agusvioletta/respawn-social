@@ -419,9 +419,9 @@ export default function SettingsPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="tabs-scroll" style={{ marginBottom: '20px' }}>
         {SECTIONS.map((s) => (
-          <button key={s.id} style={tabStyle(s.id)} onClick={() => setSection(s.id)}>
+          <button key={s.id} style={{ ...tabStyle(s.id), flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setSection(s.id)}>
             {s.icon} {s.label}
           </button>
         ))}

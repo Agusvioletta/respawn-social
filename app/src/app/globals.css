@@ -201,3 +201,101 @@ html::-webkit-scrollbar-thumb:hover {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── Mobile responsive utilities ────────────────────────────────────────────── */
+
+/* Chat: altura exacta del viewport visible menos bottom nav */
+.chat-full-height {
+  height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .chat-full-height {
+    height: 100dvh;
+  }
+}
+
+/* LFG form: 1 columna en mobile, 3 en desktop */
+.lfg-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: end;
+}
+@media (min-width: 480px) {
+  .lfg-grid {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+/* Arcade levels: 4 col mobile, 8 col desktop */
+.arcade-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+@media (min-width: 480px) {
+  .arcade-levels-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+/* Explore hero: padding reducido en mobile */
+.explore-hero {
+  padding: 24px 16px !important;
+}
+@media (min-width: 640px) {
+  .explore-hero {
+    padding: 40px 32px !important;
+  }
+}
+
+/* Explore hero título: tamaño reducido en mobile */
+.explore-hero-title {
+  font-size: 20px !important;
+}
+@media (min-width: 480px) {
+  .explore-hero-title {
+    font-size: 28px !important;
+  }
+}
+
+/* Feed: padding lateral reducido en mobile */
+.feed-layout {
+  padding: 12px 12px 12px 12px;
+}
+@media (min-width: 768px) {
+  .feed-layout {
+    padding: 24px 24px 24px 24px;
+  }
+}
+
+/* Profile action buttons: wrap en mobile */
+.profile-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding-bottom: 4px;
+}
+
+/* Tabs horizontales scrolleables en mobile */
+.tabs-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+}
+.tabs-scroll::-webkit-scrollbar { display: none; }
+
+/* Profile page: padding lateral menor en mobile */
+.profile-body {
+  padding: 0 12px 24px;
+}
+@media (min-width: 480px) {
+  .profile-body {
+    padding: 0 20px 24px;
+  }
+}
