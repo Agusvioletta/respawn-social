@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendWelcomeEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   // Rate limit: max 3 emails de bienvenida por IP cada 10 minutos
   const ip = getClientIp(req)
