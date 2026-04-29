@@ -1,20 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const setUser = useAuthStore((s) => s.setUser)
-  const supabase = createClient()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const setUser      = useAuthStore((s) => s.setUser)
+  const supabase     = createClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Mostrar error si el link de reset fue inválido/expirado
+  useEffect(() => {
+    if (searchParams.get('error') === 'link_invalido') {
+      setError('// El link expiró o es inválido. Pedí uno nuevo.')
+    }
+  }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -153,6 +161,20 @@ export default function LoginPage() {
               onFocus={(e) => (e.target.style.borderColor = 'var(--cyan-border)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
             />
+          </div>
+
+          {/* Olvidé mi contraseña */}
+          <div style={{ textAlign: 'right', marginTop: '-8px' }}>
+            <Link href="/forgot-password" style={{
+              fontFamily: 'var(--font-mono)', fontSize: '11px',
+              color: 'var(--text-muted)', textDecoration: 'none',
+              transition: 'color var(--transition)',
+            }}
+              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = 'var(--cyan)')}
+              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = 'var(--text-muted)')}
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
 
           {/* Error */}
