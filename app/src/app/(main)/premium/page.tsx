@@ -84,6 +84,7 @@ export default function PremiumPage() {
   const [billing, setBilling] = useState<Billing>('monthly')
   const [loading, setLoading] = useState<Tier | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [checkoutError, setCheckoutError] = useState('')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentTier = ((user as any)?.premium_tier ?? 'free') as string
@@ -91,28 +92,25 @@ export default function PremiumPage() {
   async function handleCheckout(tier: Tier) {
     if (!user) return
     setLoading(tier)
+    setCheckoutError('')
     try {
-      // Obtener el token de sesión para autenticarnos en la API route
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token ?? ''
 
       const res = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ tier, billing }),
       })
       const data = await res.json() as { url?: string; error?: string }
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert(data.error ?? 'Error al iniciar el pago.')
+        setCheckoutError(data.error ?? 'Error al iniciar el pago. Intentá de nuevo.')
       }
     } catch {
-      alert('Error de conexión.')
+      setCheckoutError('Error de conexión. Verificá tu internet e intentá de nuevo.')
     } finally {
       setLoading(null)
     }
@@ -135,6 +133,18 @@ export default function PremiumPage() {
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
           Destacate en la comunidad, creá torneos y accedé a features exclusivos.
         </p>
+
+        {/* Error de checkout */}
+        {checkoutError && (
+          <div style={{
+            marginTop: '16px', padding: '10px 16px',
+            background: 'rgba(255,79,123,0.08)', border: '1px solid rgba(255,79,123,0.35)',
+            borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--pink)' }}>⚠ {checkoutError}</span>
+            <button onClick={() => setCheckoutError('')} style={{ background: 'none', border: 'none', color: 'var(--pink)', cursor: 'pointer', fontSize: '14px', flexShrink: 0 }}>✕</button>
+          </div>
+        )}
 
         {/* Billing toggle */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0', marginTop: '24px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '3px' }}>

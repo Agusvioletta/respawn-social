@@ -319,6 +319,16 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
+/* Messages list: en mobile descuenta top header (52px) + bottom nav */
+.messages-list-height {
+  height: calc(100dvh - 52px - 60px - env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .messages-list-height {
+    height: calc(100vh - 64px);
+  }
+}
+
 /* Profile page: padding lateral menor en mobile, IGUAL en desktop */
 .profile-body {
   padding: 0 20px 24px; /* igual que el original */

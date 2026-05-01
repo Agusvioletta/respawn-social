@@ -137,7 +137,7 @@ export default function LFGPage() {
   const totalSlots = posts.reduce((s, p) => s + (p.lfg_slots ?? 0), 0)
 
   return (
-    <div style={{ maxWidth: '960px', padding: '24px 24px' }}>
+    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 16px' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>

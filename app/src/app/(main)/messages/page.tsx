@@ -136,7 +136,7 @@ export default function MessagesPage() {
   const newCandidates = profiles.filter(p => p.id !== user?.id && p.username.toLowerCase().includes(newSearch.toLowerCase())).slice(0, 10)
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="messages-list-height" style={{ maxWidth: '640px', margin: '0 auto', padding: '0', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
       <div style={{ padding: '20px 20px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0, background: 'var(--deep)' }}>

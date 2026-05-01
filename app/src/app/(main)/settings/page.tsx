@@ -326,15 +326,29 @@ export default function SettingsPage() {
   }
 
   async function handleDeleteAccount() {
-    const confirm1 = confirm('¿Segura? Esta acción es IRREVERSIBLE. Se borrarán todos tus posts, seguidores y progreso.')
-    if (!confirm1) return
+    const ok = confirm('¿Estás seguro/a? Esta acción es IRREVERSIBLE. Se borrarán todos tus posts, seguidores y progreso.')
+    if (!ok) return
     const input = window.prompt('Escribí tu username para confirmar:')
     if (input !== user?.username) { alert('Username incorrecto. Operación cancelada.'); return }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('profiles').delete().eq('id', user!.id)
-    await supabase.auth.signOut()
-    setUser(null)
-    router.push('/login')
+
+    try {
+      // Llamar a la route handler server-side que borra perfil + auth user
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const { error } = await res.json() as { error?: string }
+        alert(error ?? 'No se pudo borrar la cuenta. Intentá de nuevo.')
+        return
+      }
+      await supabase.auth.signOut()
+      setUser(null)
+      router.push('/login')
+    } catch {
+      alert('Error de conexión. Intentá de nuevo.')
+    }
   }
 
   const xpTotal = stats ? calculateXP({ posts: stats.posts, followers: stats.followers, following: stats.following, likes: stats.likes, gameLevels: stats.maxLevel }) : 0

@@ -108,6 +108,7 @@ export default function ChatPage() {
   const recChunks     = useRef<Blob[]>([])
   const recTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
   const [sendError,    setSendError]    = useState('')
+  const [micError,     setMicError]     = useState('')
 
   const bottomRef    = useRef<HTMLDivElement>(null)
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
@@ -264,7 +265,7 @@ export default function ChatPage() {
       setRecState('recording')
       setRecSeconds(0)
       recTimer.current = setInterval(() => setRecSeconds(s => s + 1), 1000)
-    } catch { alert('No se pudo acceder al micrófono.') }
+    } catch { setMicError('No se pudo acceder al micrófono.'); setTimeout(() => setMicError(''), 4000) }
   }
 
   function stopRecording() {
@@ -670,15 +671,15 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* ── Error de envío ────────────────────────────────────────────────────── */}
-      {sendError && (
+      {/* ── Error de envío / micrófono ──────────────────────────────────────── */}
+      {(sendError || micError) && (
         <div style={{
           padding: '6px 16px', background: 'rgba(255,79,123,0.1)',
           borderTop: '1px solid rgba(255,79,123,0.25)',
           fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--pink)',
           display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
         }}>
-          ⚠ {sendError}
+          ⚠ {sendError || micError}
         </div>
       )}
 
