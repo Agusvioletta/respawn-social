@@ -226,6 +226,9 @@ export function Navbar() {
     await supabase.auth.signOut(); setUser(null); router.push('/login')
   }
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
   // ── Estilos ──────────────────────────────────────────────────────────────
   const desktopNavItemStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: '12px',
@@ -262,7 +265,7 @@ export function Navbar() {
             const isMessages = item.href === '/messages'
             const showBadge  = isMessages && unreadMessages > 0
             return (
-              <Link key={item.href} href={item.href} style={{ ...desktopNavItemStyle(pathname.startsWith(item.href)), position: 'relative' }}>
+              <Link key={item.href} href={item.href} style={{ ...desktopNavItemStyle(isActive(item.href)), position: 'relative' }}>
                 <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 {item.label}
                 {showBadge && <BadgePill count={unreadMessages} />}
@@ -273,15 +276,15 @@ export function Navbar() {
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 
           {user && (
-            <Link href={`/profile/${user.username}`} style={desktopNavItemStyle(pathname.startsWith('/profile'))}>
+            <Link href={`/profile/${user.username}`} style={desktopNavItemStyle(isActive('/profile'))}>
               <span style={{ fontSize: '18px' }}>👤</span>Perfil
             </Link>
           )}
-          <Link href="/notifications" style={{ ...desktopNavItemStyle(pathname === '/notifications'), position: 'relative' }}>
+          <Link href="/notifications" style={{ ...desktopNavItemStyle(isActive('/notifications')), position: 'relative' }}>
             <span style={{ fontSize: '18px' }}>🔔</span>Notificaciones
             {unreadNotifs > 0 && <BadgePill count={unreadNotifs} />}
           </Link>
-          <Link href="/settings" style={desktopNavItemStyle(pathname === '/settings')}>
+          <Link href="/settings" style={desktopNavItemStyle(isActive('/settings'))}>
             <span style={{ fontSize: '18px' }}>⚙️</span>Configuración
           </Link>
         </div>
@@ -390,7 +393,7 @@ export function Navbar() {
       >
         {/* 4 ítems primarios */}
         {PRIMARY_NAV.map((item) => {
-          const active     = pathname.startsWith(item.href)
+          const active     = isActive(item.href)
           const isMessages = item.href === '/messages'
           const showBadge  = isMessages && unreadMessages > 0
           return (
@@ -415,7 +418,7 @@ export function Navbar() {
           <MobileNavItem
             icon={drawerOpen ? '✕' : '⋯'}
             label="Más"
-            active={drawerOpen || SECONDARY_NAV.some(i => pathname.startsWith(i.href)) || pathname.startsWith('/profile')}
+            active={drawerOpen || SECONDARY_NAV.some(i => isActive(i.href)) || isActive('/profile')}
             badge={unreadNotifs}
             isMore
           />
@@ -479,7 +482,7 @@ export function Navbar() {
         {/* Items secundarios */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '0 12px' }}>
           {SECONDARY_NAV.map(item => {
-            const active = pathname.startsWith(item.href)
+            const active = isActive(item.href)
             const isNotif = item.href === '/notifications'
             return (
               <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
