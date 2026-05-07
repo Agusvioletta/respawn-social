@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSelectedLayoutSegment } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
@@ -58,8 +58,9 @@ function playMsgSound() {
 }
 
 export function Navbar() {
-  const pathname = usePathname()
-  const router   = useRouter()
+  const pathname       = usePathname()
+  const activeSegment  = useSelectedLayoutSegment()
+  const router         = useRouter()
   const { user, setUser }                         = useAuthStore()
   const {
     unreadMessages, addUnread, clearUnread,
@@ -227,7 +228,12 @@ export function Navbar() {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  // useSelectedLayoutSegment() devuelve el segmento activo del nivel inmediato inferior
+  // al layout actual — es la forma correcta de hacer nav activa en App Router
+  const isActive = (href: string) => {
+    const segment = href.split('/').filter(Boolean)[0] // e.g. 'feed', 'arcade', 'profile'
+    return activeSegment === segment
+  }
 
   // ── Estilos ──────────────────────────────────────────────────────────────
   const desktopNavItemStyle = (active: boolean): React.CSSProperties => ({
