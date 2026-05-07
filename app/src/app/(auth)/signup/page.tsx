@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 
 const AVATARS = [
-  { id: 'avatar1.png', label: '🧑‍💻' },
-  { id: 'avatar2.png', label: '👾' },
+  { id: 'avatar1.png', src: '/avatar1.png' },
+  { id: 'avatar2.png', src: '/avatar2.png' },
 ]
 
 function getPasswordStrength(password: string) {
@@ -178,13 +178,15 @@ export default function SignupPage() {
                     borderRadius: 'var(--radius-md)',
                     border: selectedAvatar === av.id ? '2px solid var(--cyan)' : '2px solid var(--border)',
                     background: selectedAvatar === av.id ? 'var(--cyan-glow)' : 'var(--surface)',
-                    fontSize: '28px',
                     cursor: 'pointer',
                     boxShadow: selectedAvatar === av.id ? '0 0 12px rgba(0,255,247,0.3)' : 'none',
                     transition: 'all var(--transition)',
+                    padding: '4px',
+                    overflow: 'hidden',
                   }}
                 >
-                  {av.label}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={av.src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px', imageRendering: 'pixelated' }} />
                 </button>
               ))}
             </div>
