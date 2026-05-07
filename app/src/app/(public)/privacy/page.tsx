@@ -81,8 +81,8 @@ export default function PrivacyPage() {
       }}>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
           Responsable: Respawn Social · Contacto privacidad:{' '}
-          <a href="mailto:privacidad@respawnsocial.gg" style={{ color: 'var(--cyan)', textDecoration: 'none' }}>
-            privacidad@respawnsocial.gg
+          <a href="mailto:agustinamastrangelosoto@gmail.com" style={{ color: 'var(--cyan)', textDecoration: 'none' }}>
+            agustinamastrangelosoto@gmail.com
           </a>
         </p>
       </div>
