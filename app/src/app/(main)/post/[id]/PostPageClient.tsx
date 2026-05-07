@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
+import { RichText } from '@/components/ui/RichText'
 
 interface Comment {
   id: number
@@ -234,12 +235,6 @@ export default function PostPageClient() {
     })
   }
 
-  function formatContent(text: string) {
-    return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/#(\w+)/g, '<a href="/explore?q=$1" style="color:var(--cyan);text-decoration:none;">#$1</a>')
-      .replace(/@(\w+)/g, '<a href="/profile/$1" style="color:var(--purple);text-decoration:none;">@$1</a>')
-  }
 
   if (loading) return (
     <div style={{ padding: '60px 20px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -305,9 +300,9 @@ export default function PostPageClient() {
         </div>
 
         {post.content && (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '17px', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: post.image_url ? '14px' : '0', whiteSpace: 'pre-wrap' }}
-            dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
-          />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '17px', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: post.image_url ? '14px' : '0', whiteSpace: 'pre-wrap' }}>
+            <RichText text={post.content} />
+          </p>
         )}
 
         {post.image_url && (
@@ -406,9 +401,9 @@ export default function PostPageClient() {
                     )}
                   </div>
 
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.5', marginBottom: '10px', whiteSpace: 'pre-wrap' }}
-                    dangerouslySetInnerHTML={{ __html: formatContent(comment.content) }}
-                  />
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.5', marginBottom: '10px', whiteSpace: 'pre-wrap' }}>
+                    <RichText text={comment.content} />
+                  </p>
 
                   {/* Comment actions */}
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -482,9 +477,9 @@ export default function PostPageClient() {
                                 )
                               )}
                             </div>
-                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}
-                              dangerouslySetInnerHTML={{ __html: formatContent(reply.content) }}
-                            />
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>
+                              <RichText text={reply.content} />
+                            </p>
                           </div>
                         </div>
                       ))}

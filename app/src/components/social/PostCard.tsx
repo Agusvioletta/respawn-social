@@ -9,6 +9,7 @@ import { detectGameTag } from '@/lib/utils/xp'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import { ReportModal } from '@/components/ui/ReportModal'
+import { RichText } from '@/components/ui/RichText'
 import { useAuthGateStore } from '@/stores/authGateStore'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
@@ -149,12 +150,6 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
     }
   }
 
-  function formatContent(text: string) {
-    return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/#(\w+)/g, '<a href="/explore?q=$1" onclick="event.stopPropagation()" style="color:var(--cyan);text-decoration:none;cursor:pointer;">#$1</a>')
-      .replace(/@(\w+)/g, '<a href="/profile/$1" onclick="event.stopPropagation()" style="color:var(--purple);text-decoration:none;">@$1</a>')
-  }
 
   const [copied, setCopied] = useState(false)
 
@@ -320,15 +315,14 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
 
       {/* Content */}
       {post.content && (
-        <p
-          style={{
-            fontFamily: 'var(--font-body)', fontSize: '15px',
-            color: 'var(--text-primary)', lineHeight: '1.5',
-            marginBottom: post.image_url ? '12px' : '0',
-            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          }}
-          dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
-        />
+        <p style={{
+          fontFamily: 'var(--font-body)', fontSize: '15px',
+          color: 'var(--text-primary)', lineHeight: '1.5',
+          marginBottom: post.image_url ? '12px' : '0',
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 ' + (post.image_url ? '12px' : '0'),
+        }}>
+          <RichText text={post.content} onLinkClick={e => e.stopPropagation()} />
+        </p>
       )}
 
       {/* Image */}
