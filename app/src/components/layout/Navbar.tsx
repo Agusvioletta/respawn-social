@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter, useSelectedLayoutSegment } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
@@ -59,7 +59,6 @@ function playMsgSound() {
 
 export function Navbar() {
   const pathname       = usePathname()
-  const activeSegment  = useSelectedLayoutSegment()
   const router         = useRouter()
   const { user, setUser }                         = useAuthStore()
   const {
@@ -228,11 +227,13 @@ export function Navbar() {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  // useSelectedLayoutSegment() devuelve el segmento activo del nivel inmediato inferior
-  // al layout actual — es la forma correcta de hacer nav activa en App Router
+  // Comparamos solo el primer segmento del pathname actual vs el href.
+  // Esto garantiza que SOLO UN ítem esté activo a la vez sin importar
+  // sub-rutas (/messages/123 → activo: 'messages').
   const isActive = (href: string) => {
-    const segment = href.split('/').filter(Boolean)[0] // e.g. 'feed', 'arcade', 'profile'
-    return activeSegment === segment
+    const hrefSeg  = href.split('/').filter(Boolean)[0]   // 'feed', 'arcade', 'profile'…
+    const pathSeg  = pathname.split('/').filter(Boolean)[0]
+    return hrefSeg === pathSeg
   }
 
   // ── Estilos ──────────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ export function Navbar() {
     color: active ? 'var(--cyan)' : 'var(--text-secondary)',
     fontFamily: 'var(--font-display)', fontSize: '13px',
     fontWeight: active ? 700 : 500, letterSpacing: '1px',
-    transition: 'all var(--transition)', cursor: 'pointer',
+    transition: 'color var(--transition)', cursor: 'pointer',
     textDecoration: 'none', outline: 'none',
     WebkitTapHighlightColor: 'transparent',
     userSelect: 'none' as const,
@@ -497,7 +498,7 @@ export function Navbar() {
                   padding: '12px 14px', borderRadius: 'var(--radius-md)',
                   background: active ? 'var(--cyan-glow)' : 'transparent',
                   border: `1px solid ${active ? 'var(--cyan-border)' : 'transparent'}`,
-                  transition: 'all var(--transition)', position: 'relative',
+                  transition: 'color var(--transition)', position: 'relative',
                 }}>
                   <span style={{ fontSize: '18px', position: 'relative' }}>
                     {item.icon}
