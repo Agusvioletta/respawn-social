@@ -283,20 +283,22 @@ export function Navbar() {
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 
           {user && (
-            <Link href={`/profile/${user.username}`} style={desktopNavItemStyle(isActive('/profile'))}>
-              <span style={{ fontSize: '18px' }}>👤</span>Perfil
-            </Link>
+            <>
+              <Link href={`/profile/${user.username}`} style={desktopNavItemStyle(isActive('/profile'))}>
+                <span style={{ fontSize: '18px' }}>👤</span>Perfil
+              </Link>
+              <Link href="/notifications" style={{ ...desktopNavItemStyle(isActive('/notifications')), position: 'relative' }}>
+                <span style={{ fontSize: '18px' }}>🔔</span>Notificaciones
+                {unreadNotifs > 0 && <BadgePill count={unreadNotifs} />}
+              </Link>
+              <Link href="/settings" style={desktopNavItemStyle(isActive('/settings'))}>
+                <span style={{ fontSize: '18px' }}>⚙️</span>Configuración
+              </Link>
+            </>
           )}
-          <Link href="/notifications" style={{ ...desktopNavItemStyle(isActive('/notifications')), position: 'relative' }}>
-            <span style={{ fontSize: '18px' }}>🔔</span>Notificaciones
-            {unreadNotifs > 0 && <BadgePill count={unreadNotifs} />}
-          </Link>
-          <Link href="/settings" style={desktopNavItemStyle(isActive('/settings'))}>
-            <span style={{ fontSize: '18px' }}>⚙️</span>Configuración
-          </Link>
         </div>
 
-        {user && (
+        {user ? (
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
@@ -320,10 +322,32 @@ export function Navbar() {
             <button onClick={handleLogout} style={{
               background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
               color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '11px',
-              padding: '8px', cursor: 'pointer', letterSpacing: '1px', transition: 'all var(--transition)',
+              padding: '8px', cursor: 'pointer', letterSpacing: '1px', transition: 'color var(--transition)',
             }}>
               // salir
             </button>
+          </div>
+        ) : (
+          /* Anónimo: invitación a registrarse */
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <Link href="/signup" style={{
+              display: 'block', padding: '10px 14px', borderRadius: 'var(--radius-md)',
+              background: 'var(--cyan)', color: 'var(--void)',
+              fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 800,
+              letterSpacing: '1.5px', textAlign: 'center', textDecoration: 'none',
+              boxShadow: '0 0 16px rgba(0,255,247,0.3)',
+            }}>
+              CREAR CUENTA
+            </Link>
+            <Link href="/login" style={{
+              display: 'block', padding: '10px 14px', borderRadius: 'var(--radius-md)',
+              background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 500,
+              letterSpacing: '1px', textAlign: 'center', textDecoration: 'none',
+            }}>
+              Iniciar sesión
+            </Link>
           </div>
         )}
       </nav>
@@ -360,27 +384,39 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Acciones rápidas: notifs + perfil */}
+        {/* Acciones rápidas: notifs + perfil (o login si anónimo) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Link href="/notifications" style={{ textDecoration: 'none', position: 'relative', padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: '20px', lineHeight: 1 }}>🔔</span>
-            {unreadNotifs > 0 && (
-              <span style={{
-                position: 'absolute', top: '2px', right: '2px',
-                minWidth: '16px', height: '16px', borderRadius: '999px',
-                background: 'var(--pink)', color: '#fff',
-                fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 900,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '0 3px', boxShadow: '0 0 6px rgba(255,79,123,0.7)',
-              }}>
-                {unreadNotifs > 99 ? '99+' : unreadNotifs}
-              </span>
-            )}
-          </Link>
-          {user && (
-            <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none', padding: '4px' }}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={32} />
+          {user ? (
+            <>
+              <Link href="/notifications" style={{ textDecoration: 'none', position: 'relative', padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '20px', lineHeight: 1 }}>🔔</span>
+                {unreadNotifs > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '2px', right: '2px',
+                    minWidth: '16px', height: '16px', borderRadius: '999px',
+                    background: 'var(--pink)', color: '#fff',
+                    fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 900,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 3px', boxShadow: '0 0 6px rgba(255,79,123,0.7)',
+                  }}>
+                    {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                  </span>
+                )}
+              </Link>
+              <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none', padding: '4px' }}>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <UserAvatar avatar={user.avatar} photoUrl={(user as any).photo_url} username={user.username} size={32} />
+              </Link>
+            </>
+          ) : (
+            <Link href="/login" style={{
+              padding: '6px 14px', borderRadius: 'var(--radius-md)',
+              background: 'var(--cyan)', color: 'var(--void)',
+              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 800,
+              letterSpacing: '1px', textDecoration: 'none',
+              boxShadow: '0 0 12px rgba(0,255,247,0.3)',
+            }}>
+              ENTRAR
             </Link>
           )}
         </div>
@@ -426,7 +462,7 @@ export function Navbar() {
             icon={drawerOpen ? '✕' : '⋯'}
             label="Más"
             active={drawerOpen || SECONDARY_NAV.some(i => isActive(i.href)) || isActive('/profile')}
-            badge={unreadNotifs}
+            badge={user ? unreadNotifs : 0}
             isMore
           />
         </button>
@@ -465,8 +501,8 @@ export function Navbar() {
           <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'var(--border)' }} />
         </div>
 
-        {/* Usuario info */}
-        {user && (
+        {/* Usuario info o CTA de registro */}
+        {user ? (
           <Link href={`/profile/${user.username}`} style={{ textDecoration: 'none', display: 'block' }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: '12px',
@@ -484,6 +520,36 @@ export function Navbar() {
               </div>
             </div>
           </Link>
+        ) : (
+          <div style={{
+            padding: '12px 20px 16px',
+            borderBottom: '1px solid var(--border)',
+            marginBottom: '6px',
+            display: 'flex', flexDirection: 'column', gap: '8px',
+          }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Unite para postear, comentar y más
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Link href="/signup" onClick={() => setDrawerOpen(false)} style={{
+                flex: 1, padding: '10px', borderRadius: 'var(--radius-md)',
+                background: 'var(--cyan)', color: 'var(--void)',
+                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 800,
+                letterSpacing: '1px', textAlign: 'center', textDecoration: 'none',
+              }}>
+                CREAR CUENTA
+              </Link>
+              <Link href="/login" onClick={() => setDrawerOpen(false)} style={{
+                flex: 1, padding: '10px', borderRadius: 'var(--radius-md)',
+                background: 'transparent', border: '1px solid var(--border)',
+                color: 'var(--text-secondary)',
+                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 500,
+                letterSpacing: '1px', textAlign: 'center', textDecoration: 'none',
+              }}>
+                Iniciar sesión
+              </Link>
+            </div>
+          </div>
         )}
 
         {/* Items secundarios */}

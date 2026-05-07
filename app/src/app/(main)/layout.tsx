@@ -1,5 +1,6 @@
 import { Navbar } from '@/components/layout/Navbar'
 import { AuthProvider } from '@/components/layout/AuthProvider'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/lib/types/database'
 
@@ -34,6 +35,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           {children}
         </main>
       </div>
+      {/* Modal global para usuarios anónimos que intentan interactuar */}
+      <AuthGateModal />
     </AuthProvider>
   )
 }

@@ -30,24 +30,63 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getSession()
   const user = session?.user ?? null
 
-  // Rutas públicas que no requieren auth
-  const publicRoutes = ['/login', '/signup', '/terms', '/privacy', '/forgot-password']
-  const isPublicRoute =
-    request.nextUrl.pathname === '/' ||
-    publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
-  const isApiRoute  = request.nextUrl.pathname.startsWith('/api')
-  // Rutas de auth que necesitan estar siempre accesibles (callback, reset)
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth') ||
-                      request.nextUrl.pathname.startsWith('/reset-password')
+  const p = request.nextUrl.pathname
 
-  if (!user && !isPublicRoute && !isApiRoute && !isAuthRoute) {
+  // ── Rutas completamente públicas (auth / legal / landing) ─────────────────
+  const isPublicRoute =
+    p === '/' ||
+    p.startsWith('/login') ||
+    p.startsWith('/signup') ||
+    p.startsWith('/terms') ||
+    p.startsWith('/privacy') ||
+    p.startsWith('/forgot-password') ||
+    p.startsWith('/auth') ||
+    p.startsWith('/reset-password')
+
+  const isApiRoute = p.startsWith('/api')
+
+  // ── Rutas de browse: accesibles sin login (solo lectura) ──────────────────
+  // Cubren feed, explorar, perfiles, posts, clips, torneos, arcade, lfg, premium
+  const isBrowseRoute =
+    p.startsWith('/feed') ||
+    p.startsWith('/explore') ||
+    p.startsWith('/profile') ||
+    p.startsWith('/post') ||
+    p.startsWith('/clips') ||
+    p.startsWith('/tournaments') ||
+    p.startsWith('/arcade') ||
+    p.startsWith('/lfg') ||
+    p.startsWith('/premium')
+
+  // ── Rutas privadas: requieren sesión ──────────────────────────────────────
+  // /messages, /notifications, /settings, /onboarding son 100% personales
+  const isPrivateRoute =
+    p.startsWith('/messages') ||
+    p.startsWith('/notifications') ||
+    p.startsWith('/settings') ||
+    p.startsWith('/onboarding')
+
+  if (!user && isPrivateRoute) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('next', p)   // volver después de login
+    return NextResponse.redirect(url)
+  }
+
+  // Usuarios anónimos en rutas de browse → OK (sin redirect)
+  if (!user && (isBrowseRoute || isPublicRoute || isApiRoute)) {
+    return supabaseResponse
+  }
+
+  // Usuarios anónimos en rutas desconocidas → login
+  if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Usuarios logueados no pueden volver al login/signup, pero sí a reset-password
-  if (user && isPublicRoute) {
+  // Usuarios logueados en /login o /signup → feed
+  if (user && (p.startsWith('/login') || p.startsWith('/signup'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/feed'
     return NextResponse.redirect(url)

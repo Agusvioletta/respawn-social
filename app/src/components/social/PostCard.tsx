@@ -9,6 +9,7 @@ import { detectGameTag } from '@/lib/utils/xp'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import { ReportModal } from '@/components/ui/ReportModal'
+import { useAuthGateStore } from '@/stores/authGateStore'
 import type { PostWithMeta } from '@/lib/supabase/queries/posts'
 
 interface PostCardProps {
@@ -26,6 +27,7 @@ const REACTIONS = [
 
 export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
+  const showGate = useAuthGateStore((s) => s.show)
   const router = useRouter()
   const supabase = createClient()
 
@@ -74,7 +76,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
 
   async function handleReaction(type: string, e: React.MouseEvent) {
     e.stopPropagation()
-    if (!user) return
+    if (!user) { showGate(); return }
 
     const prevReaction = myReaction
     const prevCounts = { ...reactions }
@@ -110,7 +112,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
 
   async function handleLike(e: React.MouseEvent) {
     e.stopPropagation()
-    if (!user) return
+    if (!user) { showGate(); return }
 
     const newLiked = !liked
     setLiked(newLiked)
@@ -365,7 +367,7 @@ export function PostCard({ post, onDeleted, onLikeToggled }: PostCardProps) {
                   fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: isActive ? 700 : 400,
                   letterSpacing: '0.5px',
                   padding: '3px 9px',
-                  cursor: user ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   transition: 'all var(--transition)',
                   transform: isActive ? 'scale(1.05)' : 'scale(1)',
                 }}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/authStore'
+import Link from 'next/link'
 import { PostCard } from './PostCard'
 import { PostComposer } from './PostComposer'
 import { PostCardSkeleton } from '@/components/ui/Skeleton'
@@ -198,7 +199,49 @@ export function FeedList({ initialPosts }: FeedListProps) {
         </button>
       )}
 
-      <PostComposer onPost={handlePost} />
+      {user ? (
+        <PostComposer onPost={handlePost} />
+      ) : (
+        /* CTA para usuarios anónimos — invitación a unirse */
+        <div style={{
+          background: 'var(--card)',
+          border: '1px solid rgba(0,255,247,0.2)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px',
+          marginBottom: '16px',
+          display: 'flex', alignItems: 'center', gap: '16px',
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: 'var(--cyan)', letterSpacing: '1px', marginBottom: '4px' }}>
+              ¿Qué estás jugando?
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Unite a Respawn para publicar, comentar y conectar con otros gamers.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <Link href="/signup" style={{
+              padding: '8px 16px', borderRadius: 'var(--radius-md)',
+              background: 'var(--cyan)', color: 'var(--void)',
+              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 800,
+              letterSpacing: '1.5px', textDecoration: 'none',
+              boxShadow: '0 0 14px rgba(0,255,247,0.25)',
+            }}>
+              CREAR CUENTA
+            </Link>
+            <Link href="/login" style={{
+              padding: '8px 16px', borderRadius: 'var(--radius-md)',
+              background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-display)', fontSize: '11px',
+              letterSpacing: '1px', textDecoration: 'none',
+            }}>
+              Entrar
+            </Link>
+          </div>
+        </div>
+      )}
 
       {posts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>

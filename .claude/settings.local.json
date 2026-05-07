@@ -42,7 +42,9 @@
       "Bash(curl -s -X POST https://api.mercadopago.com/preapproval_plan -H 'Authorization: Bearer TEST-8326598415090755-042716-d3ee0e77180ac1095c6d335e580e085a-377581843' -H 'Content-Type: application/json' -d '{ *)",
       "Bash(git -C /mnt/c/Users/NoxiePC/Desktop/respawnsocial/app add src/app/api/mercadopago/checkout/route.ts)",
       "Bash(git -C /mnt/c/Users/NoxiePC/Desktop/respawnsocial/app commit -m \"fix: remove empty auto_recurring from MP checkout body\")",
-      "Bash(findstr /i \"MUX\\\\|VIDEO\\\\|CLIP\")"
+      "Bash(findstr /i \"MUX\\\\|VIDEO\\\\|CLIP\")",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(JSON.stringify\\({resend: p.dependencies?.resend, reactEmail: p.dependencies?.['@react-email/components']}, null, 2\\)\\)\")",
+      "Bash(npm install *)"
     ]
   }
 }
