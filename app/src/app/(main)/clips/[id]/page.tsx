@@ -23,10 +23,12 @@ interface Clip {
 
 interface ClipComment {
   id: number
+  clip_id: number
   user_id: string
   username: string
   avatar: string | null
   content: string
+  parent_id: number | null
   created_at: string
 }
 
@@ -44,12 +46,41 @@ export default function ClipDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [replyText, setReplyText] = useState<Record<number, string>>({})
+  const [openReply, setOpenReply] = useState<number | null>(null)
+  const [showReplies, setShowReplies] = useState<Record<number, boolean>>({})
+  const [commentLikeCounts, setCommentLikeCounts] = useState<Record<number, number>>({})
+  const [commentLikedIds, setCommentLikedIds] = useState<Set<number>>(new Set())
   const viewCountedRef = useRef(false)
 
   useEffect(() => {
     const id = params.id
     if (!id || !/^\d+$/.test(id as string)) { setLoading(false); return }
     loadClip(Number(id))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id])
+
+  // Realtime: nuevos comentarios
+  useEffect(() => {
+    const id = params.id
+    if (!id || !/^\d+$/.test(id as string)) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ch = (supabase as any)
+      .channel(`clip-comments:${id}`)
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'clip_comments',
+        filter: `clip_id=eq.${id}`,
+      }, (payload: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        setComments(prev => prev.some(c => c.id === payload.new.id) ? prev : [...prev, payload.new as ClipComment])
+      })
+      .on('postgres_changes' as any, {
+        event: 'DELETE', schema: 'public', table: 'clip_comments',
+        filter: `clip_id=eq.${id}`,
+      }, (payload: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        setComments(prev => prev.filter(c => c.id !== payload.old.id))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
@@ -69,8 +100,27 @@ export default function ClipDetailPage() {
 
       const { data: cmts } = await sb
         .from('clip_comments').select('*').eq('clip_id', id)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
       setComments(cmts ?? [])
+
+      // Likes de comentarios
+      try {
+        const ids = (cmts ?? []).map((c: ClipComment) => c.id)
+        if (ids.length > 0) {
+          const { data: clData } = await sb
+            .from('clip_comment_likes').select('clip_comment_id, user_id').in('clip_comment_id', ids)
+          if (clData) {
+            const counts: Record<number, number> = {}
+            const likedSet = new Set<number>()
+            for (const row of clData) {
+              counts[row.clip_comment_id] = (counts[row.clip_comment_id] ?? 0) + 1
+              if (user && row.user_id === user.id) likedSet.add(row.clip_comment_id)
+            }
+            setCommentLikeCounts(counts)
+            setCommentLikedIds(likedSet)
+          }
+        }
+      } catch { /* best effort */ }
     } catch (e) {
       console.error('[ClipDetail]', e)
     } finally {
@@ -134,6 +184,44 @@ export default function ClipDetailPage() {
     }
   }
 
+  async function handleReply(parentId: number) {
+    const content = replyText[parentId]?.trim()
+    if (!content || !user || !clip) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).from('clip_comments').insert({
+      clip_id: clip.id, user_id: user.id,
+      username: user.username,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      avatar: (user as any).photo_url ?? user.avatar ?? null,
+      content, parent_id: parentId,
+    }).select().single()
+    if (data) {
+      setComments(prev => [...prev, data])
+      setReplyText(r => ({ ...r, [parentId]: '' }))
+      setOpenReply(null)
+      setShowReplies(s => ({ ...s, [parentId]: true }))
+    }
+  }
+
+  async function handleCommentLike(commentId: number) {
+    if (!user) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const isLiked = commentLikedIds.has(commentId)
+    setCommentLikedIds(prev => { const n = new Set(prev); isLiked ? n.delete(commentId) : n.add(commentId); return n })
+    setCommentLikeCounts(prev => ({ ...prev, [commentId]: Math.max(0, (prev[commentId] ?? 0) + (isLiked ? -1 : 1)) }))
+    try {
+      if (isLiked) {
+        await sb.from('clip_comment_likes').delete().eq('clip_comment_id', commentId).eq('user_id', user.id)
+      } else {
+        await sb.from('clip_comment_likes').insert({ clip_comment_id: commentId, user_id: user.id })
+      }
+    } catch {
+      setCommentLikedIds(prev => { const n = new Set(prev); isLiked ? n.add(commentId) : n.delete(commentId); return n })
+      setCommentLikeCounts(prev => ({ ...prev, [commentId]: Math.max(0, (prev[commentId] ?? 0) + (isLiked ? 1 : -1)) }))
+    }
+  }
+
   async function handleDeleteComment(commentId: number) {
     if (!user) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,6 +259,13 @@ export default function ClipDetailPage() {
       document.body.removeChild(ta)
       setCopied(true); setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function formatContent(text: string) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/#(\w+)/g, '<a href="/explore?q=$1" style="color:var(--cyan);text-decoration:none;">#$1</a>')
+      .replace(/@(\w+)/g, '<a href="/profile/$1" style="color:var(--purple);text-decoration:none;">@$1</a>')
   }
 
   function relTime(iso: string) {
@@ -340,114 +435,155 @@ export default function ClipDetailPage() {
 
       {/* Comentarios */}
       <div>
-        <h2 style={{
-          fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700,
-          letterSpacing: '2px', color: 'var(--text-muted)', margin: '0 0 16px',
-        }}>
-          COMENTARIOS ({comments.length})
-        </h2>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '2px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          💬 COMENTARIOS ({comments.filter(c => !c.parent_id).length})
+        </div>
 
-        {/* Input */}
+        {/* Composer */}
         {user && (
-          <form onSubmit={handleComment} style={{ marginBottom: '24px', display: 'flex', gap: '10px' }}>
-            <div style={{ flexShrink: 0 }}>
-              <UserAvatar avatar={user.avatar} username={user.username} size={32} />
-            </div>
-            <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
+          <form onSubmit={handleComment} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <UserAvatar avatar={user.avatar} username={user.username} size={34} />
+              <textarea
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
-                placeholder="Escribí un comentario..."
-                maxLength={300}
+                placeholder="Comentá este clip..."
+                rows={2} maxLength={500}
                 style={{
-                  flex: 1,
-                  background: 'var(--card)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)', padding: '8px 12px',
-                  fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)',
-                  outline: 'none',
+                  flex: 1, resize: 'none',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', padding: '10px 14px',
+                  color: 'var(--text-primary)', fontFamily: 'var(--font-body)',
+                  fontSize: '14px', outline: 'none', width: '100%',
                 }}
               />
-              <button
-                type="submit"
-                disabled={submitting || !commentText.trim()}
-                style={{
-                  background: submitting || !commentText.trim() ? 'transparent' : 'var(--cyan-glow)',
-                  border: `1px solid ${submitting || !commentText.trim() ? 'var(--border)' : 'var(--cyan)'}`,
-                  borderRadius: 'var(--radius-md)', padding: '8px 14px',
-                  fontFamily: 'var(--font-mono)', fontSize: '11px',
-                  color: submitting || !commentText.trim() ? 'var(--text-muted)' : 'var(--cyan)',
-                  cursor: submitting || !commentText.trim() ? 'not-allowed' : 'pointer',
-                  transition: 'all var(--transition)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Enviar
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <button type="submit" disabled={submitting || !commentText.trim()} style={{
+                background: 'transparent', border: '1px solid var(--cyan)', borderRadius: 'var(--radius-md)',
+                color: 'var(--cyan)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                letterSpacing: '2px', padding: '6px 16px', cursor: 'pointer',
+                opacity: (!commentText.trim() || submitting) ? 0.4 : 1,
+              }}>
+                COMENTAR
               </button>
             </div>
           </form>
         )}
 
-        {comments.length === 0 ? (
-          <p style={{
-            fontFamily: 'var(--font-mono)', fontSize: '12px',
-            color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0',
-          }}>
-            // Sin comentarios todavía. ¡Sé el primero!
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {comments.map(c => (
-              <div key={c.id} style={{ display: 'flex', gap: '10px' }}>
-                <Link href={`/profile/${c.username}`} style={{ textDecoration: 'none', flexShrink: 0, marginTop: '2px' }}>
-                  <UserAvatar avatar={c.avatar} username={c.username} size={32} />
-                </Link>
-                <div style={{
-                  flex: 1,
-                  background: 'var(--card)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)', padding: '10px 12px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <Link href={`/profile/${c.username}`} style={{ textDecoration: 'none' }}>
-                      <span style={{
-                        fontFamily: 'var(--font-display)', fontSize: '12px',
-                        fontWeight: 600, color: 'var(--text-primary)',
+        {/* Lista de comentarios */}
+        {(() => {
+          const topComments = comments.filter(c => !c.parent_id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          const replies = comments.filter(c => c.parent_id)
+
+          if (topComments.length === 0) return (
+            <div style={{ textAlign: 'center', padding: '40px 20px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+              // Sin comentarios todavía. ¡Sé el primero!
+            </div>
+          )
+
+          const inputStyle: React.CSSProperties = {
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)', padding: '7px 12px',
+            color: 'var(--text-primary)', fontFamily: 'var(--font-body)',
+            fontSize: '13px', outline: 'none', width: '100%',
+          }
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {topComments.map(comment => {
+                const commentReplies = replies.filter(r => r.parent_id === comment.id)
+                const cDate = new Date(comment.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={comment.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Link href={`/profile/${comment.username}`}>
+                        <UserAvatar avatar={comment.avatar} username={comment.username} size={30} />
+                      </Link>
+                      <Link href={`/profile/${comment.username}`} style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                        @{comment.username}
+                      </Link>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>{cDate}</span>
+                      {(user?.id === comment.user_id || user?.id === clip.user_id) && (
+                        <button onClick={() => handleDeleteComment(comment.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                      )}
+                    </div>
+
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.5', marginBottom: '10px', whiteSpace: 'pre-wrap' }}
+                      dangerouslySetInnerHTML={{ __html: formatContent(comment.content) }}
+                    />
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button onClick={() => handleCommentLike(comment.id)} style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        background: commentLikedIds.has(comment.id) ? 'rgba(255,79,123,0.1)' : 'none',
+                        border: `1px solid ${commentLikedIds.has(comment.id) ? 'rgba(255,79,123,0.5)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-sm)', padding: '3px 10px',
+                        fontFamily: 'var(--font-mono)', fontSize: '10px',
+                        color: commentLikedIds.has(comment.id) ? 'var(--pink)' : 'var(--text-muted)',
+                        cursor: user ? 'pointer' : 'default', transition: 'all var(--transition)',
                       }}>
-                        @{c.username}
-                      </span>
-                    </Link>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {relTime(c.created_at)}
-                      </span>
-                      {(user?.id === c.user_id || user?.id === clip.user_id) && (
-                        <button
-                          onClick={() => handleDeleteComment(c.id)}
-                          style={{
-                            background: 'transparent', border: 'none',
-                            cursor: 'pointer', color: 'var(--text-muted)',
-                            fontSize: '12px', padding: 0, lineHeight: 1,
-                            opacity: 0.6, transition: 'opacity var(--transition)',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
-                        >
-                          🗑
+                        ♥ {commentLikeCounts[comment.id] || ''}
+                      </button>
+                      {user && (
+                        <button onClick={() => setOpenReply(openReply === comment.id ? null : comment.id)}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          ↩ Responder
+                        </button>
+                      )}
+                      {commentReplies.length > 0 && (
+                        <button onClick={() => setShowReplies(s => ({ ...s, [comment.id]: !s[comment.id] }))}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)', cursor: 'pointer' }}>
+                          {showReplies[comment.id] ? 'Ocultar' : `Ver ${commentReplies.length}`} respuesta{commentReplies.length !== 1 ? 's' : ''}
                         </button>
                       )}
                     </div>
+
+                    {openReply === comment.id && user && (
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <input type="text" value={replyText[comment.id] ?? ''} maxLength={280}
+                          onChange={e => setReplyText(r => ({ ...r, [comment.id]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') handleReply(comment.id) }}
+                          placeholder={`Respondé a @${comment.username}...`}
+                          style={inputStyle}
+                        />
+                        <button onClick={() => handleReply(comment.id)} style={{ background: 'transparent', border: '1px solid var(--cyan)', borderRadius: 'var(--radius-sm)', color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          enviar
+                        </button>
+                      </div>
+                    )}
+
+                    {showReplies[comment.id] && commentReplies.length > 0 && (
+                      <div style={{ marginTop: '10px', paddingLeft: '16px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {commentReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map(reply => (
+                          <div key={reply.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                            <UserAvatar avatar={reply.avatar} username={reply.username} size={24} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Link href={`/profile/${reply.username}`} style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                                  @{reply.username}
+                                </Link>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
+                                  {new Date(reply.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {user?.id === reply.user_id && (
+                                  <button onClick={() => handleDeleteComment(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                                )}
+                              </div>
+                              <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}
+                                dangerouslySetInnerHTML={{ __html: formatContent(reply.content) }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p style={{
-                    fontFamily: 'var(--font-body)', fontSize: '13px',
-                    color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5',
-                  }}>
-                    {c.content}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
