@@ -15,26 +15,46 @@ import { ConnectionsWidget } from '@/components/profile/ConnectionsWidget'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import { ReportModal } from '@/components/ui/ReportModal'
 
-// ── Logros ────────────────────────────────────────────────────────────────────
+// ── Logros (34 en total) ──────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
-  { icon: '📝', name: 'Primera Sangre',  desc: 'Publicá tu primer post',         check: (d: StatsData) => d.postCount >= 1  },
-  { icon: '🔥', name: 'En Racha',        desc: 'Publicá 10 posts',               check: (d: StatsData) => d.postCount >= 10 },
-  { icon: '💬', name: 'Sin Parar',       desc: 'Publicá 50 posts',               check: (d: StatsData) => d.postCount >= 50 },
-  { icon: '🤝', name: 'Sociable',        desc: 'Seguí a alguien',                check: (d: StatsData) => d.followingCount >= 1  },
-  { icon: '⭐', name: 'Popular',         desc: 'Conseguí 3 seguidores',          check: (d: StatsData) => d.followersCount >= 3  },
-  { icon: '🎤', name: 'Famoso',          desc: 'Conseguí 10 seguidores',         check: (d: StatsData) => d.followersCount >= 10 },
-  { icon: '👑', name: 'Leyenda Social',  desc: 'Conseguí 50 seguidores',         check: (d: StatsData) => d.followersCount >= 50 },
-  { icon: '💜', name: 'Querido',         desc: 'Recibí 5 likes',                 check: (d: StatsData) => d.likesReceived >= 5   },
-  { icon: '❤️', name: 'Muy Querido',     desc: 'Recibí 50 likes',                check: (d: StatsData) => d.likesReceived >= 50  },
-  { icon: '🐍', name: 'Snake Master',    desc: 'Superá Snake',                   check: (d: StatsData) => d.maxLevel >= 2 },
-  { icon: '🏓', name: 'Pong Pro',        desc: 'Ganá en Pong',                   check: (d: StatsData) => d.maxLevel >= 3 },
-  { icon: '🧱', name: 'Block Breaker',   desc: 'Superá Breakout',                check: (d: StatsData) => d.maxLevel >= 4 },
-  { icon: '☄️', name: 'Astronauta',      desc: 'Superá Asteroids',               check: (d: StatsData) => d.maxLevel >= 5 },
-  { icon: '🐦', name: 'Flappy Bird',     desc: 'Superá Flappy',                  check: (d: StatsData) => d.maxLevel >= 6 },
-  { icon: '🟪', name: 'Tetris God',      desc: 'Superá Tetris',                  check: (d: StatsData) => d.maxLevel >= 7 },
-  { icon: '👾', name: 'Space Cadet',     desc: 'Superá Space Invaders',          check: (d: StatsData) => d.maxLevel >= 8 },
-  { icon: '🎮', name: 'Arcade Master',   desc: 'Completá todo el Arcade',        check: (d: StatsData) => d.maxLevel >= 9 },
-  { icon: '🏆', name: 'Competidor',      desc: 'Inscribite en un torneo',        check: (d: StatsData) => d.tournamentsJoined >= 1 },
+  // Posts y social (12)
+  { icon: '📝', name: 'Primera Sangre',        desc: 'Publicá tu primer post',           check: (d: StatsData) => d.postCount >= 1    },
+  { icon: '🔥', name: 'En Racha',              desc: 'Publicá 10 posts',                 check: (d: StatsData) => d.postCount >= 10   },
+  { icon: '💬', name: 'Sin Parar',             desc: 'Publicá 50 posts',                 check: (d: StatsData) => d.postCount >= 50   },
+  { icon: '🗞️', name: 'Maratón de Posts',      desc: 'Publicá 100 posts',                check: (d: StatsData) => d.postCount >= 100  },
+  { icon: '🤝', name: 'Sociable',              desc: 'Seguí a alguien',                  check: (d: StatsData) => d.followingCount >= 1  },
+  { icon: '🎯', name: 'Gamer Social',          desc: 'Seguí a 5 personas',               check: (d: StatsData) => d.followingCount >= 5  },
+  { icon: '🌐', name: 'Networker',             desc: 'Seguí a 25 personas',              check: (d: StatsData) => d.followingCount >= 25 },
+  { icon: '⭐', name: 'Popular',               desc: 'Conseguí 3 seguidores',            check: (d: StatsData) => d.followersCount >= 3   },
+  { icon: '🎤', name: 'Famoso',                desc: 'Conseguí 10 seguidores',           check: (d: StatsData) => d.followersCount >= 10  },
+  { icon: '👑', name: 'Leyenda Social',        desc: 'Conseguí 50 seguidores',           check: (d: StatsData) => d.followersCount >= 50  },
+  { icon: '🌟', name: 'Idol Gamer',            desc: 'Conseguí 100 seguidores',          check: (d: StatsData) => d.followersCount >= 100 },
+  { icon: '💎', name: 'Comentarista',          desc: 'Escribí 10 comentarios',           check: (d: StatsData) => d.commentsCount >= 10   },
+  // Likes (4)
+  { icon: '💜', name: 'Querido',               desc: 'Recibí 5 likes',                   check: (d: StatsData) => d.likesReceived >= 5   },
+  { icon: '❤️', name: 'Muy Querido',           desc: 'Recibí 50 likes',                  check: (d: StatsData) => d.likesReceived >= 50  },
+  { icon: '💞', name: 'Adorado',               desc: 'Recibí 200 likes',                 check: (d: StatsData) => d.likesReceived >= 200 },
+  { icon: '🔴', name: 'Viral',                 desc: 'Recibí 500 likes',                 check: (d: StatsData) => d.likesReceived >= 500 },
+  // Arcade — 13 juegos + master (14)
+  { icon: '🐍', name: 'Snake Master',          desc: 'Superá Snake',                     check: (d: StatsData) => d.maxLevel >= 2  },
+  { icon: '🏓', name: 'Pong Pro',              desc: 'Ganá en Pong',                     check: (d: StatsData) => d.maxLevel >= 3  },
+  { icon: '🧱', name: 'Block Breaker',         desc: 'Superá Breakout',                  check: (d: StatsData) => d.maxLevel >= 4  },
+  { icon: '☄️', name: 'Astronauta',            desc: 'Superá Asteroids',                 check: (d: StatsData) => d.maxLevel >= 5  },
+  { icon: '🐦', name: 'Flappy Bird',           desc: 'Superá Flappy',                    check: (d: StatsData) => d.maxLevel >= 6  },
+  { icon: '🟪', name: 'Tetris God',            desc: 'Superá Tetris',                    check: (d: StatsData) => d.maxLevel >= 7  },
+  { icon: '👾', name: 'Space Cadet',           desc: 'Superá Space Invaders',            check: (d: StatsData) => d.maxLevel >= 8  },
+  { icon: '🦕', name: 'Dino Runner',           desc: 'Superá Dino Run',                  check: (d: StatsData) => d.maxLevel >= 9  },
+  { icon: '🧠', name: 'Memoria de Elefante',   desc: 'Superá Memory',                    check: (d: StatsData) => d.maxLevel >= 10 },
+  { icon: '🔨', name: 'Exterminador',          desc: 'Superá Whack-a-Mole',              check: (d: StatsData) => d.maxLevel >= 11 },
+  { icon: '🔢', name: '2048 God',              desc: 'Superá 2048',                      check: (d: StatsData) => d.maxLevel >= 12 },
+  { icon: '🐸', name: 'Rana Valiente',         desc: 'Superá Frogger',                   check: (d: StatsData) => d.maxLevel >= 13 },
+  { icon: '🏗️', name: 'Stack Master',          desc: 'Superá Stack',                     check: (d: StatsData) => d.maxLevel >= 14 },
+  { icon: '🎮', name: 'Arcade Master',         desc: 'Completá todos los 13 juegos',     check: (d: StatsData) => d.maxLevel >= 14 },
+  // Torneos (4)
+  { icon: '🏆', name: 'Competidor',            desc: 'Inscribite en un torneo',          check: (d: StatsData) => d.tournamentsJoined >= 1  },
+  { icon: '⚔️', name: 'Veterano de Torneos',   desc: 'Participá en 3 torneos',           check: (d: StatsData) => d.tournamentsJoined >= 3  },
+  { icon: '🛡️', name: 'Incansable',            desc: 'Participá en 5 torneos',           check: (d: StatsData) => d.tournamentsJoined >= 5  },
+  { icon: '🥇', name: 'Leyenda de Torneos',    desc: 'Participá en 10 torneos',          check: (d: StatsData) => d.tournamentsJoined >= 10 },
 ]
 
 const LEVEL_NAMES = ['Novato','Aprendiz','Jugador','Veterano','Elite','Leyenda','Máster','Campeón']
@@ -48,6 +68,11 @@ const ARCADE_GAMES = [
   { id: 'tetris',        emoji: '🟪', name: 'Tetris',         color: '#a78bfa' },
   { id: 'dino',          emoji: '🦕', name: 'Dino Run',       color: '#FF8C00' },
   { id: 'spaceinvaders', emoji: '👾', name: 'Space Invaders', color: '#4ade80' },
+  { id: 'memory',        emoji: '🧠', name: 'Memory',         color: '#00FFF7' },
+  { id: 'mole',          emoji: '🔨', name: 'Whack-a-Mole',   color: '#FF4F7B' },
+  { id: 'g2048',         emoji: '🔢', name: '2048',           color: '#FFB800' },
+  { id: 'frogger',       emoji: '🐸', name: 'Frogger',        color: '#4ade80' },
+  { id: 'stack',         emoji: '🏗️', name: 'Stack',          color: '#C084FC' },
 ]
 
 // Banner presets now come from the shared catalog (lib/banners.ts)

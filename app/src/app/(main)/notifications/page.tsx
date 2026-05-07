@@ -8,7 +8,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type NotifType = 'like' | 'comment' | 'follow' | 'message'
+type NotifType = 'like' | 'comment' | 'follow' | 'message' | 'mention'
 type Filter    = 'all' | NotifType
 
 interface Notif {
@@ -29,6 +29,7 @@ const TYPE_CONFIG: Record<NotifType, { icon: string; color: string; bg: string; 
   comment: { icon: '💬',  color: '#00FFF7', bg: 'rgba(0,255,247,0.06)',   label: 'Comentarios' },
   follow:  { icon: '✦',   color: '#C084FC', bg: 'rgba(192,132,252,0.08)', label: 'Seguidores'  },
   message: { icon: '✉️',  color: '#4ade80', bg: 'rgba(74,222,128,0.06)',  label: 'Mensajes'    },
+  mention: { icon: '@',   color: '#FFB800', bg: 'rgba(255,184,0,0.07)',   label: 'Menciones'   },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,9 +50,10 @@ function relativeTime(iso: string | null | undefined): string {
 function notifText(n: Notif) {
   switch (n.type) {
     case 'like':    return 'le dio like a tu post'
-    case 'comment': return `comentó en tu post`
+    case 'comment': return 'comentó en tu post'
     case 'follow':  return 'empezó a seguirte'
     case 'message': return 'te envió un mensaje'
+    case 'mention': return 'te mencionó'
   }
 }
 
@@ -170,6 +172,44 @@ export default function NotificationsPage() {
         }
       }
 
+      // ── Menciones (@username en posts y comentarios de otros) ────────────
+      if (user.username) {
+        const mentionPattern = `%@${user.username}%`
+        const [{ data: mentionPosts }, { data: mentionComments }] = await Promise.all([
+          sb.from('posts')
+            .select('id, user_id, username, avatar, content, created_at')
+            .neq('user_id', user.id)
+            .ilike('content', mentionPattern)
+            .order('created_at', { ascending: false })
+            .limit(20),
+          sb.from('comments')
+            .select('id, post_id, user_id, username, avatar, content, created_at')
+            .neq('user_id', user.id)
+            .ilike('content', mentionPattern)
+            .order('created_at', { ascending: false })
+            .limit(20),
+        ])
+
+        for (const p of (mentionPosts ?? [])) {
+          result.push({
+            id: `mention-post-${p.id}`, type: 'mention',
+            actor_id: p.user_id,
+            actor_username: p.username, actor_avatar: p.avatar,
+            post_id: p.id, content: p.content?.slice(0, 80),
+            created_at: p.created_at,
+          })
+        }
+        for (const c of (mentionComments ?? [])) {
+          result.push({
+            id: `mention-comment-${c.id}`, type: 'mention',
+            actor_id: c.user_id,
+            actor_username: c.username, actor_avatar: c.avatar,
+            post_id: c.post_id, content: c.content?.slice(0, 80),
+            created_at: c.created_at,
+          })
+        }
+      }
+
       // ── Solicitudes de seguimiento pendientes ────────────────────────────
       const { data: requests } = await sb
         .from('follow_requests').select('id, from_id, created_at')
@@ -240,6 +280,7 @@ export default function NotificationsPage() {
     { key: 'comment', label: '💬 Comentarios' },
     { key: 'follow',  label: '✦ Seguidores' },
     { key: 'message', label: '✉️ Mensajes' },
+    { key: 'mention', label: '@ Menciones' },
   ]
 
   return (

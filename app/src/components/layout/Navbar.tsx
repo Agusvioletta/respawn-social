@@ -121,6 +121,17 @@ export function Navbar() {
           )
         }
 
+        // Menciones @username en posts y comentarios nuevos
+        if (user!.username) {
+          const mentionPat = `%@${user!.username}%`
+          queries.push(
+            sb.from('posts').select('*', { count: 'exact', head: true })
+              .ilike('content', mentionPat).gte('created_at', since).neq('user_id', user!.id),
+            sb.from('comments').select('*', { count: 'exact', head: true })
+              .ilike('content', mentionPat).gte('created_at', since).neq('user_id', user!.id),
+          )
+        }
+
         const results = await Promise.all(queries)
         const total = results.reduce((s, r) => s + (r.count ?? 0), 0)
         setUnreadNotifs(total)
@@ -202,13 +213,10 @@ export function Navbar() {
       })
       // Nuevo comentario en cualquier post → filtramos client-side
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'comments' }, (payload: any) => {
-        if (
-          payload.new.user_id !== user!.id &&
-          myPostIdsRef.current.has(payload.new.post_id) &&
-          !onNotifsPage()
-        ) {
-          addUnreadNotif()
-        }
+        if (payload.new.user_id === user!.id || onNotifsPage()) return
+        const isMention = !!(user!.username && payload.new.content?.includes(`@${user!.username}`))
+        const isMyPost  = myPostIdsRef.current.has(payload.new.post_id)
+        if (isMention || isMyPost) addUnreadNotif()
       })
       // Nuevo post del usuario → agregar al set local
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'posts',

@@ -463,7 +463,7 @@ function ExplorePage() {
                   ['📝 Posts totales', stats.posts],
                   ['♥ Likes totales', stats.likes],
                   ['💬 Comentarios', stats.comments],
-                  ['🕹 Juegos disponibles', '8 (más pronto)'],
+                  ['🕹 Juegos disponibles', '13'],
                 ].map(([label, value], i, arr) => (
                   <div key={String(label)} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
