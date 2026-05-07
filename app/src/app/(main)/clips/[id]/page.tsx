@@ -51,6 +51,7 @@ export default function ClipDetailPage() {
   const [showReplies, setShowReplies] = useState<Record<number, boolean>>({})
   const [commentLikeCounts, setCommentLikeCounts] = useState<Record<number, number>>({})
   const [commentLikedIds, setCommentLikedIds] = useState<Set<number>>(new Set())
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const viewCountedRef = useRef(false)
 
   useEffect(() => {
@@ -229,6 +230,7 @@ export default function ClipDetailPage() {
       .from('clip_comments').delete()
       .eq('id', commentId).eq('user_id', user.id)
     setComments(prev => prev.filter(c => c.id !== commentId))
+    setConfirmDeleteId(null)
   }
 
   async function handleDeleteClip() {
@@ -505,7 +507,15 @@ export default function ClipDetailPage() {
                       </Link>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>{cDate}</span>
                       {(user?.id === comment.user_id || user?.id === clip.user_id) && (
-                        <button onClick={() => handleDeleteComment(comment.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                        confirmDeleteId === comment.id ? (
+                          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>¿Borrar?</span>
+                            <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.4)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--pink)', cursor: 'pointer' }}>Sí</button>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(comment.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.6 }}>✕</button>
+                        )
                       )}
                     </div>
 
@@ -554,25 +564,55 @@ export default function ClipDetailPage() {
                     )}
 
                     {showReplies[comment.id] && commentReplies.length > 0 && (
-                      <div style={{ marginTop: '10px', paddingLeft: '16px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ marginTop: '10px', paddingLeft: '16px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {commentReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map(reply => (
                           <div key={reply.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                             <UserAvatar avatar={reply.avatar} username={reply.username} size={24} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                 <Link href={`/profile/${reply.username}`} style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}>
                                   @{reply.username}
                                 </Link>
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
                                   {new Date(reply.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                                {user?.id === reply.user_id && (
-                                  <button onClick={() => handleDeleteComment(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                                {(user?.id === reply.user_id || user?.id === clip.user_id) && (
+                                  confirmDeleteId === reply.id ? (
+                                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>¿Borrar?</span>
+                                      <button onClick={() => handleDeleteComment(reply.id)} style={{ background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.4)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--pink)', cursor: 'pointer' }}>Sí</button>
+                                      <button onClick={() => setConfirmDeleteId(null)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>No</button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => setConfirmDeleteId(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.6 }}>✕</button>
+                                  )
                                 )}
                               </div>
-                              <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}
+                              <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '0 0 6px', whiteSpace: 'pre-wrap' }}
                                 dangerouslySetInnerHTML={{ __html: formatContent(reply.content) }}
                               />
+                              {/* Acciones de reply */}
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <button onClick={() => handleCommentLike(reply.id)} style={{
+                                  display: 'flex', alignItems: 'center', gap: '4px',
+                                  background: commentLikedIds.has(reply.id) ? 'rgba(255,79,123,0.1)' : 'none',
+                                  border: `1px solid ${commentLikedIds.has(reply.id) ? 'rgba(255,79,123,0.5)' : 'var(--border)'}`,
+                                  borderRadius: 'var(--radius-sm)', padding: '2px 8px',
+                                  fontFamily: 'var(--font-mono)', fontSize: '10px',
+                                  color: commentLikedIds.has(reply.id) ? 'var(--pink)' : 'var(--text-muted)',
+                                  cursor: user ? 'pointer' : 'default', transition: 'all var(--transition)',
+                                }}>
+                                  ♥ {commentLikeCounts[reply.id] || ''}
+                                </button>
+                                {user && (
+                                  <button onClick={() => {
+                                    setOpenReply(comment.id)
+                                    setReplyText(r => ({ ...r, [comment.id]: `@${reply.username} ` }))
+                                  }} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '2px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                    ↩ Responder
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}

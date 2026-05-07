@@ -51,6 +51,7 @@ export default function PostPageClient() {
   const [commentLikedIds, setCommentLikedIds] = useState<Set<number>>(new Set())
   // Share
   const [copied, setCopied] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   async function loadPost() {
     if (!/^\d+$/.test(params.id as string)) { setLoading(false); return }
@@ -171,10 +172,11 @@ export default function PostPageClient() {
   }
 
   async function handleDeleteComment(commentId: number) {
-    if (!confirm('¿Borrar este comentario?') || !user) return
+    if (!user) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('comments').delete().eq('id', commentId).eq('user_id', user.id)
     setPost((p) => p ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p)
+    setConfirmDeleteId(null)
   }
 
   async function handleDeletePost() {
@@ -392,9 +394,15 @@ export default function PostPageClient() {
                     </Link>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>{cDate}</span>
                     {isOwnComment && (
-                      <button onClick={() => handleDeleteComment(comment.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        ✕
-                      </button>
+                      confirmDeleteId === comment.id ? (
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>¿Borrar?</span>
+                          <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.4)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--pink)', cursor: 'pointer' }}>Sí</button>
+                          <button onClick={() => setConfirmDeleteId(null)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>No</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(comment.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.6 }}>✕</button>
+                      )
                     )}
                   </div>
 
@@ -463,7 +471,15 @@ export default function PostPageClient() {
                                 {new Date(reply.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {user?.id === reply.user_id && (
-                                <button onClick={() => handleDeleteComment(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                                confirmDeleteId === reply.id ? (
+                                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>¿Borrar?</span>
+                                    <button onClick={() => handleDeleteComment(reply.id)} style={{ background: 'rgba(255,79,123,0.1)', border: '1px solid rgba(255,79,123,0.4)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--pink)', cursor: 'pointer' }}>Sí</button>
+                                    <button onClick={() => setConfirmDeleteId(null)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>No</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setConfirmDeleteId(reply.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.6 }}>✕</button>
+                                )
                               )}
                             </div>
                             <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}
