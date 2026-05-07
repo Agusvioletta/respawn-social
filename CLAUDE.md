@@ -13,7 +13,7 @@ Una plataforma integral de gaming en español (es-AR) que combina:
 - **Plataforma de torneos** profesional (brackets, equipos, rankings, premios, sponsors)
 - **Marketplace / monetización** (suscripciones premium, tienda de avatares/items, torneos de pago)
 - **Contenido de creadores** (clips de video, streams, monetización)
-- **Arcade integrado** (8 juegos retro con progresión y leaderboards)
+- **Arcade integrado** (13 juegos retro con progresión y leaderboards)
 - **API pública** (integraciones: Steam, Discord, Twitch, estadísticas externas)
 
 **Escala objetivo:** Plataforma de producción completa, no un MVP.
@@ -95,7 +95,7 @@ Storage bucket: `post-images`
 ### XP / Niveles
 - **Fórmula:** posts×10 + followers×8 + following×5 + likes×3 + comments×4 + game_levels×50
 - **Niveles (1-8):** Novato → Aprendiz → Jugador → Veterano → Elite → Leyenda → Máster → Campeón
-- **Juegos:** 8 juegos desbloqueados secuencialmente via `profiles.max_level`
+- **Juegos:** 13 juegos desbloqueados secuencialmente via `profiles.max_level`
 - **Logros:** 34 en total, definidos en `settings.js` (migrar a `lib/achievements.ts`)
 
 ### Torneos

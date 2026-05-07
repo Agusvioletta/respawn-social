@@ -61,7 +61,7 @@ const SECTIONS: { id: Section; icon: string; label: string }[] = [
 
 const FAQ = [
   { q: '¿Cómo subo de nivel?', a: 'Publicando posts, consiguiendo likes y seguidores, y completando juegos del arcade. Cada acción suma XP.' },
-  { q: '¿Cómo desbloqueo más juegos?', a: 'Completá el juego anterior en el arcade. Snake → Pong → Breakout → Asteroids → Flappy → Tetris → Dino → Space Invaders.' },
+  { q: '¿Cómo desbloqueo más juegos?', a: 'Subí de nivel jugando y participando en la comunidad. El arcade tiene 13 juegos que se desbloquean progresivamente desde nivel 1.' },
   { q: '¿Se puede cambiar el avatar?', a: 'Sí, desde esta página en la sección "Perfil".' },
   { q: '¿Los datos se guardan en la nube?', a: 'Sí, usamos Supabase (PostgreSQL). Tus datos están seguros y encriptados.' },
   { q: '¿Qué es un post LFG?', a: '"Looking for Group" — un post especial para buscar compañeros de juego. Podés indicar el juego, plataforma y cuántos lugares quedan.' },

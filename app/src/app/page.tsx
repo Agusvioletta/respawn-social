@@ -33,7 +33,7 @@ const FEATURES = [
   {
     icon: '🕹️',
     title: 'Arcade',
-    desc: '8 juegos retro integrados con sistema de XP, niveles y leaderboards globales.',
+    desc: '13 juegos retro integrados con sistema de XP, niveles y leaderboards globales.',
     color: 'var(--purple)',
   },
   {
@@ -51,7 +51,7 @@ const FEATURES = [
 ]
 
 const STATS = [
-  { value: '8', label: 'Juegos en el arcade' },
+  { value: '13', label: 'Juegos en el arcade' },
   { value: '∞', label: 'Torneos posibles' },
   { value: '100%', label: 'Hecho para gamers' },
   { value: 'Free', label: 'Para empezar' },

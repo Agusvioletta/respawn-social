@@ -37,7 +37,7 @@ export function WelcomeEmail({ username }: Props) {
             {[
               { icon: '🏠', title: 'Feed Social', desc: 'Publicá, seguí gamers y chequeá qué está pasando.' },
               { icon: '🏆', title: 'Torneos', desc: 'Inscribite en torneos o creá el tuyo propio.' },
-              { icon: '🕹️', title: 'Arcade', desc: '8 juegos retro integrados para ganar XP y subir de nivel.' },
+              { icon: '🕹️', title: 'Arcade', desc: '13 juegos retro integrados para ganar XP y subir de nivel.' },
               { icon: '🎬', title: 'Clips', desc: 'Subí tus mejores momentos y compartílos con la comunidad.' },
             ].map((f) => (
               <Section key={f.title} style={featureItem}>

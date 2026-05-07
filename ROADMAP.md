@@ -20,7 +20,7 @@ Respawn Social es una plataforma integral de gaming en español que unifica:
 ## Estado actual
 
 MVP funcional en Vanilla JS + Supabase con:
-- Auth, feed, perfiles, mensajes, explorar, torneos básicos, 8 juegos arcade, PWA
+- Auth, feed, perfiles, mensajes, explorar, torneos básicos, 13 juegos arcade, PWA
 
 ---
 
