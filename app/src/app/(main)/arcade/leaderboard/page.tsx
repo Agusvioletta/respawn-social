@@ -54,7 +54,18 @@ export default function LeaderboardPage() {
       if (from) q = q.gte('created_at', from)
 
       const { data } = await q
-      setRows(data ?? [])
+
+      // Deduplicar: solo el mejor score por usuario
+      // (la query viene ordenada por score DESC, así que el primer registro
+      // de cada user_id es siempre su puntaje más alto)
+      const seen = new Set<string>()
+      const unique = (data ?? []).filter((row: ScoreRow) => {
+        if (seen.has(row.user_id)) return false
+        seen.add(row.user_id)
+        return true
+      })
+
+      setRows(unique)
       setLoading(false)
     }
     load()
