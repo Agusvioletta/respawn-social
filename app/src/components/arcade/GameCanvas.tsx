@@ -10,6 +10,8 @@ import { GAMES } from '@/lib/games/types'
 const WIN_THRESHOLDS: Record<string, number> = {
   snake: 100, pong: 100, breakout: 200, asteroids: 500,
   flappy: 100, tetris: 300, dino: 200, spaceinvaders: 300,
+  // nuevos juegos
+  memory: 400, mole: 150, g2048: 1000, frogger: 300, stack: 400,
 }
 
 export type GameState = 'idle' | 'playing' | 'gameover'
@@ -43,6 +45,19 @@ const CONTROL_TYPES: Record<string, ControlType> = {
   flappy:        'none',       // tap canvas ya funciona
   dino:          'duck_only',  // tap canvas = saltar, solo agregar agachar
   spaceinvaders: 'shooter',
+  // nuevos juegos
+  memory:        'none',       // click en canvas
+  mole:          'none',       // click en canvas
+  g2048:         'dpad4',      // flechas / WASD
+  frogger:       'dpad4',      // flechas / WASD
+  stack:         'none',       // espacio o click canvas
+}
+
+// Hints específicos por juego (override de hintText para control 'none')
+const GAME_HINT_OVERRIDE: Record<string, string> = {
+  memory: 'Click / tap para voltear las cartas',
+  mole:   'Click / tap los topos para golpearlos',
+  stack:  'ESPACIO o tap para soltar el bloque',
 }
 
 // ── Despachar evento de teclado sintético ─────────────────────────────────────
@@ -304,6 +319,9 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
     none:      'Espacio o tap para saltar',
   }
 
+  // Usar override si existe para este juego específico
+  const activeHint = GAME_HINT_OVERRIDE[game.id] ?? hintText[controlType]
+
   return (
     <div style={{ maxWidth: `${width + 32}px`, margin: '0 auto', padding: '16px' }}>
 
@@ -408,7 +426,7 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
               JUGAR
             </button>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0 16px' }}>
-              {hintText[controlType]}
+              {activeHint}
             </p>
           </div>
         )}
@@ -539,7 +557,7 @@ export function GameCanvas({ game, engine, width = 480, height = 480 }: GameCanv
       {/* Hint desktop (solo en playing + hay controles para ese juego) */}
       {controlType !== 'none' && state === 'playing' && (
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px', letterSpacing: '0.5px' }}>
-          desktop: {hintText[controlType]}
+          desktop: {activeHint}
         </p>
       )}
     </div>
