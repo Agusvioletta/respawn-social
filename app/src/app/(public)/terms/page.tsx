@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: 'Términos de Servicio' }
 const SECTIONS = [
   {
     title: '1. Aceptación de los términos',
-    content: `Al registrarte y usar Respawn Social ("la Plataforma"), aceptás estos Términos de Servicio. Si no estás de acuerdo, no uses la Plataforma. Nos reservamos el derecho de modificar estos términos en cualquier momento; los cambios se notificarán con 15 días de anticipación.`,
+    content: `Al registrarte y usar Respawn Social aceptás estos Términos de Servicio. Si no estás de acuerdo, no uses Respawn. Nos reservamos el derecho de modificar estos términos en cualquier momento; los cambios se notificarán con 15 días de anticipación.`,
   },
   {
     title: '2. Elegibilidad',
@@ -17,11 +17,11 @@ const SECTIONS = [
   },
   {
     title: '4. Conducta del usuario',
-    content: `Está prohibido: publicar contenido ilegal, pornográfico o violento; acosar, amenazar o difamar a otros usuarios; hacer spam o publicidad no autorizada; crear cuentas falsas o suplantar identidades; intentar hackear o comprometer la seguridad de la Plataforma; publicar información personal de terceros sin su consentimiento.`,
+    content: `Está prohibido: publicar contenido ilegal, pornográfico o violento; acosar, amenazar o difamar a otros usuarios; hacer spam o publicidad no autorizada; crear cuentas falsas o suplantar identidades; intentar hackear o comprometer la seguridad de Respawn; publicar información personal de terceros sin su consentimiento.`,
   },
   {
     title: '5. Contenido generado por usuarios',
-    content: `Al publicar contenido (posts, clips, comentarios), otorgás a Respawn Social una licencia no exclusiva, mundial y libre de regalías para usar, mostrar y distribuir dicho contenido dentro de la Plataforma. Seguís siendo el dueño de tu contenido. Sos responsable de que el contenido que publicás no infrinja derechos de terceros.`,
+    content: `Al publicar contenido (posts, clips, comentarios), otorgás a Respawn Social una licencia no exclusiva, mundial y libre de regalías para usar, mostrar y distribuir dicho contenido dentro de Respawn. Seguís siendo el dueño de tu contenido. Sos responsable de que el contenido que publicás no infrinja derechos de terceros.`,
   },
   {
     title: '6. Suscripciones premium',
@@ -29,15 +29,15 @@ const SECTIONS = [
   },
   {
     title: '7. Propiedad intelectual',
-    content: `La Plataforma, su diseño, código y contenido original son propiedad de Respawn Social. Queda prohibida la reproducción, distribución o modificación sin autorización expresa. El contenido de usuarios pertenece a sus respectivos creadores según lo descrito en la sección 5.`,
+    content: `Respawn Social, su diseño, código y contenido original son propiedad de Respawn Social. Queda prohibida la reproducción, distribución o modificación sin autorización expresa. El contenido de usuarios pertenece a sus respectivos creadores según lo descrito en la sección 5.`,
   },
   {
     title: '8. Limitación de responsabilidad',
-    content: `Respawn Social no se hace responsable por daños indirectos, incidentales o consecuentes derivados del uso o imposibilidad de uso de la Plataforma. En ningún caso nuestra responsabilidad superará el monto pagado por el usuario en los últimos 12 meses.`,
+    content: `Respawn Social no se hace responsable por daños indirectos, incidentales o consecuentes derivados del uso o imposibilidad de uso de Respawn. En ningún caso nuestra responsabilidad superará el monto pagado por el usuario en los últimos 12 meses.`,
   },
   {
     title: '9. Terminación',
-    content: `Podemos suspender o terminar tu acceso a la Plataforma por violaciones a estos términos, con o sin previo aviso. Podés eliminar tu cuenta en cualquier momento desde Configuración. Tras la eliminación, tu contenido puede permanecer en nuestros sistemas por hasta 90 días por razones técnicas.`,
+    content: `Podemos suspender o terminar tu acceso a Respawn por violaciones a estos términos, con o sin previo aviso. Podés eliminar tu cuenta en cualquier momento desde Configuración. Tras la eliminación, tu contenido puede permanecer en nuestros sistemas por hasta 90 días por razones técnicas.`,
   },
   {
     title: '10. Ley aplicable',

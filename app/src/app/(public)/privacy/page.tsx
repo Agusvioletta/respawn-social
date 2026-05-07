@@ -9,11 +9,11 @@ const SECTIONS = [
   },
   {
     title: '2. Cómo usamos tu información',
-    content: `Usamos tu información para: proveer y mejorar los servicios de la Plataforma; personalizar tu experiencia (feed, recomendaciones); enviarte notificaciones y emails relevantes; detectar y prevenir fraude, spam y violaciones de los Términos; cumplir obligaciones legales; procesar pagos a través de nuestros proveedores de pago.`,
+    content: `Usamos tu información para: proveer y mejorar Respawn; personalizar tu experiencia (feed, recomendaciones); enviarte notificaciones y emails relevantes; detectar y prevenir fraude, spam y violaciones de los Términos; cumplir obligaciones legales; procesar pagos a través de nuestros proveedores de pago.`,
   },
   {
     title: '3. Compartir información',
-    content: `No vendemos tu información personal a terceros. Podemos compartir datos con: proveedores de servicios que nos ayudan a operar la Plataforma (hosting, analytics, emails); cuando sea requerido por ley o proceso judicial; en caso de fusión, adquisición o venta de activos (con previo aviso). Tu perfil público (username, avatar, bio) es visible para todos los usuarios.`,
+    content: `No vendemos tu información personal a terceros. Podemos compartir datos con: proveedores de servicios que nos ayudan a operar Respawn (hosting, analytics, emails); cuando sea requerido por ley o proceso judicial; en caso de fusión, adquisición o venta de activos (con previo aviso). Tu perfil público (username, avatar, bio) es visible para todos los usuarios.`,
   },
   {
     title: '4. Almacenamiento y seguridad',
@@ -21,7 +21,7 @@ const SECTIONS = [
   },
   {
     title: '5. Cookies y tecnologías similares',
-    content: `Usamos cookies esenciales para mantener tu sesión activa. No usamos cookies de seguimiento publicitario de terceros. Podés controlar las cookies desde la configuración de tu navegador, aunque esto puede afectar la funcionalidad de la Plataforma.`,
+    content: `Usamos cookies esenciales para mantener tu sesión activa. No usamos cookies de seguimiento publicitario de terceros. Podés controlar las cookies desde la configuración de tu navegador, aunque esto puede afectar el funcionamiento de Respawn.`,
   },
   {
     title: '6. Tus derechos',
@@ -37,7 +37,7 @@ const SECTIONS = [
   },
   {
     title: '9. Cambios a esta política',
-    content: `Podemos actualizar esta política ocasionalmente. Te notificaremos de cambios significativos por email o mediante un aviso destacado en la Plataforma. El uso continuado de la Plataforma tras los cambios implica aceptación de la nueva política.`,
+    content: `Podemos actualizar esta política ocasionalmente. Te notificaremos de cambios significativos por email o mediante un aviso destacado en Respawn. El uso continuado de Respawn tras los cambios implica aceptación de la nueva política.`,
   },
 ]
 
