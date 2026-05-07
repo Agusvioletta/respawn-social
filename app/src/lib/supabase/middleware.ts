@@ -26,8 +26,9 @@ export async function updateSession(request: NextRequest) {
   )
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   // Rutas públicas que no requieren auth
   const publicRoutes = ['/login', '/signup', '/terms', '/privacy', '/forgot-password']
