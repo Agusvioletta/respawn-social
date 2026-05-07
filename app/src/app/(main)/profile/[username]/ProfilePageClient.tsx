@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -108,7 +108,86 @@ export default function ProfilePageClient() {
   const [listData,      setListData]      = useState<{ id: string; username: string; avatar: string | null; photo_url: string | null }[]>([])
   const [listLoading,   setListLoading]   = useState(false)
 
+  // ── Edit profile modal ────────────────────────────────────────────────────
+  const [editOpen,        setEditOpen]        = useState(false)
+  const [editForm,        setEditForm]        = useState({ username: '', bio: '', games: ['', '', ''], nowPlaying: '' })
+  const [editPhotoFile,   setEditPhotoFile]   = useState<File | null>(null)
+  const [editPhotoPreview,setEditPhotoPreview]= useState<string | null>(null)
+  const [editSaving,      setEditSaving]      = useState(false)
+  const [editMsg,         setEditMsg]         = useState('')
+  const editFileRef = useRef<HTMLInputElement>(null)
+
   const isOwn = currentUser?.username === username
+
+  function openEditModal() {
+    if (!profile) return
+    setEditForm({
+      username: profile.username,
+      bio: profile.bio ?? '',
+      games: [...((profile.games ?? []).slice(0, 3)), '', '', ''].slice(0, 3),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nowPlaying: (profile as any).now_playing ?? '',
+    })
+    setEditPhotoFile(null)
+    setEditPhotoPreview(null)
+    setEditMsg('')
+    setEditOpen(true)
+  }
+
+  async function saveEditProfile(e: React.FormEvent) {
+    e.preventDefault()
+    if (!currentUser || !profile) return
+    setEditSaving(true)
+    setEditMsg('')
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let photoUrl: string | undefined = (profile as any).photo_url
+
+      // Upload photo if changed
+      if (editPhotoFile) {
+        const ext  = editPhotoFile.name.split('.').pop() ?? 'jpg'
+        const path = `${currentUser.id}/photo.${ext}`
+        const { error: upErr } = await (supabase.storage as any).from('profile-photos').upload(path, editPhotoFile, { upsert: true, contentType: editPhotoFile.type })
+        if (upErr) throw upErr
+        const { data: urlData } = (supabase.storage as any).from('profile-photos').getPublicUrl(path)
+        photoUrl = urlData.publicUrl
+      }
+
+      // Save profile fields
+      const cleanGames = editForm.games.filter(g => g.trim())
+      const { error } = await sb.from('profiles').update({
+        username:    editForm.username.trim() || profile.username,
+        bio:         editForm.bio.trim() || null,
+        games:       cleanGames.length ? cleanGames : null,
+        now_playing: editForm.nowPlaying.trim() || null,
+        ...(photoUrl !== undefined ? { photo_url: photoUrl } : {}),
+      }).eq('id', currentUser.id)
+
+      if (error) throw error
+
+      // Update local profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        username:    editForm.username.trim() || prev.username,
+        bio:         editForm.bio.trim() || null,
+        games:       cleanGames.length ? cleanGames : null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        now_playing: editForm.nowPlaying.trim() || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...(photoUrl !== undefined ? { photo_url: photoUrl } as any : {}),
+      } : null)
+
+      setEditMsg('✓ Perfil actualizado')
+      setTimeout(() => setEditOpen(false), 900)
+    } catch (err) {
+      console.error('[EditProfile]', err)
+      setEditMsg('✕ Error al guardar. Intentá de nuevo.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   async function loadProfile() {
     try {
@@ -447,17 +526,20 @@ export default function ProfilePageClient() {
           {/* Follow / Edit */}
           <div className="profile-actions">
             {isOwn ? (
-              <Link href="/settings" style={{ textDecoration: 'none' }}>
-                <button style={{
+              <button
+                onClick={openEditModal}
+                style={{
                   background: 'transparent', border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
                   fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
                   letterSpacing: '1px', padding: '8px 18px', cursor: 'pointer',
                   transition: 'all var(--transition)',
-                }}>
-                  ✏ Editar
-                </button>
-              </Link>
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cyan)'; e.currentTarget.style.color = 'var(--cyan)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                ✏ Editar perfil
+              </button>
             ) : currentUser && (
               <>
                 <Link href={`/messages/${profile.id}`} style={{ textDecoration: 'none' }}>
@@ -1079,6 +1161,257 @@ export default function ProfilePageClient() {
                 </Link>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit profile modal ──────────────────────────────────────────────── */}
+      {editOpen && (
+        <div
+          onClick={() => setEditOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 400,
+            background: 'rgba(7,7,15,0.88)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '480px',
+              background: 'var(--surface)', borderRadius: '20px',
+              border: '1px solid var(--border)',
+              maxHeight: '90vh', overflowY: 'auto',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px 16px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '2px' }}>
+                ✏ EDITAR PERFIL
+              </span>
+              <button
+                onClick={() => setEditOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '18px', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+              >×</button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={saveEditProfile} style={{ padding: '20px 24px' }}>
+
+              {/* Photo */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', display: 'block', marginBottom: '10px' }}>
+                  FOTO DE PERFIL
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '12px',
+                    overflow: 'hidden', border: '2px solid var(--border)',
+                    background: 'var(--card)', flexShrink: 0,
+                  }}>
+                    {editPhotoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={editPhotoPreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        src={(profile as any).photo_url ?? (profile.avatar ? (profile.avatar.startsWith('/') || profile.avatar.startsWith('http') ? profile.avatar : `/${profile.avatar}`) : '/avatar1.png')}
+                        alt={profile.username}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      ref={editFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setEditPhotoFile(file)
+                        const reader = new FileReader()
+                        reader.onload = ev => setEditPhotoPreview(ev.target?.result as string)
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => editFileRef.current?.click()}
+                      style={{
+                        background: 'var(--card)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                        letterSpacing: '1px', padding: '8px 14px', cursor: 'pointer',
+                      }}
+                    >
+                      {editPhotoFile ? '✓ Foto seleccionada' : '📷 Cambiar foto'}
+                    </button>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      JPG, PNG. Máx 5MB.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Username */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', display: 'block', marginBottom: '6px' }}>
+                  USUARIO
+                </label>
+                <input
+                  type="text"
+                  value={editForm.username}
+                  onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+                  maxLength={24}
+                  placeholder="tu_usuario"
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-mono)', fontSize: '14px', outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color var(--transition)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--cyan)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+
+              {/* Bio */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', display: 'block', marginBottom: '6px' }}>
+                  BIO
+                </label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
+                  maxLength={180}
+                  rows={3}
+                  placeholder="Contá algo de vos..."
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-body)', fontSize: '14px', outline: 'none',
+                    resize: 'vertical', minHeight: '80px',
+                    boxSizing: 'border-box',
+                    transition: 'border-color var(--transition)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--cyan)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: editForm.bio.length > 160 ? 'var(--pink)' : 'var(--text-muted)', textAlign: 'right', marginTop: '3px' }}>
+                  {editForm.bio.length}/180
+                </div>
+              </div>
+
+              {/* Games */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', display: 'block', marginBottom: '6px' }}>
+                  JUEGOS FAVORITOS (hasta 3)
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {editForm.games.map((g, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      value={g}
+                      onChange={e => setEditForm(f => {
+                        const games = [...f.games]; games[i] = e.target.value; return { ...f, games }
+                      })}
+                      maxLength={30}
+                      placeholder={`Juego ${i + 1}`}
+                      style={{
+                        width: '100%', padding: '9px 14px',
+                        background: 'var(--card)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-body)', fontSize: '13px', outline: 'none',
+                        boxSizing: 'border-box',
+                        transition: 'border-color var(--transition)',
+                      }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--purple)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Now playing */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', display: 'block', marginBottom: '6px' }}>
+                  JUGANDO AHORA
+                </label>
+                <input
+                  type="text"
+                  value={editForm.nowPlaying}
+                  onChange={e => setEditForm(f => ({ ...f, nowPlaying: e.target.value }))}
+                  maxLength={50}
+                  placeholder="ej: Valorant, Ranked"
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-body)', fontSize: '14px', outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color var(--transition)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--cyan)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+
+              {/* Feedback & Submit */}
+              {editMsg && (
+                <p style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '12px',
+                  color: editMsg.startsWith('✓') ? '#4ade80' : 'var(--pink)',
+                  marginBottom: '12px', textAlign: 'center',
+                }}>
+                  {editMsg}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(false)}
+                  style={{
+                    flex: 1, padding: '12px',
+                    background: 'transparent', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-muted)',
+                    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                    letterSpacing: '1px', cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  style={{
+                    flex: 2, padding: '12px',
+                    background: 'rgba(0,255,247,0.1)', border: '1px solid var(--cyan)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--cyan)',
+                    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 800,
+                    letterSpacing: '1.5px', cursor: editSaving ? 'not-allowed' : 'pointer',
+                    opacity: editSaving ? 0.6 : 1,
+                    transition: 'all var(--transition)',
+                    boxShadow: editSaving ? 'none' : '0 0 12px rgba(0,255,247,0.15)',
+                  }}
+                >
+                  {editSaving ? 'Guardando...' : 'GUARDAR CAMBIOS'}
+                </button>
+              </div>
+
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '14px' }}>
+                Para cambiar banner, privacidad o contraseña → <Link href="/settings" style={{ color: 'var(--cyan)', textDecoration: 'none' }} onClick={() => setEditOpen(false)}>Configuración</Link>
+              </p>
+            </form>
           </div>
         </div>
       )}
